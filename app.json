@@ -1,0 +1,45 @@
+{
+  "expo": {
+    "name": "Unify",
+    "slug": "unify",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./src/assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./src/assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.unify.app",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Unify needs access to location to show nearby runners.",
+        "NSLocationAlwaysUsageDescription": "Unify needs access to location to show nearby runners."
+      }
+    },
+    "android": {
+      "package": "com.unify.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./src/assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ]
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow Unify to access your location"
+        }
+      ]
+    ]
+  }
+}
