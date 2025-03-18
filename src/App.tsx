@@ -3,7 +3,7 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { RootStackParamList } from "./types/navigation";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { ActivityIndicator, View } from "react-native";
+import { StyleSheet, Text, View, ActivityIndicator } from "react-native";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 
 import LoginScreen from "./screens/LoginScreen";
@@ -17,6 +17,34 @@ import ContactsScreen from "./screens/ContactsScreen";
 import MessagesScreen from "./screens/MessagesScreen";
 import ChatScreen from "./screens/ChatScreen";
 import SettingsScreen from "./screens/SettingsScreen";
+
+import { FirebaseDiagnostic } from './utils/FirebaseDiagnostic';
+import { NetworkDiagnostic } from './utils/NetworkDiagnostic';
+import { connectivityManager } from './utils/ConnectivityManager';
+import { ConnectivityStatusBar } from './components/ConnectivityStatus';
+
+console.log('=== DÉMARRAGE DE L\'APPLICATION UNIFY ===');
+
+// Démarrer le gestionnaire de connectivité
+connectivityManager.startMonitoring();
+
+// Ajouter un écouteur pour les changements d'état de connexion
+connectivityManager.addConnectionListener((status) => {
+  console.log('État de la connexion:', 
+    status.isConnected ? 'Connecté' : 'Déconnecté', 
+    status.isFirestoreReachable ? '(Firestore accessible)' : '(Firestore inaccessible)');
+});
+
+// Exécuter les diagnostics au démarrage
+setTimeout(() => {
+  FirebaseDiagnostic.checkFirebaseStatus()
+    .then(result => console.log('Diagnostic Firebase:', result))
+    .catch(error => console.error('Erreur lors du diagnostic Firebase:', error));
+    
+  NetworkDiagnostic.checkNetworkConnectivity()
+    .then(result => console.log('Diagnostic Réseau:', result))
+    .catch(error => console.error('Erreur lors du diagnostic réseau:', error));
+}, 1000);
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -32,67 +60,72 @@ function AuthStack() {
 // Stack pour utilisateurs authentifiés ou qui ont cliqué sur "Continuer sans compte"
 function AppStack() {
   return (
-    <Stack.Navigator
-      screenOptions={{
-        headerStyle: {
-          backgroundColor: "#E83D4D",
-        },
-        headerTintColor: "white",
-      }}
-    >
-      <Stack.Screen
-        name="Home"
-        component={HomeScreen}
-        options={{ title: "Unify" }}
-      />
-      <Stack.Screen
-        name="Map"
-        component={MapScreen}
-        options={{ title: "Carte" }}
-      />
-      <Stack.Screen
-        name="Activities"
-        component={ActivitiesScreen}
-        options={{ title: "Mes Activités" }}
-      />
-      <Stack.Screen
-        name="ActivityDetail"
-        component={ActivityDetailScreen}
-        options={{ title: "Détails de l'activité" }}
-      />
-      <Stack.Screen
-        name="Events"
-        component={EventsScreen}
-        options={{ title: "Événements" }}
-      />
-      <Stack.Screen
-        name="Profile"
-        component={ProfileScreen}
-        options={{ title: "Mon Profil" }}
-      />
-      <Stack.Screen
-        name="Contacts"
-        component={ContactsScreen}
-        options={{ title: "Contacts" }}
-      />
-      <Stack.Screen
-        name="Messages"
-        component={MessagesScreen}
-        options={{ title: "Messages" }}
-      />
-      <Stack.Screen
-        name="Chat"
-        component={ChatScreen}
-        options={({ route }) => ({
-          title: route.params.contactName,
-        })}
-      />
-      <Stack.Screen
-        name="Settings"
-        component={SettingsScreen}
-        options={{ title: "Parametres" }}
-      />
-    </Stack.Navigator>
+    <>
+      {/* Barre d'état de connectivité - s'affiche uniquement en cas de problème */}
+      <ConnectivityStatusBar />
+      
+      <Stack.Navigator
+        screenOptions={{
+          headerStyle: {
+            backgroundColor: "#E83D4D",
+          },
+          headerTintColor: "white",
+        }}
+      >
+        <Stack.Screen
+          name="Home"
+          component={HomeScreen}
+          options={{ title: "Unify" }}
+        />
+        <Stack.Screen
+          name="Map"
+          component={MapScreen}
+          options={{ title: "Carte" }}
+        />
+        <Stack.Screen
+          name="Activities"
+          component={ActivitiesScreen}
+          options={{ title: "Mes Activités" }}
+        />
+        <Stack.Screen
+          name="ActivityDetail"
+          component={ActivityDetailScreen}
+          options={{ title: "Détails de l'activité" }}
+        />
+        <Stack.Screen
+          name="Events"
+          component={EventsScreen}
+          options={{ title: "Événements" }}
+        />
+        <Stack.Screen
+          name="Profile"
+          component={ProfileScreen}
+          options={{ title: "Mon Profil" }}
+        />
+        <Stack.Screen
+          name="Contacts"
+          component={ContactsScreen}
+          options={{ title: "Contacts" }}
+        />
+        <Stack.Screen
+          name="Messages"
+          component={MessagesScreen}
+          options={{ title: "Messages" }}
+        />
+        <Stack.Screen
+          name="Chat"
+          component={ChatScreen}
+          options={({ route }) => ({
+            title: route.params.contactName,
+          })}
+        />
+        <Stack.Screen
+          name="Settings"
+          component={SettingsScreen}
+          options={{ title: "Parametres" }}
+        />
+      </Stack.Navigator>
+    </>
   );
 }
 
@@ -112,6 +145,7 @@ function NavigationSwitcher() {
   return (
     <NavigationContainer>
       {user !== null || isSkipped ? <AppStack /> : <AuthStack />}
+      {/* La barre de connectivité s'affichera automatiquement en cas de problème */}
     </NavigationContainer>
   );
 }

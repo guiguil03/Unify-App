@@ -1,7 +1,15 @@
 // Import Firebase
 import { initializeApp, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth, User as FirebaseUser } from 'firebase/auth';
-import { getFirestore, Firestore } from 'firebase/firestore';
+import { 
+  getFirestore, 
+  Firestore, 
+  initializeFirestore, 
+  CACHE_SIZE_UNLIMITED,
+  enableIndexedDbPersistence,
+  disableNetwork,
+  enableNetwork
+} from 'firebase/firestore';
 import { getStorage, FirebaseStorage } from 'firebase/storage';
 import { getAnalytics, Analytics } from 'firebase/analytics';
 import { getDatabase, Database } from 'firebase/database';
@@ -12,14 +20,13 @@ const expoConstants = Constants.expoConfig?.extra || {};
 
 // Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyDIJyjyh2j9pUzgRhUZLeRlzj23FDHQBiw",
-  authDomain: "millecoeurs-ba7a7.firebaseapp.com",
-  databaseURL: "https://millecoeurs-ba7a7-default-rtdb.firebaseio.com",
-  projectId: "millecoeurs-ba7a7",
-  storageBucket: "millecoeurs-ba7a7.firebasestorage.app",
-  messagingSenderId: "397224772460",
-  appId: "1:397224772460:web:b994c9511b12b9329a2949",
-  measurementId: "G-3BY2NJZWC4"
+  apiKey: "AIzaSyB9CjV4LDkFGhA2CY25ddVpqjCM-Lc_cAo",
+  authDomain: "unify-app-6c69c.firebaseapp.com",
+  projectId: "unify-app-6c69c",
+  storageBucket: "unify-app-6c69c.firebasestorage.app",
+  messagingSenderId: "953125718195",
+  appId: "1:953125718195:web:f8de81cb219571fa53c8c6",
+  measurementId: "G-9LE2GE83TH"
 };
 
 // Vérifier si la configuration est valide
@@ -51,7 +58,27 @@ let app: FirebaseApp,
 try {
   app = initializeApp(firebaseConfig);
   auth = getAuth(app);
-  db = getFirestore(app);
+  
+  // Utiliser initializeFirestore avec configuration optimisée pour la connexion
+  db = initializeFirestore(app, {
+    cacheSizeBytes: CACHE_SIZE_UNLIMITED,
+    experimentalForceLongPolling: true, // Utiliser le long polling au lieu de WebChannels
+  });
+  
+  // Activer la persistance des données pour le mode hors ligne
+  enableIndexedDbPersistence(db)
+    .then(() => {
+      console.log("✅ Persistance Firestore activée avec succès!");
+    })
+    .catch((err) => {
+      console.warn("⚠️ Erreur lors de l'activation de la persistance Firestore:", err);
+      if (err.code === 'failed-precondition') {
+        console.warn("La persistance ne peut fonctionner qu'avec un seul onglet ouvert à la fois");
+      } else if (err.code === 'unimplemented') {
+        console.warn("Le navigateur actuel ne prend pas en charge la persistance");
+      }
+    });
+  
   storage = getStorage(app);
   rtdb = getDatabase(app);
   
@@ -68,5 +95,22 @@ try {
   console.error("❌ ERREUR lors de l'initialisation de Firebase:", error);
   throw error;
 }
+
+// Fonctions utilitaires pour gérer la connectivité
+export const toggleFirestoreNetwork = async (enable: boolean) => {
+  try {
+    if (enable) {
+      await enableNetwork(db);
+      console.log("✅ Réseau Firestore activé");
+    } else {
+      await disableNetwork(db);
+      console.log("✅ Réseau Firestore désactivé");
+    }
+    return true;
+  } catch (error) {
+    console.error(`❌ Erreur lors de ${enable ? 'l\'activation' : 'la désactivation'} du réseau:`, error);
+    return false;
+  }
+};
 
 export { app, auth, db, storage, analytics, rtdb, FirebaseUser };

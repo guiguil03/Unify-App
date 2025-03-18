@@ -17,12 +17,17 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { FirebaseError } from 'firebase/app';
 import { LinearGradient } from 'expo-linear-gradient';
+import { auth } from '../config/firebase';
 
 // Import du logo
 const logo = require('../assets/logo.png');
 
 // Images pour l'écran d'accueil
 const runningImg = require('../assets/running.png');
+
+// Logs pour vérifier l'état de Firebase
+console.log('Firebase Auth Status:', auth ? 'Initialized' : 'Not Initialized');
+console.log('Current Auth Methods:', auth?.config?.apiKey ? 'Config OK' : 'No Config');
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -57,8 +62,12 @@ export default function LoginScreen() {
 
   // Fonction pour obtenir un message d'erreur Firebase convivial
   const getFirebaseErrorMessage = (error: any): string => {
+    console.log('Type d\'erreur:', error?.constructor?.name);
+    console.log('Code d\'erreur:', error?.code);
+    console.log('Message d\'erreur:', error?.message);
+    
     if (!(error instanceof FirebaseError)) {
-      return 'Une erreur s\'est produite. Veuillez réessayer.';
+      return `Une erreur s'est produite: ${error?.message || 'Erreur inconnue'}. Veuillez réessayer.`;
     }
 
     switch (error.code) {
@@ -77,8 +86,16 @@ export default function LoginScreen() {
         return 'Trop de tentatives de connexion. Veuillez réessayer plus tard.';
       case 'auth/network-request-failed':
         return 'Problème de connexion réseau. Vérifiez votre connexion Internet.';
+      case 'auth/operation-not-allowed':
+        return 'Opération non autorisée. Vérifiez que l\'authentification par email/mot de passe est activée dans Firebase.';
+      case 'auth/popup-blocked':  
+        return 'La popup d\'authentification a été bloquée par le navigateur.';
+      case 'auth/popup-closed-by-user':
+        return 'La popup d\'authentification a été fermée avant la fin du processus.';
+      case 'auth/internal-error':
+        return 'Erreur interne Firebase. Veuillez réessayer plus tard.';
       default:
-        return `Erreur: ${error.message}`;
+        return `Erreur: ${error.code} - ${error.message}`;
     }
   };
 
@@ -103,15 +120,25 @@ export default function LoginScreen() {
       return;
     }
     
+    console.log(`Tentative de ${isLoginMode ? 'connexion' : 'création de compte'} pour ${email}`);
+    
     setIsSubmitting(true);
     try {
+      console.log('Firebase Auth dans handleSubmit:', auth ? 'OK' : 'Non initialisé');
+      
       if (isLoginMode) {
+        console.log('Appel de signIn avec:', email);
         await signIn(email, password);
+        console.log('Connexion réussie');
       } else {
+        console.log('Appel de signUp avec:', name, email);
         await signUp(name, email, password);
+        console.log('Inscription réussie');
       }
       // La navigation se fera automatiquement grâce au contexte d'authentification
     } catch (error) {
+      console.error('Erreur complète:', error);
+      
       const errorMessage = getFirebaseErrorMessage(error);
       Alert.alert(
         'Erreur',

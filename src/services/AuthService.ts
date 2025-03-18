@@ -3,16 +3,24 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { User } from '../types/user';
 import { 
   auth, 
-  db, 
-  FirebaseUser 
+  db,
+  toggleFirestoreNetwork
 } from '../config/firebase';
 import { 
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword, 
   signOut as firebaseSignOut,
-  updateProfile
+  updateProfile,
+  User as FirebaseUser
 } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { connectivityManager } from '../utils/ConnectivityManager';
+import { FirestoreOfflineHandler } from '../utils/FirestoreOfflineHandler';
+
+// Logs pour vérifier l'état de Firebase
+console.log('AuthService - Firebase Auth:', auth ? 'Initialized' : 'Not Initialized');
+console.log('AuthService - Firestore DB:', db ? 'Initialized' : 'Not Initialized');
+console.log('AuthService - Current User:', auth?.currentUser?.uid || 'No user logged in');
 
 export class AuthService {
   private static readonly USER_STORAGE_KEY = 'unify_user';
@@ -20,31 +28,53 @@ export class AuthService {
 
   static async login(email: string, password: string): Promise<User> {
     try {
-      console.log(`Tentative de connexion avec l'email: ${email}`);
+      console.log(`Tentative de connexion avec email: ${email}`);
       
-      // Utiliser l'authentification Firebase
+      // Vérifier la connectivité avant de tenter une connexion
+      const connectivityStatus = connectivityManager.getStatus();
+      if (!connectivityStatus.isConnected) {
+        console.warn('Tentative de connexion en mode hors ligne');
+        // Tenter une reconnexion
+        await connectivityManager.forceReconnect();
+      }
+      
+      // Connexion avec Firebase
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const firebaseUser = userCredential.user;
       
-      console.log(`Authentification réussie pour l'utilisateur avec UID: ${firebaseUser.uid}`);
+      console.log(`Connexion Firebase réussie pour l'utilisateur: ${firebaseUser.uid}`);
       
-      // Récupérer les données utilisateur depuis Firestore
-      const user = await this.getUserDataFromFirestore(firebaseUser);
+      // Récupérer les données utilisateur depuis Firestore avec gestion du mode hors ligne
+      let user: User;
+      try {
+        user = await this.getUserDataFromFirestore(firebaseUser);
+      } catch (error: any) {
+        console.error('Erreur lors de la récupération des données utilisateur:', error);
+        
+        // Afficher un message d'erreur plus convivial
+        const errorMessage = FirestoreOfflineHandler.getErrorMessage(error);
+        error.message = errorMessage;
+        throw error;
+      }
       
-      // Stocker localement l'utilisateur et son token
+      // Stocker localement l'utilisateur et son token 
       await this.setCurrentUser(user);
       await this.setToken(await firebaseUser.getIdToken());
       
-      console.log('Connexion complète et données utilisateur stockées localement');
       return user;
     } catch (error: any) {
-      console.error('Erreur de connexion:', error);
+      console.error('Erreur lors de la connexion:', error);
       console.error('Code d\'erreur Firebase:', error.code);
       console.error('Message d\'erreur:', error.message);
       
       // Vérifier si c'est une erreur liée aux règles de sécurité Firebase
       if (error.code === 'permission-denied') {
         console.error('Problème de permission Firebase. Vérifiez vos règles de sécurité Firestore.');
+      }
+      
+      // Ajouter un message plus convivial pour les erreurs de connexion
+      if (error.code === 'unavailable' || error.message?.includes('offline')) {
+        error.message = "Impossible de se connecter au serveur. Vérifiez votre connexion Internet et réessayez.";
       }
       
       throw error;
@@ -54,6 +84,12 @@ export class AuthService {
   static async register(name: string, email: string, password: string): Promise<User> {
     try {
       console.log(`Tentative d'inscription avec email: ${email} et nom: ${name}`);
+      
+      // Vérifier la connectivité avant de tenter une inscription
+      const connectivityStatus = connectivityManager.getStatus();
+      if (!connectivityStatus.isConnected) {
+        throw new Error("Vous devez être connecté à Internet pour créer un compte.");
+      }
       
       // Créer un nouvel utilisateur avec Firebase
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -77,12 +113,45 @@ export class AuthService {
       };
       
       console.log('Tentative de sauvegarde du document utilisateur dans Firestore...');
+      console.log('Données à sauvegarder:', JSON.stringify(user));
       
-      // Sauvegarder dans Firestore
-      await setDoc(doc(db, 'users', firebaseUser.uid), user);
+      try {
+        // Sauvegarder dans Firestore
+        await setDoc(doc(db, 'users', firebaseUser.uid), user);
+        console.log('Document utilisateur créé avec succès dans Firestore');
+      } catch (firestoreError: any) {
+        console.error('ERREUR CRITIQUE lors de l\'écriture dans Firestore:', firestoreError);
+        console.error('Code d\'erreur Firestore:', firestoreError.code);
+        console.error('Message d\'erreur Firestore:', firestoreError.message);
+        
+        if (firestoreError.code === 'permission-denied') {
+          console.error(`
+          !!!! PROBLÈME DE PERMISSIONS FIRESTORE !!!!
+          Vérifiez vos règles de sécurité dans la console Firebase.
+          
+          Règles recommandées pour test:
+          rules_version = '2';
+          service cloud.firestore {
+            match /databases/{database}/documents {
+              match /users/{userId} {
+                allow read, write: if request.auth != null;
+              }
+            }
+          }
+          `);
+        } else if (firestoreError.code === 'unavailable' || firestoreError.message?.includes('offline')) {
+          console.error(`
+          !!!! PROBLÈME DE CONNEXION RÉSEAU !!!!
+          L'utilisateur a été créé dans Firebase Auth mais n'a pas pu être enregistré dans Firestore.
+          Les données seront synchronisées lorsque la connexion sera rétablie.
+          `);
+          
+          // Tenter une reconnexion
+          connectivityManager.forceReconnect();
+        }
+      }
       
-      console.log('Document utilisateur créé avec succès dans Firestore');
-      
+      // Même si l'écriture dans Firestore échoue, continuons pour que l'utilisateur puisse se connecter
       // Stocker localement l'utilisateur et son token
       await this.setCurrentUser(user);
       await this.setToken(await firebaseUser.getIdToken());
@@ -97,6 +166,11 @@ export class AuthService {
       // Vérifier si c'est une erreur liée aux règles de sécurité Firebase
       if (error.code === 'permission-denied') {
         console.error('Problème de permission Firebase. Vérifiez vos règles de sécurité Firestore.');
+      }
+      
+      // Ajouter un message plus convivial pour les erreurs de connexion
+      if (error.code === 'unavailable' || error.message?.includes('offline')) {
+        error.message = "Impossible de se connecter au serveur. Vérifiez votre connexion Internet et réessayez.";
       }
       
       throw error;
@@ -138,43 +212,48 @@ export class AuthService {
 
   private static async getUserDataFromFirestore(firebaseUser: FirebaseUser): Promise<User> {
     try {
-      console.log(`Tentative de récupération des données utilisateur depuis Firestore pour l'UID: ${firebaseUser.uid}`);
+      console.log(`Récupération des données utilisateur depuis Firestore pour ${firebaseUser.uid}`);
       
-      // Récupérer les données utilisateur depuis Firestore
-      const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+      // Utiliser FirestoreOfflineHandler pour récupérer le document
+      const userDoc = await FirestoreOfflineHandler.executeWithOfflineHandling(
+        async () => await getDoc(doc(db, 'users', firebaseUser.uid)),
+        undefined, // Pas de fallback, on veut gérer l'erreur nous-mêmes
+        2 // Nombre de tentatives
+      );
       
       if (userDoc.exists()) {
-        // Si le document existe, retourner les données
         console.log('Document utilisateur trouvé dans Firestore');
         return userDoc.data() as User;
       } else {
-        // Si le document n'existe pas, créer un utilisateur avec les données de base
-        console.log('Aucun document utilisateur trouvé dans Firestore. Création d\'un nouveau document...');
+        console.warn(`Document utilisateur non trouvé dans Firestore pour l'UID: ${firebaseUser.uid}`);
         
-        const user: User = {
+        // Créer un utilisateur par défaut en cas de document manquant
+        const defaultUser: User = {
           id: firebaseUser.uid,
           email: firebaseUser.email || '',
-          name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || '',
+          name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Anonymous',
           created: new Date().toISOString(),
         };
         
-        // Sauvegarder dans Firestore pour la prochaine fois
-        console.log('Tentative de sauvegarde du document utilisateur dans Firestore...');
-        await setDoc(doc(db, 'users', firebaseUser.uid), user);
-        console.log('Document utilisateur créé avec succès dans Firestore');
-        
-        return user;
+        return defaultUser;
       }
     } catch (error: any) {
       console.error('Erreur lors de la récupération des données utilisateur:', error);
-      console.error('Code d\'erreur Firebase:', error.code);
-      console.error('Message d\'erreur:', error.message);
       
-      // Vérifier si c'est une erreur liée aux règles de sécurité Firebase
-      if (error.code === 'permission-denied') {
-        console.error('Problème de permission Firebase. Vérifiez vos règles de sécurité Firestore.');
+      // Vérifier si c'est une erreur de connectivité
+      if (FirestoreOfflineHandler.isOfflineError(error)) {
+        console.warn('Erreur de connectivité, génération d\'un utilisateur à partir des données Firebase Auth');
+        
+        // Créer un utilisateur minimal à partir des informations Firebase
+        return {
+          id: firebaseUser.uid,
+          email: firebaseUser.email || '',
+          name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Anonymous',
+          created: new Date().toISOString(),
+        };
       }
       
+      // Pour les autres erreurs, les propager
       throw error;
     }
   }
