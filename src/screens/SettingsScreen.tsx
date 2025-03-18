@@ -6,12 +6,34 @@ import {
   Switch,
   StyleSheet,
   ActivityIndicator,
+  TouchableOpacity,
+  Alert,
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useSettings } from "../hooks/useSettings";
+import { useAuth } from "../contexts/AuthContext";
 
 export default function SettingsScreen() {
   const { settings, loading, updateSetting } = useSettings();
+  const { signOut, user } = useAuth();
+
+  const handleLogout = () => {
+    Alert.alert(
+      "Déconnexion",
+      "Êtes-vous sûr de vouloir vous déconnecter ?",
+      [
+        {
+          text: "Annuler",
+          style: "cancel",
+        },
+        {
+          text: "Déconnexion",
+          onPress: () => signOut(),
+          style: "destructive",
+        },
+      ]
+    );
+  };
 
   if (loading) {
     return (
@@ -23,6 +45,14 @@ export default function SettingsScreen() {
 
   return (
     <ScrollView style={styles.container}>
+      {user && (
+        <View style={styles.userSection}>
+          <Text style={styles.welcomeText}>Connecté en tant que</Text>
+          <Text style={styles.userName}>{user.name}</Text>
+          <Text style={styles.userEmail}>{user.email}</Text>
+        </View>
+      )}
+
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Sécurité et confidentialité</Text>
 
@@ -133,6 +163,28 @@ export default function SettingsScreen() {
           />
         </View>
       </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Compte</Text>
+        
+        {user ? (
+          <TouchableOpacity 
+            style={styles.logoutButton} 
+            onPress={handleLogout}
+          >
+            <MaterialCommunityIcons name="logout" size={24} color="white" />
+            <Text style={styles.logoutButtonText}>Déconnexion</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity 
+            style={[styles.logoutButton, { backgroundColor: '#4285F4' }]} 
+            onPress={() => signOut()} // Retour à l'écran de login
+          >
+            <MaterialCommunityIcons name="login" size={24} color="white" />
+            <Text style={styles.logoutButtonText}>Se connecter</Text>
+          </TouchableOpacity>
+        )}
+      </View>
     </ScrollView>
   );
 }
@@ -147,6 +199,27 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "white",
+  },
+  userSection: {
+    padding: 20,
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+    backgroundColor: "#f9f9f9",
+  },
+  welcomeText: {
+    fontSize: 14,
+    color: "#666",
+    marginBottom: 4,
+  },
+  userName: {
+    fontSize: 22,
+    fontWeight: "600",
+    marginBottom: 2,
+  },
+  userEmail: {
+    fontSize: 16,
+    color: "#666",
   },
   section: {
     padding: 16,
@@ -177,5 +250,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#666",
     marginBottom: 12,
+  },
+  logoutButton: {
+    backgroundColor: "#E83D4D",
+    borderRadius: 8,
+    padding: 15,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+  },
+  logoutButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "600",
   },
 });
