@@ -20,20 +20,10 @@ import SettingsScreen from "./screens/SettingsScreen";
 
 import { FirebaseDiagnostic } from './utils/FirebaseDiagnostic';
 import { NetworkDiagnostic } from './utils/NetworkDiagnostic';
-import { connectivityManager } from './utils/ConnectivityManager';
-import { ConnectivityStatusBar } from './components/ConnectivityStatus';
 
 console.log('=== DÉMARRAGE DE L\'APPLICATION UNIFY ===');
 
-// Démarrer le gestionnaire de connectivité
-connectivityManager.startMonitoring();
 
-// Ajouter un écouteur pour les changements d'état de connexion
-connectivityManager.addConnectionListener((status) => {
-  console.log('État de la connexion:', 
-    status.isConnected ? 'Connecté' : 'Déconnecté', 
-    status.isFirestoreReachable ? '(Firestore accessible)' : '(Firestore inaccessible)');
-});
 
 // Exécuter les diagnostics au démarrage
 setTimeout(() => {
@@ -60,11 +50,7 @@ function AuthStack() {
 // Stack pour utilisateurs authentifiés ou qui ont cliqué sur "Continuer sans compte"
 function AppStack() {
   return (
-    <>
-      {/* Barre d'état de connectivité - s'affiche uniquement en cas de problème */}
-      <ConnectivityStatusBar />
-      
-      <Stack.Navigator
+    <Stack.Navigator
         screenOptions={{
           headerStyle: {
             backgroundColor: "#E83D4D",
@@ -125,7 +111,6 @@ function AppStack() {
           options={{ title: "Parametres" }}
         />
       </Stack.Navigator>
-    </>
   );
 }
 
