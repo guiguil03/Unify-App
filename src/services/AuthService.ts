@@ -14,6 +14,7 @@ import {
   User as FirebaseUser
 } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { handleFirebaseError, showSuccessToast } from '../utils/errorHandler';
 
 // Logs pour vérifier l'état de Firebase
 console.log('AuthService - Firebase Auth:', auth ? 'Initialized' : 'Not Initialized');
@@ -39,7 +40,7 @@ export class AuthService {
       try {
         user = await this.getUserDataFromFirestore(firebaseUser);
       } catch (error: any) {
-        console.error('Erreur lors de la récupération des données utilisateur:', error);
+        // Pas de console.error, juste propager l'erreur
         throw error;
       }
       
@@ -47,17 +48,12 @@ export class AuthService {
       await this.setCurrentUser(user);
       await this.setToken(await firebaseUser.getIdToken());
       
+      // Afficher un toast de succès
+      showSuccessToast('Connexion réussie !');
+      
       return user;
     } catch (error: any) {
-      console.error('Erreur lors de la connexion:', error);
-      console.error('Code d\'erreur Firebase:', error.code);
-      console.error('Message d\'erreur:', error.message);
-      
-      // Vérifier si c'est une erreur liée aux règles de sécurité Firebase
-      if (error.code === 'permission-denied') {
-        console.error('Problème de permission Firebase. Vérifiez vos règles de sécurité Firestore.');
-      }
-      
+      // Erreur déjà gérée dans Auth Context
       throw error;
     }
   }
@@ -96,44 +92,24 @@ export class AuthService {
         console.log('Document utilisateur créé avec succès dans Firestore');
       } catch (firestoreError: any) {
         console.error('ERREUR CRITIQUE lors de l\'écriture dans Firestore:', firestoreError);
-        console.error('Code d\'erreur Firestore:', firestoreError.code);
-        console.error('Message d\'erreur Firestore:', firestoreError.message);
         
-        if (firestoreError.code === 'permission-denied') {
-          console.error(`
-          !!!! PROBLÈME DE PERMISSIONS FIRESTORE !!!!
-          Vérifiez vos règles de sécurité dans la console Firebase.
-          
-          Règles recommandées pour test:
-          rules_version = '2';
-          service cloud.firestore {
-            match /databases/{database}/documents {
-              match /users/{userId} {
-                allow read, write: if request.auth != null;
-              }
-            }
-          }
-          `);
-        }
+        // Utiliser notre utilitaire pour gérer l'erreur
+        handleFirebaseError(firestoreError, 'Problème lors de la création du profil');
+        
+        // Ne pas arrêter l'inscription si la création du profil échoue
       }
       
-      // Même si l'écriture dans Firestore échoue, continuons pour que l'utilisateur puisse se connecter
       // Stocker localement l'utilisateur et son token
       await this.setCurrentUser(user);
       await this.setToken(await firebaseUser.getIdToken());
       
+      // Afficher un toast de succès
+      showSuccessToast('Inscription réussie ! Bienvenue !');
+      
       console.log('Inscription terminée avec succès');
       return user;
     } catch (error: any) {
-      console.error('Erreur lors de l\'inscription:', error);
-      console.error('Code d\'erreur Firebase:', error.code);
-      console.error('Message d\'erreur:', error.message);
-      
-      // Vérifier si c'est une erreur liée aux règles de sécurité Firebase
-      if (error.code === 'permission-denied') {
-        console.error('Problème de permission Firebase. Vérifiez vos règles de sécurité Firestore.');
-      }
-      
+      // Erreur déjà gérée dans Auth Context
       throw error;
     }
   }
@@ -146,8 +122,15 @@ export class AuthService {
       // Supprimer les données locales
       await AsyncStorage.removeItem(this.USER_STORAGE_KEY);
       await AsyncStorage.removeItem(this.TOKEN_STORAGE_KEY);
+      
+      // Afficher un toast de succès
+      showSuccessToast('Vous êtes déconnecté');
     } catch (error) {
       console.error('Erreur lors de la déconnexion:', error);
+      
+      // Utiliser notre utilitaire pour gérer l'erreur
+      handleFirebaseError(error, 'Problème lors de la déconnexion');
+      
       throw error;
     }
   }
@@ -166,7 +149,10 @@ export class AuthService {
       const userJson = await AsyncStorage.getItem(this.USER_STORAGE_KEY);
       return userJson ? JSON.parse(userJson) : null;
     } catch (error) {
-      console.error('Erreur lors de la récupération du user:', error);
+      // Log silencieux en mode production
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Erreur lors de la récupération du user (info):', error);
+      }
       return null;
     }
   }
@@ -182,7 +168,7 @@ export class AuthService {
         console.log('Document utilisateur trouvé dans Firestore');
         return userDoc.data() as User;
       } else {
-        console.warn(`Document utilisateur non trouvé dans Firestore pour l'UID: ${firebaseUser.uid}`);
+        console.log(`Document utilisateur non trouvé dans Firestore pour l'UID: ${firebaseUser.uid}`);
         
         // Créer un utilisateur par défaut en cas de document manquant
         const defaultUser: User = {
@@ -195,7 +181,10 @@ export class AuthService {
         return defaultUser;
       }
     } catch (error: any) {
-      console.error('Erreur lors de la récupération des données utilisateur:', error);
+      // Réduire les logs d'erreur
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Problème avec Firestore (info):', error.code);
+      }
       
       // Créer un utilisateur minimal à partir des informations Firebase
       return {

@@ -1,26 +1,32 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
-import { AuthService } from '../services/AuthService';
-import { User } from '../types/user';
-import { auth } from '../config/firebase';
+import React, { createContext, useState, useEffect, useContext } from "react";
+import { AuthService } from "../services/AuthService";
+import { User } from "../types/user";
+import { auth } from "../config/firebase";
+import { handleFirebaseError } from "../utils/errorHandler";
 
 interface AuthContextData {
   user: User | null;
   isLoading: boolean;
   isSkipped: boolean;
-  signIn: (email: string, password: string) => Promise<void>;
-  signUp: (name: string, email: string, password: string) => Promise<void>;
+  signIn: (email: string, password: string) => Promise<boolean>;
+  signUp: (name: string, email: string, password: string) => Promise<boolean>;
   signOut: () => Promise<void>;
   skipAuth: () => void;
   hasCompletedInitialCheck: boolean;
+  authenticating: boolean;
 }
 
 const AuthContext = createContext<AuthContextData>({} as AuthContextData);
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSkipped, setIsSkipped] = useState(false);
-  const [hasCompletedInitialCheck, setHasCompletedInitialCheck] = useState(false);
+  const [hasCompletedInitialCheck, setHasCompletedInitialCheck] =
+    useState(false);
+  const [authenticating, setAuthenticating] = useState(false);
 
   useEffect(() => {
     // Vérifier l'état d'authentification au démarrage
@@ -31,7 +37,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUser(storedUser);
         }
       } catch (error) {
-        console.error('Erreur lors du chargement du profil utilisateur:', error);
+        // Log silencieux
+        handleFirebaseError(error, "Erreur lors du chargement du profil");
       } finally {
         setIsLoading(false);
         setHasCompletedInitialCheck(true);
@@ -39,23 +46,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     // Écouter les changements d'état d'authentification
-    const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
-      setIsLoading(true);
-      if (firebaseUser) {
-        try {
-          // L'utilisateur est connecté, récupérer ou créer ses données
-          const userData = await AuthService.getCurrentUser();
-          setUser(userData);
-        } catch (error) {
-          console.error('Erreur lors de la mise à jour du profil:', error);
+    const unsubscribe = auth.onAuthStateChanged(
+      async (firebaseUser) => {
+        setIsLoading(true);
+        if (firebaseUser) {
+          try {
+            // L'utilisateur est connecté, récupérer ou créer ses données
+            const userData = await AuthService.getCurrentUser();
+            setUser(userData);
+          } catch (error) {
+            // Log silencieux
+            handleFirebaseError(
+              error,
+              "Erreur lors de la mise à jour du profil"
+            );
+          }
+        } else {
+          // L'utilisateur est déconnecté
+          setUser(null);
         }
-      } else {
-        // L'utilisateur est déconnecté
-        setUser(null);
+        setIsLoading(false);
+        setHasCompletedInitialCheck(true);
+      },
+      (error) => {
+        // Gestionnaire d'erreur pour onAuthStateChanged
+        // Log silencieux
+        handleFirebaseError(
+          error,
+          "Problème de surveillance de l'authentification"
+        );
+        setIsLoading(false);
+        setHasCompletedInitialCheck(true);
       }
-      setIsLoading(false);
-      setHasCompletedInitialCheck(true);
-    });
+    );
 
     // Vérification initiale
     loadUserFromStorage();
@@ -65,28 +88,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   async function signIn(email: string, password: string) {
-    setIsLoading(true);
+    setAuthenticating(true);
     try {
       const user = await AuthService.login(email, password);
       setUser(user);
+      return true;
     } catch (error) {
-      console.error('Erreur de connexion:', error);
-      throw error;
+      handleFirebaseError(error, "Échec de la connexion");
+      return false;
     } finally {
-      setIsLoading(false);
+      setAuthenticating(false);
     }
   }
 
   async function signUp(name: string, email: string, password: string) {
-    setIsLoading(true);
+    setAuthenticating(true);
     try {
       const user = await AuthService.register(name, email, password);
       setUser(user);
+      return true;
     } catch (error) {
-      console.error('Erreur d\'inscription:', error);
-      throw error;
+      handleFirebaseError(error, "Échec de l'inscription");
+      return false;
     } finally {
-      setIsLoading(false);
+      setAuthenticating(false);
     }
   }
 
@@ -97,7 +122,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(null);
       setIsSkipped(false);
     } catch (error) {
-      console.error('Erreur lors de la déconnexion:', error);
+      console.error("Erreur lors de la déconnexion:", error);
+      handleFirebaseError(error, "Erreur lors de la déconnexion");
     } finally {
       setIsLoading(false);
     }
@@ -119,6 +145,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         signOut,
         skipAuth,
         hasCompletedInitialCheck,
+        authenticating,
       }}
     >
       {children}
@@ -129,7 +156,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth doit être utilisé à l\'intérieur d\'un AuthProvider');
+    throw new Error(
+      "useAuth doit être utilisé à l'intérieur d'un AuthProvider"
+    );
   }
   return context;
 }

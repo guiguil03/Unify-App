@@ -1,6 +1,7 @@
 // Import Firebase
 import { initializeApp, FirebaseApp } from 'firebase/app';
-import { getAuth, Auth, User as FirebaseUser } from 'firebase/auth';
+import { initializeAuth, Auth, User as FirebaseUser } from 'firebase/auth';
+import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
 import { 
   getFirestore, 
   Firestore, 
@@ -14,6 +15,7 @@ import { getStorage, FirebaseStorage } from 'firebase/storage';
 import { getAnalytics, Analytics } from 'firebase/analytics';
 import { getDatabase, Database } from 'firebase/database';
 import Constants from 'expo-constants';
+import { Platform } from 'react-native';
 
 // Obtenir les variables d'environnement d'Expo
 const expoConstants = Constants.expoConfig?.extra || {};
@@ -57,27 +59,28 @@ let app: FirebaseApp,
 
 try {
   app = initializeApp(firebaseConfig);
-  auth = getAuth(app);
   
-  // Utiliser initializeFirestore avec configuration optimisée pour la connexion
-  db = initializeFirestore(app, {
-    cacheSizeBytes: CACHE_SIZE_UNLIMITED,
-    experimentalForceLongPolling: true, // Utiliser le long polling au lieu de WebChannels
+  // Import dynamique pour contourner les problèmes de TypeScript avec getReactNativePersistence
+  const getReactNativePersistence = (
+    require('firebase/auth') as any
+  ).getReactNativePersistence;
+  
+  // Initialiser Auth avec la persistance React Native
+  auth = initializeAuth(app, {
+    persistence: getReactNativePersistence(ReactNativeAsyncStorage)
   });
   
-  // Activer la persistance des données pour le mode hors ligne
-  enableIndexedDbPersistence(db)
-    .then(() => {
-      console.log("✅ Persistance Firestore activée avec succès!");
-    })
-    .catch((err) => {
-      console.warn("⚠️ Erreur lors de l'activation de la persistance Firestore:", err);
-      if (err.code === 'failed-precondition') {
-        console.warn("La persistance ne peut fonctionner qu'avec un seul onglet ouvert à la fois");
-      } else if (err.code === 'unimplemented') {
-        console.warn("Le navigateur actuel ne prend pas en charge la persistance");
-      }
-    });
+  // Utiliser initializeFirestore avec configuration optimisée pour la connexion sur React Native
+  db = initializeFirestore(app, {
+    cacheSizeBytes: CACHE_SIZE_UNLIMITED,
+    // Configurations spécifiques à React Native
+    experimentalForceLongPolling: Platform.OS === 'android', // Utiliser le long polling sur Android
+    experimentalAutoDetectLongPolling: true,
+  });
+  
+  // Nous ne tentons pas d'activer IndexedDbPersistence sur React Native car elle n'est pas supportée
+  // La persistance est gérée automatiquement selon les capacités de la plateforme
+  console.log("✅ Configuration Firestore adaptée à React Native!");
   
   storage = getStorage(app);
   rtdb = getDatabase(app);
