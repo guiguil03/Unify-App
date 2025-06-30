@@ -34,6 +34,10 @@
         "ACCESS_FINE_LOCATION"
       ]
     },
+    "web": {
+      "favicon": "./src/assets/icon.png",
+      "bundler": "metro"
+    },
     "plugins": [
       [
         "expo-location",
