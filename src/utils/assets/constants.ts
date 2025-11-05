@@ -1,6 +1,6 @@
 export const APP_ASSETS = {
   icon: require('../../assets/icon.png'),
-  splash: require('../../assets/splash.png'),
+  splash: require('../../assets/logo.png'),
   adaptiveIcon: require('../../assets/adaptive-icon.png'),
 };
 

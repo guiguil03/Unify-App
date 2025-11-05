@@ -290,43 +290,27 @@ export default function LoginScreen() {
 const { width, height } = Dimensions.get("window");
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#fff",
-  },
-  gradientContainer: {
-    flex: 1,
-  },
+  container: { flex: 1, backgroundColor: "#fff" },
+  gradientContainer: { flex: 1 },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: "center",
+    justifyContent: "flex-end",
     padding: 20,
+    paddingBottom: 25,
   },
-  logoContainer: {
-    alignItems: "center",
-    marginBottom: 30,
-  },
-  logo: {
-    width: 80,
-    height: 80,
-    resizeMode: "contain",
-  },
+  logoContainer: { alignItems: "center", marginBottom: 15 },
+  logo: { width: 80, height: 80, resizeMode: "contain" },
   appName: {
     fontSize: 28,
     fontWeight: "bold",
     marginTop: 10,
     color: "#E83D4D",
   },
-  appSlogan: {
-    fontSize: 14,
-    color: "#666",
-    marginTop: 5,
-    textAlign: "center",
-  },
+  appSlogan: { fontSize: 14, color: "#666", marginTop: 5, textAlign: "center" },
   formContainer: {
     width: "100%",
     backgroundColor: "white",
-    borderRadius: 15,
+    borderRadius: 40,
     padding: 20,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
@@ -341,9 +325,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     color: "#333",
   },
-  inputContainer: {
-    marginBottom: 16,
-  },
+  inputContainer: { marginBottom: 16 },
   inputLabel: {
     fontSize: 14,
     fontWeight: "500",
@@ -365,29 +347,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 10,
   },
-  buttonText: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  toggleButton: {
-    marginTop: 20,
-    alignItems: "center",
-  },
-  toggleText: {
-    color: "#E83D4D",
-    fontSize: 14,
-    fontWeight: "500",
-  },
-  skipButton: {
-    marginTop: 15,
-    alignItems: "center",
-    paddingVertical: 10,
-  },
-  skipText: {
-    color: "#666",
-    fontSize: 14,
-  },
+  buttonText: { color: "white", fontSize: 16, fontWeight: "600" },
+  toggleButton: { marginTop: 20, alignItems: "center" },
+  toggleText: { color: "#E83D4D", fontSize: 14, fontWeight: "500" },
+  skipButton: { marginTop: 15, alignItems: "center", paddingVertical: 10 },
+  skipText: { color: "#666", fontSize: 14 },
   features: {
     marginTop: 30,
     paddingTop: 20,
@@ -401,11 +365,7 @@ const styles = StyleSheet.create({
     color: "#333",
     textAlign: "center",
   },
-  featureItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 10,
-  },
+  featureItem: { flexDirection: "row", alignItems: "center", marginBottom: 10 },
   featureDot: {
     width: 8,
     height: 8,
@@ -413,17 +373,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#E83D4D",
     marginRight: 10,
   },
-  featureText: {
-    fontSize: 14,
-    color: "#555",
-    flex: 1,
-  },
+  featureText: { fontSize: 14, color: "#555", flex: 1 },
   // Styles pour l'écran d'accueil
-  welcomeContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
+  welcomeContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
   gradientBackground: {
     flex: 1,
     width: "100%",
@@ -456,7 +408,5 @@ const styles = StyleSheet.create({
     height: height * 0.3,
     resizeMode: "contain",
   },
-  welcomeLoader: {
-    marginTop: 40,
-  },
+  welcomeLoader: { marginTop: 40 },
 });
