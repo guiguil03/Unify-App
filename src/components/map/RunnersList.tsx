@@ -1,8 +1,7 @@
 import React from "react";
-import { View, Text, StyleSheet, Dimensions, Platform } from "react-native";
-import { PanGestureHandler } from "react-native-gesture-handler";
+import { View, Text, StyleSheet, Dimensions } from "react-native";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
-  useAnimatedGestureHandler,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
@@ -29,18 +28,19 @@ export function RunnersList({
 }: RunnersListProps) {
   const translateY = useSharedValue(MIN_TRANSLATE_Y);
 
-  const gestureHandler = useAnimatedGestureHandler({
-    onStart: (_, ctx: { startY: number }) => {
-      ctx.startY = translateY.value;
-    },
-    onActive: (event, ctx) => {
-      translateY.value = ctx.startY + event.translationY;
+  const startY = useSharedValue(translateY.value);
+  const panGesture = Gesture.Pan()
+    .onBegin(() => {
+      startY.value = translateY.value;
+    })
+    .onChange((event) => {
+      translateY.value = startY.value + event.translationY;
       translateY.value = Math.max(
         MAX_TRANSLATE_Y,
         Math.min(0, translateY.value)
       );
-    },
-    onEnd: (event) => {
+    })
+    .onEnd((event) => {
       const shouldSnap =
         event.velocityY > 500 ||
         (event.velocityY >= 0 && translateY.value > -SCREEN_HEIGHT / 2);
@@ -52,8 +52,7 @@ export function RunnersList({
           damping: 50,
         }
       );
-    },
-  });
+    });
 
   const rStyle = useAnimatedStyle(() => {
     return {
@@ -71,7 +70,7 @@ export function RunnersList({
   };
 
   return (
-    <PanGestureHandler onGestureEvent={gestureHandler}>
+    <GestureDetector gesture={panGesture}>
       <Animated.View style={[styles.container, rStyle]}>
         <View style={styles.handle} />
 
@@ -128,7 +127,7 @@ export function RunnersList({
           ))}
         </Animated.ScrollView>
       </Animated.View>
-    </PanGestureHandler>
+    </GestureDetector>
   );
 }
 
