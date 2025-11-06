@@ -21,41 +21,40 @@ export default function ActivitiesScreen() {
     });
   };
 
-  const handleAddManualActivity = (newActivity: {
+  const handleAddManualActivity = async (newActivity: {
     distance: number;
     duration: string;
     date: string;
   }) => {
-    const activity: Activity = {
-      id: Date.now().toString(),
-      ...newActivity,
-      pace: calculatePace(newActivity.distance, newActivity.duration),
-    };
-    addActivity(activity);
+    try {
+      await addActivity({
+        distance: newActivity.distance,
+        duration: newActivity.duration,
+        date: newActivity.date,
+      });
+      setIsModalVisible(false);
+    } catch (error) {
+      console.error('Erreur lors de l\'ajout de l\'activité:', error);
+    }
   };
 
-  const handleFinishLiveActivity = (newActivity: {
+  const handleFinishLiveActivity = async (newActivity: {
     distance: number;
     duration: string;
     date: string;
   }) => {
-    const activity: Activity = {
-      id: Date.now().toString(),
-      ...newActivity,
-      pace: calculatePace(newActivity.distance, newActivity.duration),
-    };
-    addActivity(activity);
-    setIsLiveActivityActive(false);
+    try {
+      await addActivity({
+        distance: newActivity.distance,
+        duration: newActivity.duration,
+        date: newActivity.date,
+      });
+      setIsLiveActivityActive(false);
+    } catch (error) {
+      console.error('Erreur lors de l\'enregistrement de l\'activité:', error);
+    }
   };
 
-  const calculatePace = (distance: number, duration: string): string => {
-    const [minutes, seconds] = duration.split(":").map(Number);
-    const totalMinutes = minutes + seconds / 60;
-    const pace = totalMinutes / distance;
-    const paceMinutes = Math.floor(pace);
-    const paceSeconds = Math.round((pace - paceMinutes) * 60);
-    return `${paceMinutes}:${paceSeconds.toString().padStart(2, "0")} min/km`;
-  };
 
   if (isLiveActivityActive) {
     return (

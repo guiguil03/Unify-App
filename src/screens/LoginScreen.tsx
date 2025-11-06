@@ -15,21 +15,13 @@ import {
 } from "react-native";
 import { useAuth } from "../contexts/AuthContext";
 import { LinearGradient } from "expo-linear-gradient";
-import { auth } from "../config/firebase";
-import { handleFirebaseError, showInfoToast } from "../utils/errorHandler";
+import { showInfoToast } from "../utils/errorHandler";
 
 // Import du logo
 const logo = require("../assets/logo.png");
 
 // Images pour l'écran d'accueil
 const runningImg = require("../assets/running.png");
-
-// Logs pour vérifier l'état de Firebase
-console.log("Firebase Auth Status:", auth ? "Initialized" : "Not Initialized");
-console.log(
-  "Current Auth Methods:",
-  auth?.config?.apiKey ? "Config OK" : "No Config"
-);
 
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
@@ -96,11 +88,6 @@ export default function LoginScreen() {
     let success = false;
 
     try {
-      console.log(
-        "Firebase Auth dans handleSubmit:",
-        auth ? "OK" : "Non initialisé"
-      );
-
       if (isLoginMode) {
         console.log("Appel de signIn avec:", email);
         // Attendre explicitement la fin de la connexion
@@ -124,7 +111,7 @@ export default function LoginScreen() {
       }
     } catch (error) {
       // En cas d'erreur inattendue qui n'est pas gérée par AuthContext
-      handleFirebaseError(error, "Une erreur inattendue s'est produite");
+      console.error("Erreur lors de la connexion/inscription:", error);
       // S'assurer qu'en cas d'erreur, on reste sur la page de login
       success = false;
     } finally {

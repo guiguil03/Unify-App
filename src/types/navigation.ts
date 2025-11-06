@@ -10,12 +10,17 @@ export type RootStackParamList = {
   };
   Events: undefined;
   Profile: undefined;
+  EditProfile: undefined;
   Settings: undefined;
   Contacts: undefined;
   Messages: undefined;
   Chat: {
     contactId: string;
     contactName: string;
+  };
+  CreateStory: undefined;
+  ViewStories: {
+    userId: string;
   };
 };
 

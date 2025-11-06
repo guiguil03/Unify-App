@@ -102,4 +102,18 @@ export const showInfoToast = (message: string, title: string = 'Info') => {
     visibilityTime: 3000,
     autoHide: true,
   });
+};
+
+/**
+ * Affiche un toast d'erreur
+ */
+export const showErrorToast = (message: string, title: string = 'Erreur') => {
+  Toast.show({
+    type: 'error',
+    text1: title,
+    text2: message,
+    position: 'bottom',
+    visibilityTime: 4000,
+    autoHide: true,
+  });
 }; 

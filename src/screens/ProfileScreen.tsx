@@ -1,27 +1,37 @@
 import React from 'react';
-import { ScrollView, StyleSheet } from 'react-native';
+import { ScrollView, StyleSheet, View, Text, ActivityIndicator } from 'react-native';
 import { ProfileHeader } from '../components/profile/ProfileHeader';
 import { ProfileStats } from '../components/profile/ProfileStats';
-import { Profile } from '../types/profile';
-
-const MOCK_PROFILE: Profile = {
-  id: '1',
-  name: 'John Doe',
-  avatar: 'https://example.com/avatar.jpg',
-  bio: 'Passionné de course à pied',
-  stats: {
-    totalDistance: 42.5,
-    totalTime: '3h45',
-    sessions: 8,
-    averagePace: '5:20 min/km',
-  },
-};
+import { ProfileInfo } from '../components/profile/ProfileInfo';
+import { useProfile } from '../hooks/useProfile';
 
 export default function ProfileScreen() {
+  const { profile, loading, error } = useProfile();
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#E83D4D" />
+        <Text style={styles.loadingText}>Chargement du profil...</Text>
+      </View>
+    );
+  }
+
+  if (error || !profile) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>
+          {error || 'Impossible de charger le profil'}
+        </Text>
+      </View>
+    );
+  }
+
   return (
-    <ScrollView style={styles.container}>
-      <ProfileHeader profile={MOCK_PROFILE} />
-      <ProfileStats stats={MOCK_PROFILE.stats} />
+    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+      <ProfileHeader profile={profile} />
+      <ProfileStats stats={profile.stats} />
+      <ProfileInfo profile={profile} />
     </ScrollView>
   );
 }
@@ -29,7 +39,33 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  contentContainer: {
     padding: 16,
+    gap: 16,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
     backgroundColor: 'white',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#666',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'white',
+    padding: 20,
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#E83D4D',
+    textAlign: 'center',
   },
 });

@@ -13,11 +13,17 @@ export const useEvents = () => {
       try {
         setLoading(true);
         setError(null);
+        // Les événements peuvent être vus même sans authentification
         const fetchedEvents = await EventsService.getEvents();
         setEvents(fetchedEvents);
-      } catch (err) {
-        setError('Unable to fetch events');
-        console.error('Error fetching events:', err);
+      } catch (err: any) {
+        // Gérer silencieusement les erreurs
+        if (!err?.message?.includes('Utilisateur non authentifié')) {
+          setError('Unable to fetch events');
+          console.error('Error fetching events:', err);
+        } else {
+          setEvents([]);
+        }
       } finally {
         setLoading(false);
       }

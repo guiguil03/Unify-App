@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -7,7 +7,7 @@ import {
   SafeAreaView,
   Image,
 } from "react-native";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { NavigationProp } from "../types/navigation";
 import { StoriesRow } from "../components/stories/StoriesRow";
@@ -17,6 +17,14 @@ import logo from "../assets/logo.png";
 
 export default function HomeScreen() {
   const navigation = useNavigation<NavigationProp>();
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  // Rafraîchir les stories quand on revient sur cet écran
+  useFocusEffect(
+    React.useCallback(() => {
+      setRefreshKey(prev => prev + 1);
+    }, [])
+  );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -34,7 +42,7 @@ export default function HomeScreen() {
       {/* Content */}
       <View style={styles.content}>
         {/* Stories Row */}
-        <StoriesRow />
+        <StoriesRow key={refreshKey} />
 
         {/* Main Content */}
         <View style={styles.mainContent}>

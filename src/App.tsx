@@ -14,61 +14,15 @@ import ActivitiesScreen from "./screens/ActivitiesScreen";
 import ActivityDetailScreen from "./screens/ActivityDetailScreen";
 import EventsScreen from "./screens/EventsScreen";
 import ProfileScreen from "./screens/ProfileScreen";
+import EditProfileScreen from "./screens/EditProfileScreen";
 import ContactsScreen from "./screens/ContactsScreen";
 import MessagesScreen from "./screens/MessagesScreen";
 import ChatScreen from "./screens/ChatScreen";
 import SettingsScreen from "./screens/SettingsScreen";
-
-import { FirebaseDiagnostic } from "./utils/FirebaseDiagnostic";
-import { NetworkDiagnostic } from "./utils/NetworkDiagnostic";
+import CreateStoryScreen from "./screens/CreateStoryScreen";
+import ViewStoriesScreen from "./screens/ViewStoriesScreen";
 
 console.log("=== DÉMARRAGE DE L'APPLICATION UNIFY ===");
-
-// Fonction pour exécuter les diagnostics avec retry
-const runDiagnosticsWithRetry = async (retries = 3) => {
-  for (let i = 0; i < retries; i++) {
-    try {
-      await Promise.all([
-        FirebaseDiagnostic.checkFirebaseStatus()
-          .then((result) => console.log("Diagnostic Firebase:", result))
-          .catch((error) => {
-            console.warn(
-              `Tentative ${i + 1}/${retries} - Erreur Firebase:`,
-              error
-            );
-            throw error;
-          }),
-        NetworkDiagnostic.checkNetworkConnectivity()
-          .then((result) => console.log("Diagnostic Réseau:", result))
-          .catch((error) => {
-            console.warn(
-              `Tentative ${i + 1}/${retries} - Erreur Réseau:`,
-              error
-            );
-            throw error;
-          }),
-      ]);
-      console.log("✅ Diagnostics terminés avec succès");
-      return;
-    } catch (error) {
-      if (i === retries - 1) {
-        console.error("❌ Échec des diagnostics après", retries, "tentatives");
-      } else {
-        console.log(
-          `⏳ Nouvelle tentative dans 2 secondes... (${i + 2}/${retries})`
-        );
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-      }
-    }
-  }
-};
-
-// Exécuter les diagnostics en arrière-plan après le chargement initial
-setTimeout(() => {
-  runDiagnosticsWithRetry().catch((error) =>
-    console.error("Erreur finale lors des diagnostics:", error)
-  );
-}, 3000);
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -123,6 +77,14 @@ function AppStack() {
         options={{ title: "Mon Profil" }}
       />
       <Stack.Screen
+        name="EditProfile"
+        component={EditProfileScreen}
+        options={{ 
+          title: "Modifier le profil",
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
         name="Contacts"
         component={ContactsScreen}
         options={{ title: "Contacts" }}
@@ -143,6 +105,24 @@ function AppStack() {
         name="Settings"
         component={SettingsScreen}
         options={{ title: "Parametres" }}
+      />
+      <Stack.Screen
+        name="CreateStory"
+        component={CreateStoryScreen}
+        options={{
+          title: "Créer une story",
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="ViewStories"
+        component={ViewStoriesScreen}
+        options={{
+          title: "Stories",
+          headerShown: false,
+          presentation: 'fullScreenModal',
+          animation: 'fade',
+        }}
       />
     </Stack.Navigator>
   );
