@@ -1,15 +1,22 @@
 import React from 'react';
 import { View, ScrollView, StyleSheet, TouchableOpacity, Text, Image } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useStories } from '../../hooks/useStories';
 import { useAuth } from '../../contexts/AuthContext';
 import { NavigationProp } from '../../types/navigation';
 
 export function StoriesRow() {
-  const { stories, loading } = useStories();
+  const { stories, loading, refetch } = useStories();
   const { user } = useAuth();
   const navigation = useNavigation<NavigationProp>();
+
+  // Rafraîchir les stories quand on revient sur l'écran
+  useFocusEffect(
+    React.useCallback(() => {
+      refetch();
+    }, [refetch])
+  );
 
   // Grouper les stories par utilisateur
   const groupedStories = React.useMemo(() => {
@@ -41,12 +48,10 @@ export function StoriesRow() {
     return groupedStories.filter(group => group.userId !== user?.id);
   }, [groupedStories, user?.id]);
 
-  if (loading) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.loadingText}>Chargement...</Text>
-      </View>
-    );
+  // Si on charge et qu'on n'a pas encore de stories, ne rien afficher
+  // Sinon, toujours afficher les stories existantes même pendant le rechargement
+  if (loading && stories.length === 0) {
+    return null;
   }
 
   return (
@@ -59,22 +64,24 @@ export function StoriesRow() {
       {/* Story de l'utilisateur actuel */}
       {currentUserStory ? (
         <View style={styles.storyItem}>
-          <TouchableOpacity onPress={() => navigation.navigate('ViewStories', { userId: user!.id })}>
-            <View style={[styles.avatarContainer, styles.myStoryBorder]}>
-              <Image
-                source={{ uri: currentUserStory.stories[0].imageUrl }}
-                style={styles.avatar}
-              />
-            </View>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.addBadgeButton}
-            onPress={() => navigation.navigate('CreateStory')}
-          >
-            <View style={styles.addBadge}>
-              <MaterialCommunityIcons name="plus" size={14} color="#fff" />
-            </View>
-          </TouchableOpacity>
+          <View style={styles.avatarWrapper}>
+            <TouchableOpacity onPress={() => navigation.navigate('ViewStories', { userId: user!.id })}>
+              <View style={[styles.avatarContainer, styles.myStoryBorder]}>
+                <Image
+                  source={{ uri: currentUserStory.stories[0].imageUrl }}
+                  style={styles.avatar}
+                />
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.addBadgeButton}
+              onPress={() => navigation.navigate('CreateStory')}
+            >
+              <View style={styles.addBadge}>
+                <MaterialCommunityIcons name="plus" size={14} color="#fff" />
+              </View>
+            </TouchableOpacity>
+          </View>
           <Text style={styles.name}>Ma story</Text>
         </View>
       ) : (
@@ -130,10 +137,13 @@ const styles = StyleSheet.create({
     width: 70,
     position: 'relative',
   },
+  avatarWrapper: {
+    position: 'relative',
+    marginBottom: 4,
+  },
   avatarContainer: {
     padding: 2,
     borderRadius: 35,
-    marginBottom: 4,
     position: 'relative',
   },
   unviewedBorder: {
@@ -160,8 +170,8 @@ const styles = StyleSheet.create({
   },
   addBadgeButton: {
     position: 'absolute',
-    bottom: 24,
-    right: -2,
+    bottom: 0,
+    right: 0,
     zIndex: 10,
   },
   addBadge: {
@@ -188,10 +198,5 @@ const styles = StyleSheet.create({
     fontSize: 11,
     textAlign: 'center',
     marginTop: 4,
-  },
-  loadingText: {
-    textAlign: 'center',
-    color: '#999',
-    padding: 16,
   },
 });
