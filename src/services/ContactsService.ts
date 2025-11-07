@@ -262,17 +262,29 @@ export class ContactsService {
         throw new Error('Utilisateur non authentifié');
       }
 
-      // Mettre à jour le statut de la demande
-      const { error } = await supabase
+      // Accepter la demande reçue (contactId -> currentUser)
+      const { error: updateError } = await supabase
         .from('contacts')
         .update({
           status: 'accepted',
           last_interaction: new Date().toISOString(),
         })
-        .eq('user_id', currentUser.id)
-        .eq('contact_id', contactId);
+        .eq('user_id', contactId)
+        .eq('contact_id', currentUser.id);
 
-      if (error) throw error;
+      if (updateError) throw updateError;
+
+      // Créer/valider la relation inverse comme acceptée immédiatement (currentUser -> contactId)
+      const { error: insertError } = await supabase
+        .from('contacts')
+        .upsert({
+          user_id: currentUser.id,
+          contact_id: contactId,
+          status: 'accepted',
+          last_interaction: new Date().toISOString(),
+        });
+
+      if (insertError) throw insertError;
     } catch (error) {
       console.error('Erreur dans acceptContact:', error);
       throw error;
