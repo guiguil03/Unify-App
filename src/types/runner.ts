@@ -8,4 +8,6 @@ export interface Runner {
   pace: string;
   avatar?: string;
   bio?: string;
+  isActive?: boolean;
+  lastSeen?: string;
 }

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { View, Text, StyleSheet, Dimensions } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
@@ -8,7 +8,8 @@ import Animated, {
 } from "react-native-reanimated";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Runner } from "../../types/runner";
-import { formatDistance } from "../../utils/format";
+import { formatDistance, formatRelativeTime } from "../../utils/format";
+import { MAP_STYLES } from "../../services/map/config";
 
 const SCREEN_HEIGHT = Dimensions.get("window").height;
 const HEADER_HEIGHT = 64;
@@ -19,16 +20,29 @@ interface RunnersListProps {
   runners: Runner[];
   onRunnerPress: (runner: Runner) => void;
   selectedRunner: Runner | null;
+  isExpanded?: boolean;
+  onCollapse?: () => void;
 }
 
 export function RunnersList({
   runners,
   onRunnerPress,
   selectedRunner,
+  isExpanded = false,
+  onCollapse,
 }: RunnersListProps) {
   const translateY = useSharedValue(MIN_TRANSLATE_Y);
 
-  const startY = useSharedValue(translateY.value);
+  useEffect(() => {
+    translateY.value = withSpring(
+      isExpanded ? MAX_TRANSLATE_Y : MIN_TRANSLATE_Y,
+      {
+        damping: 50,
+      }
+    );
+  }, [isExpanded, translateY]);
+
+  const startY = useSharedValue(0);
   const panGesture = Gesture.Pan()
     .onBegin(() => {
       startY.value = translateY.value;
@@ -41,17 +55,22 @@ export function RunnersList({
       );
     })
     .onEnd((event) => {
-      const shouldSnap =
+      const shouldSnapClosed =
         event.velocityY > 500 ||
         (event.velocityY >= 0 && translateY.value > -SCREEN_HEIGHT / 2);
 
       translateY.value = withSpring(
-        shouldSnap ? MIN_TRANSLATE_Y : MAX_TRANSLATE_Y,
+        shouldSnapClosed ? MIN_TRANSLATE_Y : MAX_TRANSLATE_Y,
         {
           velocity: event.velocityY,
           damping: 50,
         }
       );
+
+      if (shouldSnapClosed && onCollapse) {
+        // Utiliser runOnJS pour appeler onCollapse depuis le thread UI
+        onCollapse();
+      }
     });
 
   const rStyle = useAnimatedStyle(() => {
@@ -65,8 +84,11 @@ export function RunnersList({
     translateY.value = withSpring(MIN_TRANSLATE_Y, {
       damping: 50,
     });
-    // Appeler le callback
+    // Appeler les callbacks
     onRunnerPress(runner);
+    if (onCollapse) {
+      onCollapse();
+    }
   };
 
   return (
@@ -98,12 +120,30 @@ export function RunnersList({
                 <MaterialCommunityIcons
                   name="account"
                   size={24}
-                  color={selectedRunner?.id === runner.id ? "#E83D4D" : "#666"}
+                  color={
+                    selectedRunner?.id === runner.id
+                      ? MAP_STYLES.SELECTED_MARKER
+                      : runner.isActive === false
+                      ? MAP_STYLES.INACTIVE_MARKER
+                      : MAP_STYLES.DEFAULT_MARKER
+                  }
                 />
                 <View>
                   <Text style={styles.runnerName}>{runner.name}</Text>
                   <Text style={styles.runnerDistance}>
                     à {formatDistance(runner.distance)}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.runnerStatus,
+                      runner.isActive ? styles.statusOnline : styles.statusOffline,
+                    ]}
+                  >
+                    {runner.isActive
+                      ? "Connecté(e)"
+                      : runner.lastSeen
+                      ? `Hors ligne · ${formatRelativeTime(runner.lastSeen)}`
+                      : "Hors ligne"}
                   </Text>
                 </View>
               </View>
@@ -203,6 +243,17 @@ const styles = StyleSheet.create({
   runnerDistance: {
     color: "#666",
     fontSize: 14,
+  },
+  runnerStatus: {
+    marginTop: 2,
+    fontSize: 12,
+    fontWeight: "500",
+  },
+  statusOnline: {
+    color: "#2E7D32",
+  },
+  statusOffline: {
+    color: "#757575",
   },
   runnerStats: {
     flexDirection: "row",

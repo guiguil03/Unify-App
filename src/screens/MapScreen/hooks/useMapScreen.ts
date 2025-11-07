@@ -3,6 +3,7 @@ import { useNavigation } from "@react-navigation/native";
 import MapView from "react-native-maps";
 import { useLocation } from "../../../hooks/useLocation";
 import { useContacts } from "../../../hooks/useContacts";
+import { useRealtimeRunners } from "../../../hooks/useRealtimeRunners";
 import { filterRunnersByDistance } from "../../../utils/runners";
 import { createRegionFromLocation, createRegionFromRadius } from "../../../utils/map/region";
 import { RunnersService } from "../../../services/RunnersService";
@@ -28,8 +29,6 @@ export function useMapScreen() {
     filteredRunners: [] as Runner[],
     isRunnersListExpanded: false,
     showProfileModal: false,
-    location,
-    contacts,
     loadingRunners: false,
   });
 
@@ -38,7 +37,7 @@ export function useMapScreen() {
       setState(prev => ({ ...prev, loadingRunners: true }));
       const nearbyRunners = await RunnersService.getNearbyRunners(
         center,
-        radius / 1000 // Convertir mètres en kilomètres
+        radius
       );
       
       // Filtrer par distance avec le rayon de recherche
@@ -64,12 +63,39 @@ export function useMapScreen() {
     }
   }, []);
 
+  // Charger les coureurs au démarrage et mettre à jour la position de l'utilisateur
   useEffect(() => {
     if (location) {
+      // Mettre à jour la position de l'utilisateur dans la base
+      RunnersService.updateUserLocation({
+        latitude: location.latitude,
+        longitude: location.longitude,
+      }).catch(err => {
+        console.error('Erreur lors de la mise à jour de la position:', err);
+      });
+      
+      // Charger les utilisateurs à proximité
       loadNearbyRunners(location, state.searchRadius);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location]);
+
+  // Callback pour recharger les coureurs lors d'un changement en temps réel
+  const handleRealtimeUpdate = useCallback(() => {
+    const searchCenter = state.selectedLocation || location;
+    if (searchCenter) {
+      loadNearbyRunners(searchCenter, state.searchRadius);
+    }
+  }, [state.selectedLocation, location, state.searchRadius, loadNearbyRunners]);
+
+  // S'abonner aux changements en temps réel
+  const { isSubscribed } = useRealtimeRunners({
+    location,
+    searchRadius: state.searchRadius,
+    selectedLocation: state.selectedLocation,
+    onRunnersUpdate: handleRealtimeUpdate,
+    enabled: true,
+  });
 
   useEffect(() => {
     if (location && state.activeSearchZone) {
@@ -175,7 +201,11 @@ export function useMapScreen() {
   };
 
   return {
-    state,
+    state: {
+      ...state,
+      location,
+      contacts,
+    },
     handlers,
     refs: { mapRef },
     loading,

@@ -9,7 +9,7 @@ import Toast, { BaseToast, ErrorToast } from "react-native-toast-message";
 
 import LoginScreen from "./screens/LoginScreen";
 import HomeScreen from "./screens/HomeScreen";
-import MapScreen from "./screens/MapScreen";
+import MapScreen from "./screens/MapScreen/index";
 import ActivitiesScreen from "./screens/ActivitiesScreen";
 import ActivityDetailScreen from "./screens/ActivityDetailScreen";
 import EventsScreen from "./screens/EventsScreen";
