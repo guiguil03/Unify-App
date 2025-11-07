@@ -53,7 +53,10 @@ export class RunnersService {
 
       // Filtrer par distance et exclure l'utilisateur actuel
       const nearbyRunners = (data || [])
-        .filter((runner: any) => runner.user_id !== currentUserId)
+        .filter((runner: any) => {
+          // Exclure l'utilisateur actuel et s'assurer que les données utilisateur sont présentes
+          return runner.user_id !== currentUserId && runner.user;
+        })
         .map((runner: any) => {
           const distance = this.calculateDistance(
             currentLocation.latitude,
@@ -69,15 +72,15 @@ export class RunnersService {
 
       return nearbyRunners.map((runner: any) => ({
         id: runner.user_id,
-        name: runner.user.name,
+        name: runner.user?.name || 'Utilisateur inconnu',
         location: {
           latitude: Number(runner.latitude),
           longitude: Number(runner.longitude),
         },
         distance: runner.calculatedDistance,
         pace: runner.pace || '',
-        avatar: runner.user.avatar,
-        bio: runner.user.bio,
+        avatar: runner.user?.avatar,
+        bio: runner.user?.bio,
       }));
     } catch (error) {
       console.error('Erreur dans getNearbyRunners:', error);
@@ -98,33 +101,47 @@ export class RunnersService {
     activityId?: string;
   }): Promise<void> {
     try {
+      console.log('🔄 updateRunnerPosition appelé avec:', position);
       const currentUser = await getCurrentUserFromDB();
       if (!currentUser) {
+        console.error('❌ Utilisateur non authentifié');
         throw new Error('Utilisateur non authentifié');
       }
 
-      const { error } = await supabase
+      console.log('✅ Utilisateur trouvé:', currentUser.id);
+
+      const dataToUpsert = {
+        user_id: currentUser.id,
+        latitude: position.latitude,
+        longitude: position.longitude,
+        distance: position.distance,
+        pace: position.pace,
+        pace_seconds: position.paceSeconds,
+        is_active: position.isActive ?? true,
+        activity_id: position.activityId,
+        updated_at: new Date().toISOString(),
+      };
+
+      console.log('📤 Données à insérer/mettre à jour:', dataToUpsert);
+
+      const { data, error } = await supabase
         .from('runners')
         .upsert(
-          {
-            user_id: currentUser.id,
-            latitude: position.latitude,
-            longitude: position.longitude,
-            distance: position.distance,
-            pace: position.pace,
-            pace_seconds: position.paceSeconds,
-            is_active: position.isActive ?? true,
-            activity_id: position.activityId,
-            updated_at: new Date().toISOString(),
-          },
+          dataToUpsert,
           {
             onConflict: 'user_id',
           }
-        );
+        )
+        .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Erreur Supabase:', error);
+        throw error;
+      }
+
+      console.log('✅ Position du coureur mise à jour avec succès:', data);
     } catch (error) {
-      console.error('Erreur dans updateRunnerPosition:', error);
+      console.error('❌ Erreur dans updateRunnerPosition:', error);
       throw error;
     }
   }
