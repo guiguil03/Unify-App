@@ -12,12 +12,14 @@ import { GOOGLE_MAPS_CONFIG } from "../../../services/map/config";
 import { Location } from "../../../types/location";
 import { Runner } from "../../../types/runner";
 import { NavigationProp } from "../../../types/navigation";
+import { ContactRelationshipStatus } from "../../../types/contact";
+import { showErrorToast, showInfoToast, showSuccessToast } from "../../../utils/errorHandler";
 
 export function useMapScreen() {
   const mapRef = useRef<MapView>(null);
   const navigation = useNavigation<NavigationProp>();
   const { location, loading, refreshLocation } = useLocation();
-  const { contacts, addContact } = useContacts();
+  const { contacts, relationships, addContact } = useContacts();
 
   const [state, setState] = useState({
     selectedLocation: null as Location | null,
@@ -29,8 +31,19 @@ export function useMapScreen() {
     filteredRunners: [] as Runner[],
     isRunnersListExpanded: false,
     showProfileModal: false,
+    location,
+    contacts,
+    relationships: relationships as Record<string, ContactRelationshipStatus>,
     loadingRunners: false,
   });
+
+  useEffect(() => {
+    setState(prev => ({
+      ...prev,
+      contacts,
+      relationships: relationships as Record<string, ContactRelationshipStatus>,
+    }));
+  }, [contacts, relationships]);
 
   const loadNearbyRunners = useCallback(async (center: Location, radius: number) => {
     try {
@@ -184,10 +197,32 @@ export function useMapScreen() {
     },
 
     handleConnect: async (runnerId: string) => {
-      const success = await addContact(runnerId);
-      if (success) {
+      const result = await addContact(runnerId);
+
+      if (result.success) {
+        showSuccessToast('Demande envoyée !');
         setState(prev => ({ ...prev, showProfileModal: false }));
         navigation.navigate('Contacts');
+        return;
+      }
+
+      switch (result.reason) {
+        case 'already_friends':
+          showInfoToast('Vous êtes déjà amis.');
+          setState(prev => ({ ...prev, showProfileModal: false }));
+          break;
+        case 'already_sent':
+          showInfoToast('Vous avez déjà envoyé une demande à ce coureur.');
+          break;
+        case 'incoming_request':
+          showInfoToast('Ce coureur vous a déjà envoyé une demande. Consultez vos demandes.');
+          break;
+        case 'blocked':
+          showErrorToast('Vous ne pouvez pas envoyer de demande à ce coureur.');
+          break;
+        default:
+          showErrorToast('Impossible d\'envoyer la demande. Réessayez plus tard.');
+          break;
       }
     },
 

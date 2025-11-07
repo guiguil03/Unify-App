@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Image, Alert } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Contact } from "../../types/contact";
@@ -6,31 +6,35 @@ import { COLORS } from "../../constants/colors";
 
 interface ContactCardProps {
   contact: Contact;
-  onChatPress: (contactId: string) => void;
-  onRemove?: (contactId: string) => void;
+  onChatPress: (contact: Contact) => void;
+  onRemove?: (contact: Contact) => void;
+  onAcceptRequest?: (contact: Contact) => void;
+  relationshipStatus?: 'friends' | 'pending' | 'incoming' | 'none';
 }
 
-export function ContactCard({ contact, onChatPress, onRemove }: ContactCardProps) {
-  const [showActions, setShowActions] = useState(false);
+export function ContactCard({ contact, onChatPress, onRemove, onAcceptRequest, relationshipStatus = 'friends' }: ContactCardProps) {
+  const confirmRemove = () => {
+    let title = 'Supprimer le contact';
+    let message = `Voulez-vous vraiment supprimer ${contact.name} de vos contacts ?`;
 
-  const handleLongPress = () => {
-    if (onRemove) {
-      setShowActions(true);
+    if (relationshipStatus === 'incoming') {
+      title = 'Refuser la demande';
+      message = `Voulez-vous refuser la demande de ${contact.name} ?`;
+    } else if (relationshipStatus === 'pending') {
+      title = 'Annuler la demande';
+      message = `Voulez-vous annuler la demande envoyée à ${contact.name} ?`;
     }
-  };
 
-  const handleRemove = () => {
     Alert.alert(
-      'Supprimer le contact',
-      `Voulez-vous vraiment supprimer ${contact.name} de vos contacts ?`,
+      title,
+      message,
       [
-        { text: 'Annuler', style: 'cancel', onPress: () => setShowActions(false) },
+        { text: 'Annuler', style: 'cancel' },
         {
-          text: 'Supprimer',
+          text: relationshipStatus === 'incoming' ? 'Refuser' : relationshipStatus === 'pending' ? 'Annuler' : 'Supprimer',
           style: 'destructive',
           onPress: () => {
-            onRemove?.(contact.id);
-            setShowActions(false);
+            onRemove?.(contact);
           },
         },
       ]
@@ -38,11 +42,7 @@ export function ContactCard({ contact, onChatPress, onRemove }: ContactCardProps
   };
 
   return (
-    <TouchableOpacity 
-      style={styles.card}
-      onLongPress={handleLongPress}
-      delayLongPress={500}
-    >
+    <View style={styles.card}>
       <View style={styles.contactInfo}>
         {contact.avatar ? (
           <Image source={{ uri: contact.avatar }} style={styles.avatar} />
@@ -58,23 +58,55 @@ export function ContactCard({ contact, onChatPress, onRemove }: ContactCardProps
           </Text>
         </View>
       </View>
-      <View style={styles.actions}>
-        <TouchableOpacity
-          style={styles.chatButton}
-          onPress={() => onChatPress(contact.id)}
-        >
-          <MaterialCommunityIcons name="chat" size={24} color={COLORS.primary} />
-        </TouchableOpacity>
-        {showActions && onRemove && (
+      {relationshipStatus === 'incoming' ? (
+        <View style={styles.requestActionsContainer}>
+          {onAcceptRequest && (
+            <TouchableOpacity
+              style={[styles.requestButton, styles.acceptButton]}
+              onPress={() => onAcceptRequest(contact)}
+            >
+              <MaterialCommunityIcons name="check" size={24} color="#fff" />
+            </TouchableOpacity>
+          )}
+          {onRemove && (
+            <TouchableOpacity
+              style={[styles.requestButton, styles.rejectButton]}
+              onPress={confirmRemove}
+            >
+              <MaterialCommunityIcons name="close" size={24} color="#fff" />
+            </TouchableOpacity>
+          )}
+        </View>
+      ) : relationshipStatus === 'pending' ? (
+        <View style={styles.requestActionsContainer}>
+          {onRemove && (
+            <TouchableOpacity
+              style={[styles.requestButton, styles.rejectButton]}
+              onPress={confirmRemove}
+            >
+              <MaterialCommunityIcons name="close" size={24} color="#fff" />
+            </TouchableOpacity>
+          )}
+        </View>
+      ) : (
+        <View style={styles.actions}>
           <TouchableOpacity
-            style={styles.removeButton}
-            onPress={handleRemove}
+            style={styles.chatButton}
+            onPress={() => onChatPress(contact)}
           >
-            <MaterialCommunityIcons name="delete" size={24} color="#FF5252" />
+            <MaterialCommunityIcons name="chat" size={24} color={COLORS.primary} />
           </TouchableOpacity>
-        )}
-      </View>
-    </TouchableOpacity>
+          {onRemove && (
+            <TouchableOpacity
+              style={styles.moreButton}
+              onPress={confirmRemove}
+            >
+              <MaterialCommunityIcons name="dots-horizontal" size={24} color="#666" />
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
+    </View>
   );
 }
 
@@ -133,7 +165,25 @@ const styles = StyleSheet.create({
   chatButton: {
     padding: 8,
   },
-  removeButton: {
+  moreButton: {
     padding: 8,
+  },
+  requestActionsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  requestButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  acceptButton: {
+    backgroundColor: '#4CAF50',
+  },
+  rejectButton: {
+    backgroundColor: '#FF5252',
   },
 });
