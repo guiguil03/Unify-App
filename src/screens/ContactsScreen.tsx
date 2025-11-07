@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  ScrollView, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
   Image,
+  RefreshControl,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -32,6 +33,9 @@ export default function ContactsScreen() {
   const [requestsCount, setRequestsCount] = useState<number>(0);
   const [isSearching, setIsSearching] = useState(false);
   const [isLoadingRequests, setIsLoadingRequests] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [friendsCount, setFriendsCount] = useState<number>(0);
+  const [isLoadingFriends, setIsLoadingFriends] = useState(false);
 
   const loadCounts = useCallback(async () => {
     try {
@@ -59,8 +63,12 @@ export default function ContactsScreen() {
   useEffect(() => {
     if (activeTab === 'requests') {
       loadPendingRequests();
+    } else if (activeTab === 'friends') {
+      // Rafraîchir uniquement au changement d'onglet avec loading
+      setIsLoadingFriends(true);
+      refetch().finally(() => setIsLoadingFriends(false));
     }
-  }, [activeTab, loadPendingRequests]);
+  }, [activeTab]); // Ne pas inclure loadPendingRequests ou refetch dans les dépendances
 
   useFocusEffect(
     useCallback(() => {
@@ -70,6 +78,11 @@ export default function ContactsScreen() {
       }
     }, [activeTab, loadCounts, loadPendingRequests])
   );
+
+  // Mettre à jour le compteur d'amis quand contacts change
+  useEffect(() => {
+    setFriendsCount(contacts.length);
+  }, [contacts]);
 
   // Rechercher des utilisateurs
   useEffect(() => {
@@ -148,9 +161,14 @@ export default function ContactsScreen() {
       await ContactsService.acceptContactRequest(senderId);
       showSuccessToast('Demande acceptée ! 🎉');
       setIncomingRequests(prev => prev.filter(c => c.id !== senderId));
-      refetch();
-      loadPendingRequests();
+
+      // Rafraîchir immédiatement les contacts et les compteurs
+      await refetch();
+      await loadPendingRequests();
+
+      // Mettre à jour les compteurs instantanément
       setRequestsCount(prev => Math.max(0, prev - 1));
+      setFriendsCount(prev => prev + 1);
     } catch (error) {
       showErrorToast('Impossible d\'accepter la demande');
     }
@@ -183,14 +201,31 @@ export default function ContactsScreen() {
       setIncomingRequests(prev => prev.filter(req => req.id !== contactId));
       setOutgoingRequests(prev => prev.filter(req => req.id !== contactId));
       loadPendingRequests();
+      // Mettre à jour le compteur d'amis instantanément
+      setFriendsCount(prev => Math.max(0, prev - 1));
     } else {
       showErrorToast('Impossible de supprimer le contact');
     }
   };
 
-  if (loading && activeTab === 'friends') {
-    return <LoadingSpinner message="Chargement des contacts..." />;
-  }
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await loadCounts();
+      if (activeTab === 'friends') {
+        await refetch();
+      } else if (activeTab === 'requests') {
+        await loadPendingRequests();
+      }
+    } catch (error) {
+      console.error('Erreur lors du rafraîchissement:', error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  // Supprimer le spinner full-screen pour permettre le chargement en arrière-plan
+  // Le loading sera géré par le RefreshControl à la place
 
   return (
     <View style={styles.container}>
@@ -206,7 +241,7 @@ export default function ContactsScreen() {
             color={activeTab === 'friends' ? '#E83D4D' : '#666'} 
           />
           <Text style={[styles.tabText, activeTab === 'friends' && styles.activeTabText]}>
-            Mes amis ({contacts.length})
+            Mes amis ({friendsCount})
           </Text>
         </TouchableOpacity>
 
@@ -240,11 +275,23 @@ export default function ContactsScreen() {
       </View>
 
       {/* Content */}
-      <ScrollView style={styles.scrollView}>
+      <ScrollView
+        style={styles.scrollView}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            colors={['#E83D4D']}
+            tintColor="#E83D4D"
+          />
+        }
+      >
         {/* Mes amis */}
         {activeTab === 'friends' && (
           <View>
-            {contacts.length === 0 ? (
+            {isLoadingFriends ? (
+              <ActivityIndicator size="large" color="#E83D4D" style={{ marginTop: 32 }} />
+            ) : contacts.length === 0 ? (
               <View style={styles.emptyState}>
                 <MaterialCommunityIcons name="account-group-outline" size={64} color="#ccc" />
                 <Text style={styles.emptyText}>Aucun ami pour le moment</Text>
