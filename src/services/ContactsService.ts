@@ -428,85 +428,15 @@ export class ContactsService {
         throw new Error('Utilisateur non authentifié');
       }
 
-      // Mettre à jour la demande reçue (senderId -> currentUser)
-      // Note: Cette mise à jour peut échouer à cause des politiques RLS si elles n'autorisent
-      // que la mise à jour des lignes où user_id = currentUser.id
-      const { data: updateData, error: updateError } = await supabase
-        .from('contacts')
-        .update({
-          status: 'accepted',
-          last_interaction: new Date().toISOString(),
-        })
-        .eq('user_id', senderId)
-        .eq('contact_id', currentUser.id)
-        .select();
+      // Utiliser la fonction RPC qui bypass les RLS avec SECURITY DEFINER
+      const { error: rpcError } = await supabase.rpc('accept_contact_request', {
+        sender_id: senderId,
+        receiver_id: currentUser.id,
+      });
 
-      if (updateError) {
-        console.error('Erreur lors de la mise à jour de la demande reçue:', updateError);
-      }
-
-      console.log('Relation (senderId -> currentUser) mise à jour:', updateData?.length || 0);
-
-      // Si l'UPDATE a échoué à cause des RLS, on va supprimer et recréer la relation
-      if (!updateData || updateData.length === 0) {
-        console.log('Tentative de suppression/recréation de la relation à cause des RLS...');
-
-        // Supprimer l'ancienne relation en pending
-        await supabase
-          .from('contacts')
-          .delete()
-          .eq('user_id', senderId)
-          .eq('contact_id', currentUser.id);
-
-        // Recréer avec le bon status (cela fonctionnera si RLS autorise l'insertion)
-        const { error: insertOriginalError } = await supabase
-          .from('contacts')
-          .insert({
-            user_id: senderId,
-            contact_id: currentUser.id,
-            status: 'accepted',
-            last_interaction: new Date().toISOString(),
-          });
-
-        if (insertOriginalError) {
-          console.error('Impossible de recréer la relation:', insertOriginalError);
-          // On continue quand même pour créer la relation inverse
-        }
-      }
-
-      // Créer la relation inverse pour que les deux utilisateurs soient amis
-      // D'abord vérifier si la relation inverse existe déjà
-      const { data: existingReverse } = await supabase
-        .from('contacts')
-        .select('id')
-        .eq('user_id', currentUser.id)
-        .eq('contact_id', senderId)
-        .single();
-
-      if (existingReverse) {
-        // Mettre à jour la relation existante
-        const { error: updateReverseError } = await supabase
-          .from('contacts')
-          .update({
-            status: 'accepted',
-            last_interaction: new Date().toISOString(),
-          })
-          .eq('user_id', currentUser.id)
-          .eq('contact_id', senderId);
-
-        if (updateReverseError) throw updateReverseError;
-      } else {
-        // Créer la nouvelle relation
-        const { error: insertError } = await supabase
-          .from('contacts')
-          .insert({
-            user_id: currentUser.id,
-            contact_id: senderId,
-            status: 'accepted',
-            last_interaction: new Date().toISOString(),
-          });
-
-        if (insertError) throw insertError;
+      if (rpcError) {
+        console.error('Erreur lors de l\'acceptation via RPC:', rpcError);
+        throw rpcError;
       }
     } catch (error) {
       console.error('Erreur dans acceptContactRequest:', error);
