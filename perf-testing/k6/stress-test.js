@@ -5,11 +5,30 @@ import { Rate } from 'k6/metrics';
 
 const errorRate = new Rate('errors');
 
+const endpoints = [
+  {
+    name: 'users',
+    url: (baseUrl) => `${baseUrl}/rest/v1/users?select=id,name,avatar,bio,last_latitude,last_longitude,updated_at&last_latitude=not.is.null&last_longitude=not.is.null`,
+  },
+  {
+    name: 'runners',
+    url: (baseUrl) => `${baseUrl}/rest/v1/runners?select=user_id,is_active,pace,distance,updated_at`,
+  },
+  {
+    name: 'activities',
+    url: (baseUrl) => `${baseUrl}/rest/v1/activities?select=*&order=date.desc&limit=50`,
+  },
+  {
+    name: 'friends',
+    url: (baseUrl) => `${baseUrl}/rest/v1/contacts?select=id,user_id,friend_id,status,created_at,updated_at`,
+  },
+];
+
 export const options = {
   stages: [
     { duration: '2m', target: 50 },   // Monter à 50 VUs
     { duration: '3m', target: 100 },  // Monter à 100 VUs
-    { duration: '3m', target: 150 },  // Monter à 150 VUs
+    { duration: '3m', target: 150 },  // Monter à 150 VUs 
     { duration: '2m', target: 200 },  // Monter à 200 VUs (stress!)
     { duration: '3m', target: 200 },  // Maintenir 200 VUs
     { duration: '2m', target: 0 },    // Descendre à 0
@@ -30,16 +49,19 @@ const headers = {
 };
 
 export default function () {
-  const res = http.get(
-    `${SUPABASE_URL}/rest/v1/users?select=id,name,avatar,bio,last_latitude,last_longitude,updated_at&last_latitude=not.is.null&last_longitude=not.is.null`,
-    { headers }
-  );
-  
-  check(res, {
-    'status is 200': (r) => r.status === 200,
+  const responses = endpoints.map((endpoint) => ({
+    name: endpoint.name,
+    res: http.get(endpoint.url(SUPABASE_URL), { headers }),
+  }));
+
+  responses.forEach(({ name, res }) => {
+    check(res, {
+      [`${name} status is 200`]: (r) => r.status === 200,
+    });
+
+    errorRate.add(res.status >= 500 ? 1 : 0);
   });
-  
-  errorRate.add(res.status >= 500);
+
   sleep(1);
 }
 
