@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { Contact, ContactRelationshipStatus } from '../types/contact';
 import { ContactsService } from '../services/ContactsService';
 import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../config/supabase';
+import { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 
 type AddContactResult =
   | { success: true }
@@ -17,6 +19,72 @@ export function useContacts() {
   useEffect(() => {
     loadContacts();
   }, [user, isSkipped]);
+
+  // Realtime subscription pour les changements dans la table contacts
+  useEffect(() => {
+    if (!user) return;
+
+    console.log('🔴 Setting up realtime subscription for contacts');
+
+    const channel = supabase
+      .channel('contacts-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'contacts',
+          filter: `user_id=eq.${user.id}`,
+        },
+        async (payload: RealtimePostgresChangesPayload<any>) => {
+          console.log('🔴 Received realtime event:', payload.eventType, payload);
+
+          // Rafraîchir les contacts et relations après tout changement
+          try {
+            const [contactsData, relationshipsMap] = await Promise.all([
+              ContactsService.getContacts(),
+              ContactsService.getRelationshipsMap(),
+            ]);
+            setContacts(contactsData);
+            setRelationships(relationshipsMap);
+          } catch (error) {
+            console.error('Error refreshing after realtime event:', error);
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'contacts',
+          filter: `contact_id=eq.${user.id}`,
+        },
+        async (payload: RealtimePostgresChangesPayload<any>) => {
+          console.log('🔴 Received realtime event (as contact):', payload.eventType, payload);
+
+          // Rafraîchir les contacts et relations après tout changement
+          try {
+            const [contactsData, relationshipsMap] = await Promise.all([
+              ContactsService.getContacts(),
+              ContactsService.getRelationshipsMap(),
+            ]);
+            setContacts(contactsData);
+            setRelationships(relationshipsMap);
+          } catch (error) {
+            console.error('Error refreshing after realtime event:', error);
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log('🔴 Subscription status:', status);
+      });
+
+    return () => {
+      console.log('🔴 Cleaning up realtime subscription');
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
 
   const loadContacts = async () => {
     // Si l'utilisateur n'est pas authentifié et n'a pas choisi de continuer sans compte

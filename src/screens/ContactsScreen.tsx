@@ -19,6 +19,9 @@ import { ContactsService } from '../services/ContactsService';
 import { Contact, ContactRequest, ContactRelationshipStatus } from '../types/contact';
 import { showSuccessToast, showErrorToast, showInfoToast } from '../utils/errorHandler';
 import { NavigationProp } from '../types/navigation';
+import { supabase } from '../config/supabase';
+import { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
+import { getCurrentUserFromDB } from '../utils/supabaseHelpers';
 
 type Tab = 'friends' | 'requests' | 'search';
 
@@ -83,6 +86,69 @@ export default function ContactsScreen() {
   useEffect(() => {
     setFriendsCount(contacts.length);
   }, [contacts]);
+
+  // Realtime subscription pour les demandes de contacts
+  useEffect(() => {
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+
+    const setupRealtimeForRequests = async () => {
+      try {
+        const currentUser = await getCurrentUserFromDB();
+        if (!currentUser) return;
+
+        console.log('🟢 Setting up realtime subscription for requests');
+
+        channel = supabase
+          .channel('requests-changes')
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'contacts',
+              filter: `contact_id=eq.${currentUser.id}`,
+            },
+            async (payload: RealtimePostgresChangesPayload<any>) => {
+              console.log('🟢 Received realtime event for requests:', payload.eventType, payload);
+
+              // Rafraîchir les demandes et les compteurs
+              await loadPendingRequests();
+              await loadCounts();
+            }
+          )
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'contacts',
+              filter: `user_id=eq.${currentUser.id}`,
+            },
+            async (payload: RealtimePostgresChangesPayload<any>) => {
+              console.log('🟢 Received realtime event for sent requests:', payload.eventType, payload);
+
+              // Rafraîchir les demandes et les compteurs
+              await loadPendingRequests();
+              await loadCounts();
+            }
+          )
+          .subscribe((status) => {
+            console.log('🟢 Requests subscription status:', status);
+          });
+      } catch (error) {
+        console.error('Error setting up realtime:', error);
+      }
+    };
+
+    setupRealtimeForRequests();
+
+    return () => {
+      if (channel) {
+        console.log('🟢 Cleaning up requests realtime subscription');
+        supabase.removeChannel(channel);
+      }
+    };
+  }, []);
 
   // Rechercher des utilisateurs
   useEffect(() => {
