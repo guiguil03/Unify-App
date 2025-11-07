@@ -275,16 +275,39 @@ export class ContactsService {
       if (updateError) throw updateError;
 
       // Créer/valider la relation inverse comme acceptée immédiatement (currentUser -> contactId)
-      const { error: insertError } = await supabase
+      // D'abord vérifier si la relation inverse existe déjà
+      const { data: existingReverse } = await supabase
         .from('contacts')
-        .upsert({
-          user_id: currentUser.id,
-          contact_id: contactId,
-          status: 'accepted',
-          last_interaction: new Date().toISOString(),
-        });
+        .select('id')
+        .eq('user_id', currentUser.id)
+        .eq('contact_id', contactId)
+        .single();
 
-      if (insertError) throw insertError;
+      if (existingReverse) {
+        // Mettre à jour la relation existante
+        const { error: updateReverseError } = await supabase
+          .from('contacts')
+          .update({
+            status: 'accepted',
+            last_interaction: new Date().toISOString(),
+          })
+          .eq('user_id', currentUser.id)
+          .eq('contact_id', contactId);
+
+        if (updateReverseError) throw updateReverseError;
+      } else {
+        // Créer la nouvelle relation
+        const { error: insertError } = await supabase
+          .from('contacts')
+          .insert({
+            user_id: currentUser.id,
+            contact_id: contactId,
+            status: 'accepted',
+            last_interaction: new Date().toISOString(),
+          });
+
+        if (insertError) throw insertError;
+      }
     } catch (error) {
       console.error('Erreur dans acceptContact:', error);
       throw error;
@@ -418,16 +441,39 @@ export class ContactsService {
       if (updateError) throw updateError;
 
       // Créer la relation inverse pour que les deux utilisateurs soient amis
-      const { error: insertError } = await supabase
+      // D'abord vérifier si la relation inverse existe déjà
+      const { data: existingReverse } = await supabase
         .from('contacts')
-        .upsert({
-          user_id: currentUser.id,
-          contact_id: senderId,
-          status: 'accepted',
-          last_interaction: new Date().toISOString(),
-        });
+        .select('id')
+        .eq('user_id', currentUser.id)
+        .eq('contact_id', senderId)
+        .single();
 
-      if (insertError) throw insertError;
+      if (existingReverse) {
+        // Mettre à jour la relation existante
+        const { error: updateReverseError } = await supabase
+          .from('contacts')
+          .update({
+            status: 'accepted',
+            last_interaction: new Date().toISOString(),
+          })
+          .eq('user_id', currentUser.id)
+          .eq('contact_id', senderId);
+
+        if (updateReverseError) throw updateReverseError;
+      } else {
+        // Créer la nouvelle relation
+        const { error: insertError } = await supabase
+          .from('contacts')
+          .insert({
+            user_id: currentUser.id,
+            contact_id: senderId,
+            status: 'accepted',
+            last_interaction: new Date().toISOString(),
+          });
+
+        if (insertError) throw insertError;
+      }
     } catch (error) {
       console.error('Erreur dans acceptContactRequest:', error);
       throw error;
