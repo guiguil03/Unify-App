@@ -8,41 +8,41 @@ groups:
       - alert: HighLatencyP95
         expr: |
           histogram_quantile(0.95, 
-            sum(rate(http_request_duration_ms_bucket[5m])) by (le, endpoint)
-          ) > 600
+            sum(rate(http_request_duration_seconds_bucket[5m])) by (le, route)
+          ) > 0.6
         for: 2m
         labels:
           severity: warning
           slo: latency
         annotations:
-          summary: "Latence p95 élevée sur {{ $labels.endpoint }}"
-          description: "La latence p95 est de {{ $value }}ms (seuil: 600ms)"
+          summary: "Latence p95 élevée sur {{ $labels.route }}"
+          description: "La latence p95 est de {{ $value }}s (seuil: 0.6s)"
 
       # Alerte si taux d'erreur 5xx dépasse le seuil
       - alert: HighErrorRate
         expr: |
-          sum(rate(http_requests_total{status_code=~"5.."}[5m])) by (endpoint) 
+          sum(rate(http_requests_total{status_code=~"5.."}[5m])) by (route) 
           / 
-          sum(rate(http_requests_total[5m])) by (endpoint) 
+          sum(rate(http_requests_total[5m])) by (route) 
           * 100 > 5
         for: 2m
         labels:
           severity: critical
           slo: errors
         annotations:
-          summary: "Taux d'erreur élevé sur {{ $labels.endpoint }}"
+          summary: "Taux d'erreur élevé sur {{ $labels.route }}"
           description: "Le taux d'erreur 5xx est de {{ $value }}% (seuil: 5%)"
 
       # Alerte si throughput est anormalement bas
       - alert: LowThroughput
         expr: |
-          sum(rate(http_requests_total[5m])) by (endpoint) < 1
+          sum(rate(http_requests_total[5m])) by (route) < 0.1
         for: 5m
         labels:
           severity: info
         annotations:
-          summary: "Throughput bas sur {{ $labels.endpoint }}"
-          description: "Moins de 1 requête/sec pendant 5 minutes"
+          summary: "Throughput bas sur {{ $labels.route }}"
+          description: "Moins de 0.1 requête/sec pendant 5 minutes"
 
       # Alerte si l'app est down
       - alert: AppDown
@@ -53,4 +53,3 @@ groups:
         annotations:
           summary: "Application Unify est down"
           description: "L'application ne répond plus depuis 1 minute"
-

@@ -8,6 +8,7 @@
     "perf:restart": "docker-compose restart",
     "perf:logs": "docker-compose logs -f",
     "perf:clean": "docker-compose down -v",
+    "perf:build": "docker-compose build",
     "test:load": "k6 run k6/load-test.js",
     "test:stress": "k6 run k6/stress-test.js",
     "test:spike": "k6 run k6/spike-test.js",
@@ -17,4 +18,3 @@
   "author": "Unify Team",
   "license": "MIT"
 }
-
