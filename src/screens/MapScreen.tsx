@@ -18,6 +18,7 @@ import { createRegionFromLocation, createRegionFromRadius } from "../utils/map/r
 import { MOCK_RUNNERS } from "../data/mockRunners";
 import { useLocation } from "../hooks/useLocation";
 import { useContacts } from "../hooks/useContacts";
+import { showErrorToast, showInfoToast, showSuccessToast } from "../utils/errorHandler";
 import { filterRunnersByDistance } from "../utils/runners";
 import { MAP_DEFAULTS } from "../constants/mapDefaults";
 import { NavigationProp } from "../types/navigation";
@@ -26,7 +27,7 @@ export default function MapScreen() {
   const mapRef = useRef<MapView>(null);
   const navigation = useNavigation<NavigationProp>();
   const { location, loading, refreshLocation } = useLocation();
-  const { contacts, addContact } = useContacts();
+  const { contacts, relationships, addContact } = useContacts();
   
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
   const [selectedAddress, setSelectedAddress] = useState<string>("");
@@ -117,10 +118,32 @@ export default function MapScreen() {
   };
 
   const handleConnect = async (runnerId: string) => {
-    const success = await addContact(runnerId);
-    if (success) {
+    const result = await addContact(runnerId);
+
+    if (result.success) {
+      showSuccessToast('Demande envoyée !');
       setShowProfileModal(false);
       navigation.navigate('Contacts');
+      return;
+    }
+
+    switch (result.reason) {
+      case 'already_friends':
+        showInfoToast('Vous êtes déjà amis.');
+        setShowProfileModal(false);
+        break;
+      case 'already_sent':
+        showInfoToast('Vous avez déjà envoyé une demande à ce coureur.');
+        break;
+      case 'incoming_request':
+        showInfoToast('Ce coureur vous a déjà envoyé une demande. Consultez vos demandes.');
+        break;
+      case 'blocked':
+        showErrorToast('Vous ne pouvez pas envoyer de demande à ce coureur.');
+        break;
+      default:
+        showErrorToast('Impossible d\'envoyer la demande.');
+        break;
     }
   };
 
@@ -182,7 +205,7 @@ export default function MapScreen() {
         runner={selectedRunner}
         onClose={() => setShowProfileModal(false)}
         onConnect={handleConnect}
-        isConnected={contacts.some(c => c.id === selectedRunner?.id)}
+        relationshipStatus={selectedRunner ? relationships[selectedRunner.id] ?? 'none' : 'none'}
       />
     </View>
   );

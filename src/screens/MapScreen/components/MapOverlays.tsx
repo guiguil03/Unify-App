@@ -42,7 +42,7 @@ export function MapOverlays({ state, handlers }) {
         runner={state.selectedRunner}
         onClose={() => handlers.setShowProfileModal(false)}
         onConnect={handlers.handleConnect}
-        isConnected={state.contacts?.some(c => c.id === state.selectedRunner?.id)}
+        relationshipStatus={state.selectedRunner ? state.relationships?.[state.selectedRunner.id] ?? 'none' : 'none'}
       />
     </>
   );
