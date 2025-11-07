@@ -17,6 +17,45 @@ export interface Story {
 }
 
 export class StoriesService {
+  private static async getFriendIds(userId: string): Promise<string[]> {
+    const friendIds = new Set<string>();
+
+    const [sentResult, receivedResult] = await Promise.all([
+      supabase
+        .from('contacts')
+        .select('contact_id')
+        .eq('user_id', userId)
+        .eq('status', 'accepted'),
+      supabase
+        .from('contacts')
+        .select('user_id')
+        .eq('contact_id', userId)
+        .eq('status', 'accepted'),
+    ]);
+
+    if (sentResult.error) {
+      throw sentResult.error;
+    }
+
+    if (receivedResult.error) {
+      throw receivedResult.error;
+    }
+
+    sentResult.data?.forEach((relation: any) => {
+      if (relation?.contact_id) {
+        friendIds.add(relation.contact_id);
+      }
+    });
+
+    receivedResult.data?.forEach((relation: any) => {
+      if (relation?.user_id) {
+        friendIds.add(relation.user_id);
+      }
+    });
+
+    return Array.from(friendIds);
+  }
+
   /**
    * Récupère toutes les stories actives (non expirées)
    */
@@ -27,7 +66,14 @@ export class StoriesService {
         throw new Error('Utilisateur non authentifié');
       }
 
-      // Récupérer les stories non expirées avec les infos utilisateur
+      const friendIds = await this.getFriendIds(currentUser.id);
+      const allowedUserIds = [currentUser.id, ...friendIds];
+
+      if (allowedUserIds.length === 0) {
+        return [];
+      }
+
+      // Récupérer les stories non expirées des amis (ou de soi) avec les infos utilisateur
       const { data, error } = await supabase
         .from('stories')
         .select(`
@@ -45,6 +91,7 @@ export class StoriesService {
             avatar
           )
         `)
+        .in('user_id', allowedUserIds)
         .gt('expires_at', new Date().toISOString())
         .order('created_at', { ascending: false });
 
@@ -90,6 +137,13 @@ export class StoriesService {
       const currentUser = await getCurrentUserFromDB();
       if (!currentUser) {
         throw new Error('Utilisateur non authentifié');
+      }
+
+      if (userId !== currentUser.id) {
+        const friendIds = await this.getFriendIds(currentUser.id);
+        if (!friendIds.includes(userId)) {
+          return [];
+        }
       }
 
       const { data, error } = await supabase

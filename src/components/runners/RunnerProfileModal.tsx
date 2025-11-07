@@ -5,13 +5,14 @@ import { Runner } from '../../types/runner';
 import { RunnerHeader } from './components/RunnerHeader';
 import { RunnerStats } from './components/RunnerStats';
 import { ConnectButton } from './components/ConnectButton';
+import { ContactRelationshipStatus } from '../../types/contact';
 
 interface RunnerProfileModalProps {
   visible: boolean;
   runner: Runner | null;
   onClose: () => void;
   onConnect: (runnerId: string) => void;
-  isConnected: boolean;
+  relationshipStatus?: ContactRelationshipStatus | 'none';
 }
 
 export function RunnerProfileModal({
@@ -19,7 +20,7 @@ export function RunnerProfileModal({
   runner,
   onClose,
   onConnect,
-  isConnected,
+  relationshipStatus,
 }: RunnerProfileModalProps) {
   if (!runner) return null;
 
@@ -34,7 +35,7 @@ export function RunnerProfileModal({
       </View>
 
       <ConnectButton
-        isConnected={isConnected}
+        status={relationshipStatus}
         onConnect={() => onConnect(runner.id)}
       />
     </Modal>

@@ -194,5 +194,7 @@ CREATE TABLE public.users (
   preferred_terrain text,
   group_preference text CHECK (group_preference = ANY (ARRAY['solo'::text, 'group'::text, 'both'::text])),
   member_since timestamp with time zone DEFAULT now(),
+  last_latitude double precision,
+  last_longitude double precision,
   CONSTRAINT users_pkey PRIMARY KEY (id)
 );
