@@ -195,7 +195,7 @@ export default function ContactsScreen() {
 
     if (result.success) {
       showSuccessToast('Demande d\'ami envoyée ! 🎉');
-      setSearchResults(prev => prev.filter(c => c.id !== contactId));
+      // NE PAS supprimer de searchResults, juste mettre à jour le compteur
       loadPendingRequests();
       // Mettre à jour le compteur immédiatement
       setRequestsCount(prev => prev + 1);
