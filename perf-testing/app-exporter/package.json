@@ -1,0 +1,15 @@
+{
+  "name": "unify-app-exporter",
+  "version": "1.0.0",
+  "description": "Exporteur de métriques pour Unify App",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "prom-client": "^15.1.0",
+    "@supabase/supabase-js": "^2.39.0"
+  }
+}
+

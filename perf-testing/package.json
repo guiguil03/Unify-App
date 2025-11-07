@@ -1,0 +1,20 @@
+{
+  "name": "unify-perf-testing",
+  "version": "1.0.0",
+  "description": "Tests de performance pour Unify App",
+  "scripts": {
+    "perf:start": "docker-compose up -d",
+    "perf:stop": "docker-compose down",
+    "perf:restart": "docker-compose restart",
+    "perf:logs": "docker-compose logs -f",
+    "perf:clean": "docker-compose down -v",
+    "test:load": "k6 run k6/load-test.js",
+    "test:stress": "k6 run k6/stress-test.js",
+    "test:spike": "k6 run k6/spike-test.js",
+    "test:soak": "k6 run k6/soak-test.js"
+  },
+  "keywords": ["performance", "testing", "k6", "prometheus", "grafana"],
+  "author": "Unify Team",
+  "license": "MIT"
+}
+

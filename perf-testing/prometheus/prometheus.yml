@@ -1,0 +1,38 @@
+# Configuration Prometheus pour Unify App
+
+global:
+  scrape_interval: 15s      # Scraper toutes les 15 secondes
+  evaluation_interval: 15s  # Évaluer les règles toutes les 15 secondes
+  external_labels:
+    monitor: 'unify-monitor'
+    environment: 'performance-testing'
+
+# Alerting
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+# Règles d'alerte
+rule_files:
+  - '/etc/prometheus/alerts.yml'
+
+# Configuration des scrapes
+scrape_configs:
+  # Métriques de l'application Unify
+  - job_name: 'unify-app'
+    static_configs:
+      - targets: ['app-exporter:3000']
+    metrics_path: '/metrics'
+    scrape_interval: 5s
+
+  # Métriques système (Node Exporter)
+  - job_name: 'node'
+    static_configs:
+      - targets: ['node-exporter:9100']
+
+  # Métriques Prometheus lui-même
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
