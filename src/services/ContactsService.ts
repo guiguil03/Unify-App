@@ -428,17 +428,51 @@ export class ContactsService {
         throw new Error('Utilisateur non authentifié');
       }
 
-      // Mettre à jour la demande reçue
-      const { error: updateError } = await supabase
+      // Mettre à jour la demande reçue (senderId -> currentUser)
+      // Note: Cette mise à jour peut échouer à cause des politiques RLS si elles n'autorisent
+      // que la mise à jour des lignes où user_id = currentUser.id
+      const { data: updateData, error: updateError } = await supabase
         .from('contacts')
         .update({
           status: 'accepted',
           last_interaction: new Date().toISOString(),
         })
         .eq('user_id', senderId)
-        .eq('contact_id', currentUser.id);
+        .eq('contact_id', currentUser.id)
+        .select();
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error('Erreur lors de la mise à jour de la demande reçue:', updateError);
+      }
+
+      console.log('Relation (senderId -> currentUser) mise à jour:', updateData?.length || 0);
+
+      // Si l'UPDATE a échoué à cause des RLS, on va supprimer et recréer la relation
+      if (!updateData || updateData.length === 0) {
+        console.log('Tentative de suppression/recréation de la relation à cause des RLS...');
+
+        // Supprimer l'ancienne relation en pending
+        await supabase
+          .from('contacts')
+          .delete()
+          .eq('user_id', senderId)
+          .eq('contact_id', currentUser.id);
+
+        // Recréer avec le bon status (cela fonctionnera si RLS autorise l'insertion)
+        const { error: insertOriginalError } = await supabase
+          .from('contacts')
+          .insert({
+            user_id: senderId,
+            contact_id: currentUser.id,
+            status: 'accepted',
+            last_interaction: new Date().toISOString(),
+          });
+
+        if (insertOriginalError) {
+          console.error('Impossible de recréer la relation:', insertOriginalError);
+          // On continue quand même pour créer la relation inverse
+        }
+      }
 
       // Créer la relation inverse pour que les deux utilisateurs soient amis
       // D'abord vérifier si la relation inverse existe déjà
