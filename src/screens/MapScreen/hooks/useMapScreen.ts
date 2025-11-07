@@ -1,11 +1,12 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useNavigation } from "@react-navigation/native";
 import MapView from "react-native-maps";
 import { useLocation } from "../../../hooks/useLocation";
 import { useContacts } from "../../../hooks/useContacts";
+import { useRealtimeRunners } from "../../../hooks/useRealtimeRunners";
 import { filterRunnersByDistance } from "../../../utils/runners";
 import { createRegionFromLocation, createRegionFromRadius } from "../../../utils/map/region";
-import { MOCK_RUNNERS } from "../../../data/mockRunners";
+import { RunnersService } from "../../../services/RunnersService";
 import { MAP_DEFAULTS } from "../../../constants/mapDefaults";
 import { GOOGLE_MAPS_CONFIG } from "../../../services/map/config";
 import { Location } from "../../../types/location";
@@ -25,30 +26,83 @@ export function useMapScreen() {
     selectedRunner: null as Runner | null,
     showLocationSelector: false,
     activeSearchZone: false,
-    filteredRunners: MOCK_RUNNERS,
+    filteredRunners: [] as Runner[],
     isRunnersListExpanded: false,
     showProfileModal: false,
+    loadingRunners: false,
+  });
+
+  const loadNearbyRunners = useCallback(async (center: Location, radius: number) => {
+    try {
+      setState(prev => ({ ...prev, loadingRunners: true }));
+      const nearbyRunners = await RunnersService.getNearbyRunners(
+        center,
+        radius
+      );
+      
+      // Filtrer par distance avec le rayon de recherche
+      const filtered = filterRunnersByDistance(
+        nearbyRunners,
+        center,
+        radius
+      );
+
+      setState(prev => ({
+        ...prev,
+        activeSearchZone: true,
+        filteredRunners: filtered,
+        loadingRunners: false,
+      }));
+    } catch (error) {
+      console.error('Erreur lors du chargement des coureurs:', error);
+      setState(prev => ({
+        ...prev,
+        filteredRunners: [],
+        loadingRunners: false,
+      }));
+    }
+  }, []);
+
+  // Charger les coureurs au démarrage et mettre à jour la position de l'utilisateur
+  useEffect(() => {
+    if (location) {
+      // Mettre à jour la position de l'utilisateur dans la base
+      RunnersService.updateUserLocation({
+        latitude: location.latitude,
+        longitude: location.longitude,
+      }).catch(err => {
+        console.error('Erreur lors de la mise à jour de la position:', err);
+      });
+      
+      // Charger les utilisateurs à proximité
+      loadNearbyRunners(location, state.searchRadius);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location]);
+
+  // Callback pour recharger les coureurs lors d'un changement en temps réel
+  const handleRealtimeUpdate = useCallback(() => {
+    const searchCenter = state.selectedLocation || location;
+    if (searchCenter) {
+      loadNearbyRunners(searchCenter, state.searchRadius);
+    }
+  }, [state.selectedLocation, location, state.searchRadius, loadNearbyRunners]);
+
+  // S'abonner aux changements en temps réel
+  const { isSubscribed } = useRealtimeRunners({
     location,
-    contacts,
+    searchRadius: state.searchRadius,
+    selectedLocation: state.selectedLocation,
+    onRunnersUpdate: handleRealtimeUpdate,
+    enabled: true,
   });
 
   useEffect(() => {
-    if (location) {
-      updateFilteredRunners(location);
+    if (location && state.activeSearchZone) {
+      const searchCenter = state.selectedLocation || location;
+      loadNearbyRunners(searchCenter, state.searchRadius);
     }
-  }, [location]);
-
-  const updateFilteredRunners = (center: Location) => {
-    setState(prev => ({
-      ...prev,
-      activeSearchZone: true,
-      filteredRunners: filterRunnersByDistance(
-        MOCK_RUNNERS,
-        center,
-        prev.searchRadius
-      ),
-    }));
-  };
+  }, [state.searchRadius, state.activeSearchZone, location, state.selectedLocation, loadNearbyRunners]);
 
   const handlers = {
     handleLocationSelect: (location: Location, address: string) => {
@@ -116,19 +170,11 @@ export function useMapScreen() {
       }));
     },
 
-    handleValidateZone: () => {
+    handleValidateZone: async () => {
       const searchCenter = state.selectedLocation || state.location;
       if (searchCenter) {
-        setState(prev => ({
-          ...prev,
-          activeSearchZone: true,
-          showLocationSelector: false,
-          filteredRunners: filterRunnersByDistance(
-            MOCK_RUNNERS,
-            searchCenter,
-            prev.searchRadius
-          ),
-        }));
+        await loadNearbyRunners(searchCenter, state.searchRadius);
+        setState(prev => ({ ...prev, showLocationSelector: false }));
 
         if (mapRef.current) {
           const region = createRegionFromRadius(searchCenter, state.searchRadius);
@@ -155,7 +201,11 @@ export function useMapScreen() {
   };
 
   return {
-    state,
+    state: {
+      ...state,
+      location,
+      contacts,
+    },
     handlers,
     refs: { mapRef },
     loading,

@@ -6,62 +6,80 @@ export const MOCK_RUNNERS: Runner[] = [
     name: 'Marie L.',
     location: { latitude: 37.789059, longitude: -122.402878 },
     distance: 0.3,
-    pace: "5:30 min/km"
+    pace: "5:30 min/km",
+    isActive: true,
+    lastSeen: new Date().toISOString(),
   },
   {
     id: '2',
     name: 'Thomas R.',
     location: { latitude: 37.789329 , longitude: -122.408561 },
     distance: 0.5,
-    pace: "6:00 min/km"
+    pace: "6:00 min/km",
+    isActive: false,
+    lastSeen: new Date(Date.now() - 1000 * 60 * 12).toISOString(),
   },
   {
     id: '3',
     name: 'Sophie M.',
     location: { latitude: 37.778554, longitude: -122.405817 },
     distance: 0.7,
-    pace: "5:45 min/km"
+    pace: "5:45 min/km",
+    isActive: true,
+    lastSeen: new Date().toISOString(),
   },
   {
     id: '4',
     name: 'John D.',
     location: { latitude: 37.784367, longitude: -122.401250},
     distance: 0.4,
-    pace: "5:50 min/km"
+    pace: "5:50 min/km",
+    isActive: false,
+    lastSeen: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(),
   },
   {
     id: '5',
     name: 'Emma W.',
     location: { latitude: 37.785626, longitude: -122.405859},
     distance: 0.6,
-    pace: "6:10 min/km"
+    pace: "6:10 min/km",
+    isActive: true,
+    lastSeen: new Date().toISOString(),
   },
   {
     id: '6',
     name: 'Lucas P.',
     location: { latitude: 37.786929, longitude:-122.411439 },
     distance: 0.8,
-    pace: "5:35 min/km"
+    pace: "5:35 min/km",
+    isActive: false,
+    lastSeen: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
   },
   {
     id: '7',
     name: 'Olivia K.',
     location: { latitude: 37.789417, longitude: -122.415476 },
     distance: 0.9,
-    pace: "6:20 min/km"
+    pace: "6:20 min/km",
+    isActive: true,
+    lastSeen: new Date().toISOString(),
   },
   {
     id: '8',
     name: 'Liam N.',
     location: { latitude: 37.782309, longitude: -122.408182 },
     distance: 0.7,
-    pace: "5:40 min/km"
+    pace: "5:40 min/km",
+    isActive: false,
+    lastSeen: new Date(Date.now() - 1000 * 60 * 90).toISOString(),
   },
   {
     id: '9',
     name: 'Sophia B.',
     location: { latitude: 37.78965, longitude: -122.4115 },
     distance: 0.5,
-    pace: "6:15 min/km"
+    pace: "6:15 min/km",
+    isActive: true,
+    lastSeen: new Date().toISOString(),
   }
 ];

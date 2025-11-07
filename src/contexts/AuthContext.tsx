@@ -1,8 +1,7 @@
 import React, { createContext, useState, useEffect, useContext } from "react";
 import { AuthService } from "../services/AuthService";
 import { User } from "../types/user";
-import { auth } from "../config/firebase";
-import { handleFirebaseError } from "../utils/errorHandler";
+import { supabase } from "../config/supabase";
 
 interface AuthContextData {
   user: User | null;
@@ -37,44 +36,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           setUser(storedUser);
         }
       } catch (error) {
-        // Log silencieux
-        handleFirebaseError(error, "Erreur lors du chargement du profil");
+        console.error("Erreur lors du chargement du profil:", error);
       } finally {
         setIsLoading(false);
         setHasCompletedInitialCheck(true);
       }
     }
 
-    // Écouter les changements d'état d'authentification
-    const unsubscribe = auth.onAuthStateChanged(
-      async (firebaseUser) => {
+    // Écouter les changements d'état d'authentification Supabase
+    // Vérifier que supabase est bien initialisé
+    if (!supabase || !supabase.auth) {
+      console.error('❌ Erreur: supabase ou supabase.auth est undefined dans AuthContext');
+      console.error('❌ Type de supabase:', typeof supabase);
+      setIsLoading(false);
+      setHasCompletedInitialCheck(true);
+      return;
+    }
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
         setIsLoading(true);
-        if (firebaseUser) {
+        if (session?.user) {
           try {
             // L'utilisateur est connecté, récupérer ou créer ses données
             const userData = await AuthService.getCurrentUser();
-            setUser(userData);
+            if (userData) {
+              setUser(userData);
+            }
           } catch (error) {
-            // Log silencieux
-            handleFirebaseError(
-              error,
-              "Erreur lors de la mise à jour du profil"
-            );
+            console.error("Erreur lors de la mise à jour du profil:", error);
+            setUser(null);
           }
         } else {
           // L'utilisateur est déconnecté
           setUser(null);
         }
-        setIsLoading(false);
-        setHasCompletedInitialCheck(true);
-      },
-      (error) => {
-        // Gestionnaire d'erreur pour onAuthStateChanged
-        // Log silencieux
-        handleFirebaseError(
-          error,
-          "Problème de surveillance de l'authentification"
-        );
         setIsLoading(false);
         setHasCompletedInitialCheck(true);
       }
@@ -84,7 +80,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     loadUserFromStorage();
 
     // Se désabonner quand le composant est démonté
-    return () => unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   async function signIn(email: string, password: string) {
@@ -93,8 +91,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       const user = await AuthService.login(email, password);
       setUser(user);
       return true;
-    } catch (error) {
-      handleFirebaseError(error, "Échec de la connexion");
+    } catch (error: any) {
+      console.error("Échec de la connexion:", error);
+      // Vous pouvez ajouter un toast d'erreur ici si nécessaire
       return false;
     } finally {
       setAuthenticating(false);
@@ -107,8 +106,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       const user = await AuthService.register(name, email, password);
       setUser(user);
       return true;
-    } catch (error) {
-      handleFirebaseError(error, "Échec de l'inscription");
+    } catch (error: any) {
+      console.error("Échec de l'inscription:", error);
+      // Vous pouvez ajouter un toast d'erreur ici si nécessaire
       return false;
     } finally {
       setAuthenticating(false);
@@ -123,7 +123,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       setIsSkipped(false);
     } catch (error) {
       console.error("Erreur lors de la déconnexion:", error);
-      handleFirebaseError(error, "Erreur lors de la déconnexion");
     } finally {
       setIsLoading(false);
     }

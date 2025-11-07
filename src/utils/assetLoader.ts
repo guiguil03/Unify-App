@@ -6,7 +6,7 @@ export class AssetLoader {
     try {
       const images = [
         require('../assets/icon.png'),
-        require('../assets/splash.png'),
+        require('../assets/logo.png'),
         require('../assets/adaptive-icon.png')
       ];
 

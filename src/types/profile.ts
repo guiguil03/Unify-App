@@ -8,7 +8,13 @@ export interface ProfileStats {
 export interface Profile {
   id: string;
   name: string;
-  avatar: string;
-  bio: string;
+  avatar?: string;
+  bio?: string;
+  level?: string;
+  goal?: string;
+  preferredTime?: string;
+  preferredTerrain?: string;
+  groupPreference?: string;
+  memberSince?: string;
   stats: ProfileStats;
 }

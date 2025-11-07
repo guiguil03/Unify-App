@@ -1,25 +1,8 @@
 // src/services/AuthService.ts
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { User } from '../types/user';
-import { 
-  auth, 
-  db,
-  toggleFirestoreNetwork
-} from '../config/firebase';
-import { 
-  createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword, 
-  signOut as firebaseSignOut,
-  updateProfile,
-  User as FirebaseUser
-} from 'firebase/auth';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
-import { handleFirebaseError, showSuccessToast } from '../utils/errorHandler';
-
-// Logs pour vérifier l'état de Firebase
-console.log('AuthService - Firebase Auth:', auth ? 'Initialized' : 'Not Initialized');
-console.log('AuthService - Firestore DB:', db ? 'Initialized' : 'Not Initialized');
-console.log('AuthService - Current User:', auth?.currentUser?.uid || 'No user logged in');
+import { supabase } from '../config/supabase';
+import { showSuccessToast } from '../utils/errorHandler';
 
 export class AuthService {
   private static readonly USER_STORAGE_KEY = 'unify_user';
@@ -29,31 +12,50 @@ export class AuthService {
     try {
       console.log(`Tentative de connexion avec email: ${email}`);
       
-      // Connexion avec Firebase
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const firebaseUser = userCredential.user;
+      // Vérifier que supabase est bien initialisé
+      if (!supabase) {
+        console.error('❌ Erreur: supabase est undefined');
+        throw new Error('Le client Supabase n\'est pas initialisé');
+      }
+
+      if (!supabase.auth) {
+        console.error('❌ Erreur: supabase.auth est undefined');
+        console.error('❌ Type de supabase:', typeof supabase);
+        console.error('❌ Propriétés de supabase:', Object.keys(supabase || {}));
+        throw new Error('La propriété auth du client Supabase n\'existe pas');
+      }
+
+      console.log('✅ Supabase client et auth sont disponibles');
       
-      console.log(`Connexion Firebase réussie pour l'utilisateur: ${firebaseUser.uid}`);
-      
-      // Récupérer les données utilisateur depuis Firestore
-      let user: User;
-      try {
-        user = await this.getUserDataFromFirestore(firebaseUser);
-      } catch (error: any) {
-        // Pas de console.error, juste propager l'erreur
+      // Connexion avec Supabase
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        console.error('Erreur de connexion Supabase:', error);
         throw error;
       }
+
+      if (!data.user) {
+        throw new Error('Aucun utilisateur retourné après la connexion');
+      }
+
+      console.log(`Connexion Supabase réussie pour l'utilisateur: ${data.user.id}`);
       
-      // Stocker localement l'utilisateur et son token 
+      // Récupérer ou créer les données utilisateur dans la table users
+      const user = await this.getOrCreateUserFromDB(data.user.id, email, data.user.user_metadata?.name);
+      
+      // Stocker localement l'utilisateur
       await this.setCurrentUser(user);
-      await this.setToken(await firebaseUser.getIdToken());
       
       // Afficher un toast de succès
       showSuccessToast('Connexion réussie !');
       
       return user;
     } catch (error: any) {
-      // Erreur déjà gérée dans Auth Context
+      console.error('Erreur lors de la connexion:', error);
       throw error;
     }
   }
@@ -62,46 +64,33 @@ export class AuthService {
     try {
       console.log(`Tentative d'inscription avec email: ${email} et nom: ${name}`);
       
-      // Créer un nouvel utilisateur avec Firebase
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const firebaseUser = userCredential.user;
-      
-      console.log(`Utilisateur créé avec succès dans Firebase Auth. UID: ${firebaseUser.uid}`);
-      
-      // Mise à jour du profil avec le nom d'utilisateur
-      await updateProfile(firebaseUser, {
-        displayName: name
+      // Créer un nouvel utilisateur avec Supabase
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            name: name,
+          },
+        },
       });
-      
-      console.log('Profil mis à jour avec le nom d\'utilisateur');
-      
-      // Créer un document utilisateur dans Firestore
-      const user: User = {
-        id: firebaseUser.uid,
-        email: email,
-        name: name,
-        created: new Date().toISOString(),
-      };
-      
-      console.log('Tentative de sauvegarde du document utilisateur dans Firestore...');
-      console.log('Données à sauvegarder:', JSON.stringify(user));
-      
-      try {
-        // Sauvegarder dans Firestore
-        await setDoc(doc(db, 'users', firebaseUser.uid), user);
-        console.log('Document utilisateur créé avec succès dans Firestore');
-      } catch (firestoreError: any) {
-        console.error('ERREUR CRITIQUE lors de l\'écriture dans Firestore:', firestoreError);
-        
-        // Utiliser notre utilitaire pour gérer l'erreur
-        handleFirebaseError(firestoreError, 'Problème lors de la création du profil');
-        
-        // Ne pas arrêter l'inscription si la création du profil échoue
+
+      if (error) {
+        console.error('Erreur d\'inscription Supabase:', error);
+        throw error;
       }
+
+      if (!data.user) {
+        throw new Error('Aucun utilisateur retourné après l\'inscription');
+      }
+
+      console.log(`Utilisateur créé avec succès dans Supabase Auth. ID: ${data.user.id}`);
       
-      // Stocker localement l'utilisateur et son token
+      // Créer l'utilisateur dans la table users
+      const user = await this.createUserInDB(data.user.id, email, name);
+      
+      // Stocker localement l'utilisateur
       await this.setCurrentUser(user);
-      await this.setToken(await firebaseUser.getIdToken());
       
       // Afficher un toast de succès
       showSuccessToast('Inscription réussie ! Bienvenue !');
@@ -109,15 +98,20 @@ export class AuthService {
       console.log('Inscription terminée avec succès');
       return user;
     } catch (error: any) {
-      // Erreur déjà gérée dans Auth Context
+      console.error('Erreur lors de l\'inscription:', error);
       throw error;
     }
   }
 
   static async logout(): Promise<void> {
     try {
-      // Déconnexion de Firebase
-      await firebaseSignOut(auth);
+      // Déconnexion de Supabase
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) {
+        console.error('Erreur lors de la déconnexion Supabase:', error);
+        throw error;
+      }
       
       // Supprimer les données locales
       await AsyncStorage.removeItem(this.USER_STORAGE_KEY);
@@ -127,22 +121,18 @@ export class AuthService {
       showSuccessToast('Vous êtes déconnecté');
     } catch (error) {
       console.error('Erreur lors de la déconnexion:', error);
-      
-      // Utiliser notre utilitaire pour gérer l'erreur
-      handleFirebaseError(error, 'Problème lors de la déconnexion');
-      
       throw error;
     }
   }
 
   static async getCurrentUser(): Promise<User | null> {
     try {
-      // Vérifier d'abord si un utilisateur Firebase est connecté
-      const firebaseUser = auth.currentUser;
+      // Vérifier d'abord si un utilisateur Supabase est connecté
+      const { data: { user: supabaseUser } } = await supabase.auth.getUser();
       
-      if (firebaseUser) {
-        // Si l'utilisateur Firebase est connecté, récupérer ses données depuis Firestore
-        return this.getUserDataFromFirestore(firebaseUser);
+      if (supabaseUser) {
+        // Si l'utilisateur Supabase est connecté, récupérer ses données depuis la table users
+        return this.getUserDataFromDB(supabaseUser.id, supabaseUser.email || '');
       }
       
       // Sinon, essayer de récupérer depuis le stockage local
@@ -157,42 +147,114 @@ export class AuthService {
     }
   }
 
-  private static async getUserDataFromFirestore(firebaseUser: FirebaseUser): Promise<User> {
+  /**
+   * Récupère les données utilisateur depuis la table users de Supabase
+   */
+  private static async getUserDataFromDB(authUserId: string, email: string): Promise<User> {
     try {
-      console.log(`Récupération des données utilisateur depuis Firestore pour ${firebaseUser.uid}`);
-      
-      // Récupérer le document
-      const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
-      
-      if (userDoc.exists()) {
-        console.log('Document utilisateur trouvé dans Firestore');
-        return userDoc.data() as User;
-      } else {
-        console.log(`Document utilisateur non trouvé dans Firestore pour l'UID: ${firebaseUser.uid}`);
-        
-        // Créer un utilisateur par défaut en cas de document manquant
-        const defaultUser: User = {
-          id: firebaseUser.uid,
-          email: firebaseUser.email || '',
-          name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Anonymous',
-          created: new Date().toISOString(),
-        };
-        
-        return defaultUser;
+      // Chercher l'utilisateur dans la table users par auth_user_id
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('auth_user_id', authUserId)
+        .single();
+
+      if (error || !data) {
+        // Si l'utilisateur n'existe pas, le créer
+        console.log(`Utilisateur non trouvé dans la DB, création...`);
+        return this.createUserInDB(authUserId, email, email.split('@')[0] || 'Anonymous');
       }
-    } catch (error: any) {
-      // Réduire les logs d'erreur
-      if (process.env.NODE_ENV === 'development') {
-        console.log('Problème avec Firestore (info):', error.code);
-      }
-      
-      // Créer un utilisateur minimal à partir des informations Firebase
+
       return {
-        id: firebaseUser.uid,
-        email: firebaseUser.email || '',
-        name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Anonymous',
+        id: data.id,
+        email: data.email,
+        name: data.name,
+        created: data.created_at,
+        avatar: data.avatar,
+      };
+    } catch (error: any) {
+      console.error('Erreur lors de la récupération de l\'utilisateur:', error);
+      // Retourner un utilisateur minimal en cas d'erreur
+      return {
+        id: authUserId,
+        email: email,
+        name: email.split('@')[0] || 'Anonymous',
         created: new Date().toISOString(),
       };
+    }
+  }
+
+  /**
+   * Crée un utilisateur dans la table users de Supabase
+   */
+  private static async createUserInDB(authUserId: string, email: string, name: string): Promise<User> {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .insert({
+          auth_user_id: authUserId,
+          email: email,
+          name: name,
+          created_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Erreur lors de la création de l\'utilisateur dans la DB:', error);
+        // Même en cas d'erreur, retourner un utilisateur minimal
+        return {
+          id: authUserId,
+          email: email,
+          name: name,
+          created: new Date().toISOString(),
+        };
+      }
+
+      return {
+        id: data.id,
+        email: data.email,
+        name: data.name,
+        created: data.created_at,
+        avatar: data.avatar,
+      };
+    } catch (error: any) {
+      console.error('Erreur lors de la création de l\'utilisateur:', error);
+      return {
+        id: authUserId,
+        email: email,
+        name: name,
+        created: new Date().toISOString(),
+      };
+    }
+  }
+
+  /**
+   * Récupère ou crée un utilisateur dans la table users
+   */
+  private static async getOrCreateUserFromDB(authUserId: string, email: string, name?: string): Promise<User> {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('auth_user_id', authUserId)
+        .single();
+
+      if (error || !data) {
+        // Créer l'utilisateur s'il n'existe pas
+        return this.createUserInDB(authUserId, email, name || email.split('@')[0] || 'Anonymous');
+      }
+
+      return {
+        id: data.id,
+        email: data.email,
+        name: data.name,
+        created: data.created_at,
+        avatar: data.avatar,
+      };
+    } catch (error: any) {
+      console.error('Erreur lors de la récupération/création de l\'utilisateur:', error);
+      return this.createUserInDB(authUserId, email, name || email.split('@')[0] || 'Anonymous');
     }
   }
 
@@ -201,13 +263,8 @@ export class AuthService {
   }
 
   static async getToken(): Promise<string | null> {
-    const firebaseUser = auth.currentUser;
-    if (firebaseUser) {
-      // Si l'utilisateur est connecté, obtenir un token frais
-      return firebaseUser.getIdToken();
-    }
-    // Sinon, essayer de récupérer depuis le stockage local
-    return AsyncStorage.getItem(this.TOKEN_STORAGE_KEY);
+    const { data: { session } } = await supabase.auth.getSession();
+    return session?.access_token || null;
   }
 
   static async setToken(token: string): Promise<void> {
@@ -215,6 +272,7 @@ export class AuthService {
   }
 
   static async isAuthenticated(): Promise<boolean> {
-    return auth.currentUser !== null;
+    const { data: { user } } = await supabase.auth.getUser();
+    return user !== null;
   }
 }
