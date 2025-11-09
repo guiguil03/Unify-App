@@ -1,0 +1,84 @@
+Rapport de Performance (Template)
+par Célian Lebacle
+1) Contexte & périmètre
+Description courte du projet / stack :
+ex : Next.js + Node, Prisma + PostgreSQL (Neon), Redis optionnel&
+Endpoints / parcours étudiés (top 233) :
+a. __________________ (ex. /api/search)
+b.
+c.
+Hypothèses de goulots (avant mesure) :
+DB (indexes, N+1, pool) - [ ] CPU/loop - [ ] Cache - [ ] Réseau - [ ] Autre : _______
+2) SLOs (objectifs mesurables)
+Endpoint SLI Latence Seuil p95 SLI Erreurs Seuil
+/api/________ p95 HTTP ____ ms 5xx rate < ____ %
+/api/________ p95 HTTP ____ ms 5xx rate < ____ %
+3) Environnement & reproductibilité
+Version/tag repo : perf-baseline (commit: __________) ; perf-after (commit: __________)
+Données : seed/dataset = __________________
+Infra locale / staging : CPU/RAM, nb d¾instances, pool DB : __________
+Variables (ports, URLs, DSN) : __________________
+Commandes pour lancer (app/prometheus/grafana/k6) :
+# Exemple
+docker compose up -d
+k6 run ./k6/stress.js
+4) Instrumentation (cochez ce qui est en place)
+Logs Pino (JSON) + request_id
+Endpoint /metrics Prometheus (prom-client)
+Histogramme HTTP (labels: method, route, status_code)
+Event loop lag gauge (optionnel)
+DB metrics (optionnel)
+Sentry (traces/erreurs) (optionnel)
+Captures (insérer) : /metrics extrait, ex. log JSON corrélé
+5) Dashboard Grafana (baseline)
+Panels présents : p95 par route, RPS, 5xx rate, (DB p95/pool si dispo)
+Fenêtre d¾observation : __________________
+Captures :
+Graph p95 (baseline) : (image ici)
+Graph RPS : (image ici)
+Graph 5xx : (image ici)
+(Optionnel) DB p95 / pool : (image ici)
+6) Tests k6
+Scénarios (cochez) : [ ] smoke [ ] stress [ ] spike [ ] soak [ ] RPS constant
+Thresholds (copiez depuis vos scripts) :
+export const options = {
+ thresholds: {
+ http_req_duration: ["p(95)<___"],
+ http_req_failed: ["rate<___"],
+ // autres&
+ }
+};
+Commandes exécutées (avec variables d¾env) :
+k6 run -e BASE_URL=________ ./k6/____.js
+Captures : sortie k6
+7) Analyse (baseline)
+Constats (croisez k6 + Grafana) :
+ex : p95 ± quand RPS ±, pool DB ~95%, 5xx spikes à 504, route /api/search dominante&
+Diagnostic principal : __________________
+(cochez) [ ] index manquant [ ] N+1 [ ] pool [ ] CPU/loop [ ] cache [ ] réseau [ ] autre : _______
+Preuves (captures EXPLAIN ANALYZE, logs, traces Sentry) : (images / extraits)
+8) Plan d¾action (max 3 leviers, classés par impact/effort)
+__________________ (ex : index (status, updated_at desc))1.
+__________________ (ex : pagination keyset)2.
+__________________ (ex : cache Redis 30s + SWR)3.
+Risques / rollback : __________________
+9) After (mesures après actions)
+Conditions identiques (tag perf-after, même dataset) : [ ] Oui [ ] Non (si non, expliquer)
+Résultats k6 :
+http_req_duration........: avg=___ ms med=___ ms p(95)=___ ms p(99)=___ ms
+http_req_failed..........: ___%
+Dashboard Grafana (captures <aprèsî) : (images ici)
+Comparaison claire (avant ³ après)
+Metric Avant Après
+p95 /api/____ ____ ms ____ ms ____ %
+5xx rate ____ % ____ % ____ pp
+RPS soutenu ____ ____ ____ %
+10) Décision & suites
+Objectif SLO atteint ? [ ] Oui [ ] Non
+Actions suivantes (si non) : __________________
+Leviers à tester plus tard : __________________
+11) Annexes
+EXPLAIN ANALYZE / plans
+Scripts k6
+PromQL des panels
+Notes diverses
