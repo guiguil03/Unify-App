@@ -8,19 +8,19 @@ const errorRate = new Rate('errors');
 const endpoints = [
   {
     name: 'users',
-    url: (baseUrl) => `${baseUrl}/rest/v1/users?select=id,name,avatar,bio,last_latitude,last_longitude,updated_at&last_latitude=not.is.null&last_longitude=not.is.null`,
+    url: (baseUrl) => `${baseUrl}/api/users`,
   },
   {
     name: 'runners',
-    url: (baseUrl) => `${baseUrl}/rest/v1/runners?select=user_id,is_active,pace,distance,updated_at`,
+    url: (baseUrl) => `${baseUrl}/api/runners`,
   },
   {
     name: 'activities',
-    url: (baseUrl) => `${baseUrl}/rest/v1/activities?select=*&order=date.desc&limit=50`,
+    url: (baseUrl) => `${baseUrl}/api/activities`,
   },
   {
     name: 'friends',
-    url: (baseUrl) => `${baseUrl}/rest/v1/contacts?select=id,user_id,friend_id,status,created_at,updated_at`,
+    url: (baseUrl) => `${baseUrl}/api/contacts`,
   },
 ];
 
@@ -28,7 +28,7 @@ export const options = {
   stages: [
     { duration: '2m', target: 50 },   // Monter à 50 VUs
     { duration: '3m', target: 100 },  // Monter à 100 VUs
-    { duration: '3m', target: 150 },  // Monter à 150 VUs 
+    { duration: '3m', target: 150 },  // Monter à 150 VUs
     { duration: '2m', target: 200 },  // Monter à 200 VUs (stress!)
     { duration: '3m', target: 200 },  // Maintenir 200 VUs
     { duration: '2m', target: 0 },    // Descendre à 0
@@ -39,19 +39,16 @@ export const options = {
   },
 };
 
-const SUPABASE_URL = __ENV.SUPABASE_URL || 'https://muhexuopzmqdxonurktn.supabase.co';
-const SUPABASE_KEY = __ENV.SUPABASE_API_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im11aGV4dW9wem1xZHhvbnVya3RuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI0NTYyMzMsImV4cCI6MjA3ODAzMjIzM30.Q9c9BDzB1NeLOftXq4A9aqDM3bltWwcEL_LNJNxM3JI';
+const BASE_URL = __ENV.BASE_URL || 'http://localhost:3000';
 
 const headers = {
-  'apikey': SUPABASE_KEY,
-  'Authorization': `Bearer ${SUPABASE_KEY}`,
   'Content-Type': 'application/json'
 };
 
 export default function () {
   const responses = endpoints.map((endpoint) => ({
     name: endpoint.name,
-    res: http.get(endpoint.url(SUPABASE_URL), { headers }),
+    res: http.get(endpoint.url(BASE_URL), { headers }),
   }));
 
   responses.forEach(({ name, res }) => {

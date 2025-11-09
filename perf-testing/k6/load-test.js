@@ -27,21 +27,18 @@ export const options = {
 
 // Configuration
 const BASE_URL = __ENV.BASE_URL || 'http://localhost:3000';
-const SUPABASE_URL = __ENV.SUPABASE_URL || 'https://muhexuopzmqdxonurktn.supabase.co';
-const SUPABASE_KEY = __ENV.SUPABASE_API_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im11aGV4dW9wem1xZHhvbnVya3RuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI0NTYyMzMsImV4cCI6MjA3ODAzMjIzM30.Q9c9BDzB1NeLOftXq4A9aqDM3bltWwcEL_LNJNxM3JI';
 
 const headers = {
-  'apikey': SUPABASE_KEY,
-  'Authorization': `Bearer ${SUPABASE_KEY}`,
   'Content-Type': 'application/json'
 };
 
 export default function () {
   // Simulation d'un utilisateur qui navigue dans l'app
+  // Les requêtes passent par l'app-exporter pour générer des métriques Prometheus
   
   // 1. Récupérer les utilisateurs sur la carte (getNearbyRunners - étape 1)
   let res1 = http.get(
-    `${SUPABASE_URL}/rest/v1/users?select=id,name,avatar,bio,last_latitude,last_longitude,updated_at&last_latitude=not.is.null&last_longitude=not.is.null`,
+    `${BASE_URL}/api/users`,
     { headers }
   );
   
@@ -57,7 +54,7 @@ export default function () {
   
   // 2. Récupérer les runners actifs (getNearbyRunners - étape 2)
   let res2 = http.get(
-    `${SUPABASE_URL}/rest/v1/runners?select=user_id,is_active,pace,distance,updated_at`,
+    `${BASE_URL}/api/runners`,
     { headers }
   );
   
@@ -73,7 +70,7 @@ export default function () {
   
   // 3. Récupérer les activités
   let res3 = http.get(
-    `${SUPABASE_URL}/rest/v1/activities?select=*&order=date.desc&limit=20`,
+    `${BASE_URL}/api/activities`,
     { headers }
   );
   

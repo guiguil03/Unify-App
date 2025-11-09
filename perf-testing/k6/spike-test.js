@@ -22,25 +22,22 @@ export const options = {
   },
 };
 
-const SUPABASE_URL = __ENV.SUPABASE_URL || 'https://muhexuopzmqdxonurktn.supabase.co';
-const SUPABASE_KEY = __ENV.SUPABASE_API_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im11aGV4dW9wem1xZHhvbnVya3RuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI0NTYyMzMsImV4cCI6MjA3ODAzMjIzM30.Q9c9BDzB1NeLOftXq4A9aqDM3bltWwcEL_LNJNxM3JI';
+const BASE_URL = __ENV.BASE_URL || 'http://localhost:3000';
 
 const headers = {
-  'apikey': SUPABASE_KEY,
-  'Authorization': `Bearer ${SUPABASE_KEY}`,
   'Content-Type': 'application/json'
 };
 
 export default function () {
   const res = http.get(
-    `${SUPABASE_URL}/rest/v1/users?select=id,name,last_latitude,last_longitude&last_latitude=not.is.null&limit=50`,
+    `${BASE_URL}/api/users?limit=50`,
     { headers }
   );
-  
+
   check(res, {
     'status is 200 or 429': (r) => r.status === 200 || r.status === 429, // Rate limiting accepté
   });
-  
+
   errorRate.add(res.status >= 500);
   sleep(0.1); // Très peu de pause pour créer du trafic intense
 }
