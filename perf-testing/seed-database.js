@@ -5,6 +5,9 @@
  * Crée des données de test reproductibles pour les tests de performance
  */
 
+// Charger les variables d'environnement depuis .env
+require("dotenv").config({ path: ".env" });
+
 const { createClient } = require("@supabase/supabase-js");
 
 // Configuration Supabase
