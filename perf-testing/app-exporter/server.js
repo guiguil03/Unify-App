@@ -320,37 +320,34 @@ app.get("/api/nearby-runners", async (req, res) => {
     const currentLon = parseFloat(lon);
     const radiusKm = parseFloat(radius);
 
-    // Étape 1: Récupérer tous les utilisateurs avec position
-    const usersResult = await measureSupabaseQuery("users", "SELECT", () =>
-      supabase
-        .from("users")
-        .select(
-          "id, name, avatar, bio, last_latitude, last_longitude, updated_at"
-        )
-        .not("last_latitude", "is", null)
-        .not("last_longitude", "is", null)
+    // OPTIMISATION PostGIS: Utilise l'index GIST spatial au lieu de Haversine JS
+    // Remplace 100 calculs côté Node.js par un filtrage géographique côté PostgreSQL
+    const usersResult = await measureSupabaseQuery("users", "RPC_NEARBY", () =>
+      supabase.rpc("get_nearby_runners", {
+        user_lat: currentLat,
+        user_lon: currentLon,
+        radius_km: radiusKm,
+        max_results: 50,
+      })
     );
 
     if (usersResult.error) {
+      req.log.error(
+        { error: usersResult.error },
+        "Error calling get_nearby_runners RPC"
+      );
       throw usersResult.error;
     }
 
-    // Étape 2: Calculer les distances et filtrer par rayon
-    const nearbyUsers = (usersResult.data || [])
-      .map((user) => {
-        const distance = calculateDistance(
-          currentLat,
-          currentLon,
-          Number(user.last_latitude),
-          Number(user.last_longitude)
-        );
-        return { ...user, calculatedDistance: distance };
-      })
-      .filter((user) => user.calculatedDistance <= radiusKm)
-      .sort((a, b) => a.calculatedDistance - b.calculatedDistance)
-      .slice(0, 50); // Limiter à 50 résultats
+    // Les users sont déjà filtrés et triés par distance grâce à PostGIS
+    const nearbyUsers = usersResult.data || [];
 
-    // Étape 3: Récupérer les infos d'activité des runners
+    req.log.info(
+      { usersFound: nearbyUsers.length, method: "PostGIS" },
+      "Users fetched with PostGIS spatial index"
+    );
+
+    // Étape 2: Récupérer les infos d'activité des runners
     const userIds = nearbyUsers.map((u) => u.id);
 
     let runnersData = [];
@@ -370,7 +367,7 @@ app.get("/api/nearby-runners", async (req, res) => {
       }
     }
 
-    // Étape 4: Joindre les données
+    // Étape 3: Joindre les données
     const runnersMap = new Map(runnersData.map((r) => [r.user_id, r]));
 
     const result = nearbyUsers.map((user) => {
@@ -382,7 +379,7 @@ app.get("/api/nearby-runners", async (req, res) => {
           latitude: Number(user.last_latitude),
           longitude: Number(user.last_longitude),
         },
-        distance: user.calculatedDistance,
+        distance: user.calculated_distance, // Distance calculée par PostGIS
         pace: runnerInfo?.pace || "",
         avatar: user.avatar,
         bio: user.bio,
