@@ -2,10 +2,10 @@
   "name": "micro-affil",
   "version": "1.0.0",
   "description": "Microservice d'affiliation avec architecture Clean",
-  "main": "dist/main.js",
+  "main": "dist/src/main.js",
   "scripts": {
     "build": "tsc",
-    "start": "node dist/main.js",
+    "start": "node dist/src/main.js",
     "start:dev": "ts-node-dev --respawn --transpile-only src/main.ts",
     "lint": "eslint . --ext .ts",
     "format": "prettier --write \"src/**/*.ts\"",
