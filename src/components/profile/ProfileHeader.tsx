@@ -70,7 +70,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 0,
     right: 0,
-    backgroundColor: '#E83D4D',
+    backgroundColor: '#7D80F4',
     width: 36,
     height: 36,
     borderRadius: 18,
@@ -93,7 +93,7 @@ const styles = StyleSheet.create({
   },
   addBio: {
     fontSize: 14,
-    color: '#E83D4D',
+    color: '#7D80F4',
     fontStyle: 'italic',
   },
 });

@@ -46,7 +46,7 @@ interface StatItemProps {
 function StatItem({ icon, label, value }: StatItemProps) {
   return (
     <View style={styles.statItem}>
-      <MaterialCommunityIcons name={icon as any} size={24} color="#E83D4D" />
+      <MaterialCommunityIcons name={icon as any} size={24} color="#7D80F4" />
       <Text style={styles.label}>{label}</Text>
       <Text style={styles.value}>{value}</Text>
     </View>

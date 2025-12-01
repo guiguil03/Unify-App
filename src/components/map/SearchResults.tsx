@@ -55,7 +55,7 @@ export function SearchResults({
             <MaterialCommunityIcons
               name="map-marker"
               size={20}
-              color="#E83D4D"
+              color="#7D80F4"
             />
             <View style={styles.resultText}>
               <Text style={styles.resultName}>{result.name}</Text>

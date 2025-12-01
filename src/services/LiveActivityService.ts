@@ -17,7 +17,7 @@ export class LiveActivityService {
       name: 'Live Activity',
       importance: Notifications.AndroidImportance.HIGH,
       vibrationPattern: [0, 250, 250, 250],
-      lightColor: '#E83D4D',
+      lightColor: '#7D80F4',
     });
 
     return await Notifications.scheduleNotificationAsync({

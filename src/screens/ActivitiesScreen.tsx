@@ -8,6 +8,7 @@ import { LiveActivity } from "../components/activities/LiveActivity";
 import { Activity } from "../types/activity";
 import { useActivitiesManager } from "../hooks/useActivitiesManager";
 import { NavigationProp } from "../types/navigation";
+import { BottomNav } from "../components/common/BottomNav";
 
 export default function ActivitiesScreen() {
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -91,6 +92,7 @@ export default function ActivitiesScreen() {
         onStartLiveActivity={() => setIsLiveActivityActive(true)}
         onAddManualActivity={handleAddManualActivity}
       />
+      <BottomNav />
     </View>
   );
 }
@@ -103,12 +105,13 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
     padding: 16,
+    paddingBottom: 100,
   },
   fab: {
     position: "absolute",
     right: 16,
-    bottom: 16,
-    backgroundColor: "#E83D4D",
+    bottom: 90,
+    backgroundColor: "#7D80F4",
     width: 56,
     height: 56,
     borderRadius: 28,

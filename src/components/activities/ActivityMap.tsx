@@ -24,7 +24,7 @@ export function ActivityMap({ route, initialRegion }: ActivityMapProps) {
             latitude: coord.latitude,
             longitude: coord.longitude,
           }))}
-          strokeColor="#E83D4D"
+          strokeColor="#7D80F4"
           strokeWidth={3}
         />
 

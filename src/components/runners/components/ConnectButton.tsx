@@ -46,7 +46,7 @@ export function ConnectButton({ status = 'none', onConnect }: ConnectButtonProps
 
 const styles = StyleSheet.create({
   connectButton: {
-    backgroundColor: "#E83D4D",
+    backgroundColor: "#7D80F4",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",

@@ -66,7 +66,7 @@ export function ProfileInfo({ profile }: ProfileInfoProps) {
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>À propos</Text>
           <TouchableOpacity onPress={() => navigation.navigate('EditProfile')}>
-            <MaterialCommunityIcons name="pencil" size={20} color="#E83D4D" />
+            <MaterialCommunityIcons name="pencil" size={20} color="#7D80F4" />
           </TouchableOpacity>
         </View>
 
@@ -143,7 +143,7 @@ export function ProfileInfo({ profile }: ProfileInfoProps) {
 
         <TouchableOpacity style={styles.viewAllButton}>
           <Text style={styles.viewAllText}>Voir tous les badges</Text>
-          <MaterialCommunityIcons name="chevron-right" size={20} color="#E83D4D" />
+          <MaterialCommunityIcons name="chevron-right" size={20} color="#7D80F4" />
         </TouchableOpacity>
       </View>
     </View>
@@ -265,7 +265,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   viewAllText: {
-    color: '#E83D4D',
+    color: '#7D80F4',
     fontSize: 14,
     fontWeight: '500',
   },

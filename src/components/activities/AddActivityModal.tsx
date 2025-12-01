@@ -126,7 +126,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   liveButton: {
-    backgroundColor: "#E83D4D",
+    backgroundColor: "#7D80F4",
     padding: 16,
     borderRadius: 8,
     flexDirection: "row",
@@ -168,7 +168,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   submitButton: {
-    backgroundColor: "#E83D4D",
+    backgroundColor: "#7D80F4",
   },
   cancelButton: {
     backgroundColor: "#f5f5f5",

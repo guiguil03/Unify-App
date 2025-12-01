@@ -34,12 +34,12 @@ export function RunnerMap({
             coordinate={runner.location}
             title={runner.name}
             description={`Distance: ${formatDistance(runner.distance)} - Allure: ${runner.pace}`}
-            pinColor={selectedRunner?.id === runner.id ? "#E83D4D" : undefined}
+            pinColor={selectedRunner?.id === runner.id ? "#7D80F4" : undefined}
           >
             <MaterialCommunityIcons
               name="run"
               size={24}
-              color={selectedRunner?.id === runner.id ? "#E83D4D" : "#666"}
+              color={selectedRunner?.id === runner.id ? "#7D80F4" : "#666"}
             />
           </Marker>
         ))}

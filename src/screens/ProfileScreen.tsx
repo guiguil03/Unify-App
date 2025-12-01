@@ -4,6 +4,8 @@ import { ProfileHeader } from '../components/profile/ProfileHeader';
 import { ProfileStats } from '../components/profile/ProfileStats';
 import { ProfileInfo } from '../components/profile/ProfileInfo';
 import { useProfile } from '../hooks/useProfile';
+import { ScreenHeader } from '../components/common/ScreenHeader';
+import { BottomNav } from '../components/common/BottomNav';
 
 export default function ProfileScreen() {
   const { profile, loading, error } = useProfile();
@@ -11,7 +13,7 @@ export default function ProfileScreen() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#E83D4D" />
+        <ActivityIndicator size="large" color="#7D80F4" />
         <Text style={styles.loadingText}>Chargement du profil...</Text>
       </View>
     );
@@ -28,11 +30,15 @@ export default function ProfileScreen() {
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-      <ProfileHeader profile={profile} />
-      <ProfileStats stats={profile.stats} />
-      <ProfileInfo profile={profile} />
-    </ScrollView>
+    <View style={styles.container}>
+      <ScreenHeader title="Profil" />
+      <ScrollView contentContainerStyle={styles.contentContainer}>
+        <ProfileHeader profile={profile} />
+        <ProfileStats stats={profile.stats} />
+        <ProfileInfo profile={profile} />
+      </ScrollView>
+      <BottomNav />
+    </View>
   );
 }
 
@@ -43,6 +49,7 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     padding: 16,
+    paddingBottom: 100,
     gap: 16,
   },
   loadingContainer: {
@@ -65,7 +72,7 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 16,
-    color: '#E83D4D',
+    color: '#7D80F4',
     textAlign: 'center',
   },
 });

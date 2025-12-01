@@ -242,7 +242,7 @@ export function LiveActivity({ onFinish, onCancel }: LiveActivityProps) {
 
         <View style={styles.stats}>
           <View style={styles.stat}>
-            <MaterialCommunityIcons name="timer" size={24} color="#E83D4D" />
+            <MaterialCommunityIcons name="timer" size={24} color="#7D80F4" />
             <Text style={styles.statLabel}>Durée</Text>
             <Text style={styles.statValue}>{formatDuration(duration)}</Text>
           </View>
@@ -251,7 +251,7 @@ export function LiveActivity({ onFinish, onCancel }: LiveActivityProps) {
             <MaterialCommunityIcons
               name="map-marker-distance"
               size={24}
-              color="#E83D4D"
+              color="#7D80F4"
             />
             <Text style={styles.statLabel}>Distance</Text>
             <Text style={styles.statValue}>{formatDistance(distance)}</Text>
@@ -261,7 +261,7 @@ export function LiveActivity({ onFinish, onCancel }: LiveActivityProps) {
             <MaterialCommunityIcons
               name="speedometer"
               size={24}
-              color="#E83D4D"
+              color="#7D80F4"
             />
             <Text style={styles.statLabel}>Allure</Text>
             <Text style={styles.statValue}>
@@ -354,7 +354,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   finishButton: {
-    backgroundColor: "#E83D4D",
+    backgroundColor: "#7D80F4",
   },
   cancelButton: {
     backgroundColor: "#f5f5f5",

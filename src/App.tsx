@@ -8,6 +8,7 @@ import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import Toast, { BaseToast, ErrorToast } from "react-native-toast-message";
 
 import LoginScreen from "./screens/LoginScreen";
+import WelcomeScreen from "./screens/WelcomeScreen";
 import HomeScreen from "./screens/HomeScreen";
 import MapScreen from "./screens/MapScreen/index";
 import ActivitiesScreen from "./screens/ActivitiesScreen";
@@ -30,6 +31,7 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 function AuthStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="Welcome" component={WelcomeScreen} />
       <Stack.Screen name="Login" component={LoginScreen} />
     </Stack.Navigator>
   );
@@ -41,7 +43,7 @@ function AppStack() {
     <Stack.Navigator
       screenOptions={{
         headerStyle: {
-          backgroundColor: "#E83D4D",
+          backgroundColor: "#7D80F4",
         },
         headerTintColor: "white",
       }}
@@ -133,7 +135,7 @@ const toastConfig = {
   success: (props: any) => (
     <BaseToast
       {...props}
-      style={{ borderLeftColor: "#E83D4D", borderLeftWidth: 4 }}
+      style={{ borderLeftColor: "#7D80F4", borderLeftWidth: 4 }}
       contentContainerStyle={{ paddingHorizontal: 15 }}
       text1Style={{ fontSize: 15, fontWeight: "bold" }}
       text2Style={{ fontSize: 13 }}
@@ -142,7 +144,7 @@ const toastConfig = {
   error: (props: any) => (
     <ErrorToast
       {...props}
-      style={{ borderLeftColor: "#E83D4D", borderLeftWidth: 4 }}
+      style={{ borderLeftColor: "#7D80F4", borderLeftWidth: 4 }}
       contentContainerStyle={{ paddingHorizontal: 15 }}
       text1Style={{ fontSize: 15, fontWeight: "bold" }}
       text2Style={{ fontSize: 13 }}
@@ -151,7 +153,7 @@ const toastConfig = {
   info: (props: any) => (
     <BaseToast
       {...props}
-      style={{ borderLeftColor: "#E83D4D", borderLeftWidth: 4 }}
+      style={{ borderLeftColor: "#7D80F4", borderLeftWidth: 4 }}
       contentContainerStyle={{ paddingHorizontal: 15 }}
       text1Style={{ fontSize: 15, fontWeight: "bold" }}
       text2Style={{ fontSize: 13 }}
@@ -167,7 +169,7 @@ function NavigationSwitcher() {
   if (isLoading || !hasCompletedInitialCheck) {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <ActivityIndicator size="large" color="#E83D4D" />
+        <ActivityIndicator size="large" color="#7D80F4" />
       </View>
     );
   }

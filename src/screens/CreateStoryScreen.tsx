@@ -204,7 +204,7 @@ export default function CreateStoryScreen() {
         {/* Sélection de l'image */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
-            <MaterialCommunityIcons name="image" size={24} color="#E83D4D" />
+            <MaterialCommunityIcons name="image" size={24} color="#7D80F4" />
             <Text style={styles.cardTitle}>Image de la story</Text>
           </View>
 
@@ -215,10 +215,10 @@ export default function CreateStoryScreen() {
             disabled={isUploading || isCreating}
           >
             {isUploading ? (
-              <ActivityIndicator size="small" color="#E83D4D" />
+              <ActivityIndicator size="small" color="#7D80F4" />
             ) : (
               <>
-                <MaterialCommunityIcons name="image-plus" size={24} color="#E83D4D" />
+                <MaterialCommunityIcons name="image-plus" size={24} color="#7D80F4" />
                 <Text style={styles.galleryButtonText}>Choisir depuis la galerie</Text>
               </>
             )}
@@ -253,7 +253,7 @@ export default function CreateStoryScreen() {
               style={styles.previewButton}
               onPress={handlePreview}
             >
-              <MaterialCommunityIcons name="eye" size={20} color="#E83D4D" />
+              <MaterialCommunityIcons name="eye" size={20} color="#7D80F4" />
               <Text style={styles.previewButtonText}>Aperçu de l'image</Text>
             </TouchableOpacity>
           )}
@@ -262,7 +262,7 @@ export default function CreateStoryScreen() {
         {/* Légende */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
-            <MaterialCommunityIcons name="text" size={24} color="#E83D4D" />
+            <MaterialCommunityIcons name="text" size={24} color="#7D80F4" />
             <Text style={styles.cardTitle}>Légende (optionnel)</Text>
           </View>
 
@@ -472,14 +472,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#E83D4D',
+    borderColor: '#7D80F4',
     borderStyle: 'dashed',
     gap: 10,
   },
   galleryButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#E83D4D',
+    color: '#7D80F4',
   },
   divider: {
     flexDirection: 'row',
@@ -541,7 +541,7 @@ const styles = StyleSheet.create({
   previewButtonText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#E83D4D',
+    color: '#7D80F4',
   },
   charCount: {
     fontSize: 12,
@@ -606,7 +606,7 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#E83D4D',
+    backgroundColor: '#7D80F4',
   },
   tipText: {
     flex: 1,
@@ -650,10 +650,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 16,
-    backgroundColor: '#E83D4D',
+    backgroundColor: '#7D80F4',
     borderRadius: 12,
     gap: 8,
-    shadowColor: '#E83D4D',
+    shadowColor: '#7D80F4',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,

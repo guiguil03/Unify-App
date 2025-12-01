@@ -148,7 +148,7 @@ const styles = StyleSheet.create({
   },
   unviewedBorder: {
     borderWidth: 2,
-    borderColor: '#E83D4D',
+    borderColor: '#7D80F4',
   },
   myStoryBorder: {
     borderWidth: 2,
@@ -162,7 +162,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f0f0f0',
   },
   addStoryAvatar: {
-    backgroundColor: '#E83D4D',
+    backgroundColor: '#7D80F4',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,

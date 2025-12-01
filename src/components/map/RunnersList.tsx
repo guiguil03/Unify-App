@@ -228,7 +228,7 @@ const styles = StyleSheet.create({
   },
   selectedRunnerCard: {
     backgroundColor: "#e6f3ff",
-    borderColor: "#E83D4D",
+    borderColor: "#7D80F4",
     borderWidth: 1,
   },
   runnerInfo: {

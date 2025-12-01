@@ -12,7 +12,7 @@ export function EventCard({ event }: EventCardProps) {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>{event.title}</Text>
-        <MaterialCommunityIcons name="calendar" size={24} color="#E83D4D" />
+        <MaterialCommunityIcons name="calendar" size={24} color="#7D80F4" />
       </View>
 
       <View style={styles.details}>
@@ -39,7 +39,7 @@ interface DetailItemProps {
 function DetailItem({ icon, text }: DetailItemProps) {
   return (
     <View style={styles.detailItem}>
-      <MaterialCommunityIcons name={icon as any} size={20} color="#E83D4D" />
+      <MaterialCommunityIcons name={icon as any} size={20} color="#7D80F4" />
       <Text style={styles.detailText}>{text}</Text>
     </View>
   );
@@ -81,7 +81,7 @@ const styles = StyleSheet.create({
     color: "#666",
   },
   button: {
-    backgroundColor: "#E83D4D",
+    backgroundColor: "#7D80F4",
     padding: 12,
     borderRadius: 8,
     alignItems: "center",

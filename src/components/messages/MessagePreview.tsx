@@ -12,7 +12,7 @@ export function MessagePreview({ message, onPress }: MessagePreviewProps) {
   return (
     <TouchableOpacity style={styles.container} onPress={onPress}>
       <View style={styles.avatar}>
-        <MaterialCommunityIcons name="account" size={32} color="#E83D4D" />
+        <MaterialCommunityIcons name="account" size={32} color="#7D80F4" />
       </View>
 
       <View style={styles.content}>

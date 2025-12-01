@@ -14,14 +14,14 @@ export function MapControls({
   return (
     <View style={styles.container}>
       <TouchableOpacity style={styles.button} onPress={onSettingsPress}>
-        <MaterialCommunityIcons name="map-search" size={24} color="#E83D4D" />
+        <MaterialCommunityIcons name="map-search" size={24} color="#7D80F4" />
       </TouchableOpacity>
 
       <TouchableOpacity style={styles.button} onPress={onRecenterPress}>
         <MaterialCommunityIcons
           name="crosshairs-gps"
           size={24}
-          color="#E83D4D"
+          color="#7D80F4"
         />
       </TouchableOpacity>
     </View>

@@ -15,6 +15,7 @@ import { useNavigation } from '@react-navigation/native';
 import { ProfileService } from '../services/ProfileService';
 import { useProfile } from '../hooks/useProfile';
 import { showSuccessToast, showErrorToast } from '../utils/errorHandler';
+import { COLORS } from '../constants/colors';
 
 const LEVELS = [
   { value: 'beginner', label: '🐣 Débutant', description: 'Je commence la course' },
@@ -99,7 +100,7 @@ export default function EditProfileScreen() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#E83D4D" />
+        <ActivityIndicator size="large" color="#7D80F4" />
       </View>
     );
   }
@@ -112,7 +113,7 @@ export default function EditProfileScreen() {
       {/* Header fixe */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <MaterialCommunityIcons name="arrow-left" size={24} color="#333" />
+          <MaterialCommunityIcons name="arrow-left" size={28} color={COLORS.primary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Modifier le profil</Text>
         <View style={styles.headerSpacer} />
@@ -191,7 +192,7 @@ export default function EditProfileScreen() {
                 <Text style={styles.optionDescription}>{item.description}</Text>
               </View>
               {level === item.value && (
-                <MaterialCommunityIcons name="check-circle" size={24} color="#E83D4D" />
+                <MaterialCommunityIcons name="check-circle" size={26} color={COLORS.primary} />
               )}
             </TouchableOpacity>
           ))}
@@ -258,11 +259,11 @@ export default function EditProfileScreen() {
                 onPress={() => toggleTerrain(item.value)}
                 disabled={isSaving}
               >
-                <MaterialCommunityIcons
-                  name={item.icon as any}
-                  size={28}
-                  color={preferredTerrain.includes(item.value) ? '#E83D4D' : '#666'}
-                />
+              <MaterialCommunityIcons
+                name={item.icon as any}
+                size={32}
+                color={preferredTerrain.includes(item.value) ? COLORS.primary : COLORS.textLight}
+              />
                 <Text style={[
                   styles.terrainLabel,
                   preferredTerrain.includes(item.value) && styles.terrainLabelSelected,
@@ -289,8 +290,8 @@ export default function EditProfileScreen() {
             >
               <MaterialCommunityIcons
                 name={item.icon as any}
-                size={24}
-                color={groupPreference === item.value ? '#E83D4D' : '#666'}
+                size={26}
+                color={groupPreference === item.value ? COLORS.primary : COLORS.textLight}
               />
               <View style={styles.optionContent}>
                 <Text style={[
@@ -302,7 +303,7 @@ export default function EditProfileScreen() {
                 <Text style={styles.optionDescription}>{item.description}</Text>
               </View>
               {groupPreference === item.value && (
-                <MaterialCommunityIcons name="check-circle" size={24} color="#E83D4D" />
+                <MaterialCommunityIcons name="check-circle" size={26} color={COLORS.primary} />
               )}
             </TouchableOpacity>
           ))}
@@ -365,60 +366,69 @@ export default function EditProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: COLORS.backgroundLight,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f5f5f5',
+    backgroundColor: COLORS.backgroundLight,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    backgroundColor: '#fff',
+    paddingHorizontal: 20,
+    paddingVertical: 18,
+    paddingTop: 50,
+    backgroundColor: COLORS.background,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: COLORS.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 3,
   },
   backButton: {
-    padding: 4,
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: COLORS.backgroundLight,
   },
   headerSpacer: {
-    width: 32,
+    width: 44,
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '700',
-    color: '#333',
+    color: COLORS.primary,
   },
   content: {
     flex: 1,
   },
   card: {
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.background,
     marginHorizontal: 16,
     marginTop: 16,
-    padding: 16,
-    borderRadius: 16,
+    padding: 20,
+    borderRadius: 20,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
   cardTitle: {
-    fontSize: 18,
+    fontSize: 19,
     fontWeight: '700',
-    color: '#333',
-    marginBottom: 16,
+    color: COLORS.text,
+    marginBottom: 18,
   },
   subtitle: {
     fontSize: 14,
-    color: '#666',
-    marginBottom: 12,
+    color: COLORS.textLight,
+    marginBottom: 16,
+    fontWeight: '500',
   },
   inputGroup: {
     marginBottom: 16,
@@ -426,20 +436,20 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#333',
-    marginBottom: 8,
+    color: COLORS.text,
+    marginBottom: 10,
   },
   required: {
-    color: '#E83D4D',
+    color: COLORS.primary,
   },
   input: {
-    backgroundColor: '#f8f9fa',
-    borderRadius: 12,
-    padding: 14,
-    fontSize: 15,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    color: '#333',
+    backgroundColor: COLORS.backgroundLight,
+    borderRadius: 14,
+    padding: 16,
+    fontSize: 16,
+    borderWidth: 2,
+    borderColor: COLORS.border,
+    color: COLORS.text,
   },
   bioInput: {
     minHeight: 100,
@@ -451,29 +461,39 @@ const styles = StyleSheet.create({
   },
   hint: {
     fontSize: 13,
-    color: '#999',
-    marginTop: 6,
+    color: COLORS.textLight,
+    marginTop: 8,
     fontStyle: 'italic',
   },
   charCount: {
     fontSize: 12,
-    color: '#999',
+    color: COLORS.textLight,
     textAlign: 'right',
-    marginTop: 4,
+    marginTop: 6,
+    fontWeight: '500',
   },
   optionCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#f8f9fa',
-    borderRadius: 12,
+    padding: 18,
+    backgroundColor: COLORS.backgroundLight,
+    borderRadius: 16,
     marginBottom: 12,
     borderWidth: 2,
     borderColor: 'transparent',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   optionCardSelected: {
-    backgroundColor: '#FFF0F0',
-    borderColor: '#E83D4D',
+    backgroundColor: '#F0F0FF',
+    borderColor: COLORS.primary,
+    shadowColor: COLORS.primary,
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   optionContent: {
     flex: 1,
@@ -482,15 +502,16 @@ const styles = StyleSheet.create({
   optionLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
-    marginBottom: 2,
+    color: COLORS.text,
+    marginBottom: 4,
   },
   optionLabelSelected: {
-    color: '#E83D4D',
+    color: COLORS.primary,
   },
   optionDescription: {
     fontSize: 13,
-    color: '#666',
+    color: COLORS.textLight,
+    lineHeight: 18,
   },
   gridContainer: {
     flexDirection: 'row',
@@ -500,107 +521,135 @@ const styles = StyleSheet.create({
   gridOption: {
     flex: 1,
     minWidth: '47%',
-    padding: 16,
-    backgroundColor: '#f8f9fa',
-    borderRadius: 12,
+    padding: 18,
+    backgroundColor: COLORS.backgroundLight,
+    borderRadius: 16,
     borderWidth: 2,
     borderColor: 'transparent',
     position: 'relative',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   gridOptionSelected: {
-    backgroundColor: '#FFF0F0',
-    borderColor: '#E83D4D',
+    backgroundColor: '#F0F0FF',
+    borderColor: COLORS.primary,
+    shadowColor: COLORS.primary,
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   gridOptionLabel: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '600',
-    color: '#333',
-    marginBottom: 4,
+    color: COLORS.text,
+    marginBottom: 6,
   },
   gridOptionLabelSelected: {
-    color: '#E83D4D',
+    color: COLORS.primary,
   },
   gridOptionTime: {
     fontSize: 13,
-    color: '#666',
+    color: COLORS.textLight,
+    fontWeight: '500',
   },
   checkBadge: {
     position: 'absolute',
-    top: 8,
-    right: 8,
-    backgroundColor: '#E83D4D',
-    borderRadius: 10,
-    width: 20,
-    height: 20,
+    top: 10,
+    right: 10,
+    backgroundColor: COLORS.primary,
+    borderRadius: 12,
+    width: 24,
+    height: 24,
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
   },
   terrainOption: {
     flex: 1,
     minWidth: '47%',
     alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#f8f9fa',
-    borderRadius: 12,
+    padding: 18,
+    backgroundColor: COLORS.backgroundLight,
+    borderRadius: 16,
     borderWidth: 2,
     borderColor: 'transparent',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   terrainOptionSelected: {
-    backgroundColor: '#FFF0F0',
-    borderColor: '#E83D4D',
+    backgroundColor: '#F0F0FF',
+    borderColor: COLORS.primary,
+    shadowColor: COLORS.primary,
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   terrainLabel: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
-    color: '#333',
-    marginTop: 8,
+    color: COLORS.text,
+    marginTop: 10,
   },
   terrainLabelSelected: {
-    color: '#E83D4D',
+    color: COLORS.primary,
   },
   infoText: {
     fontSize: 14,
-    color: '#666',
-    marginBottom: 16,
+    color: COLORS.textLight,
+    marginBottom: 18,
     lineHeight: 20,
   },
   statsRow: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 14,
   },
   statBox: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
-    padding: 16,
-    borderRadius: 12,
+    backgroundColor: COLORS.backgroundLight,
+    padding: 20,
+    borderRadius: 16,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   statValue: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: '700',
-    color: '#E83D4D',
-    marginBottom: 4,
+    color: COLORS.primary,
+    marginBottom: 6,
   },
   statLabel: {
     fontSize: 13,
-    color: '#666',
+    color: COLORS.textLight,
     textAlign: 'center',
+    fontWeight: '500',
   },
   bottomSpace: {
     height: 100,
   },
   footer: {
     flexDirection: 'row',
-    padding: 16,
-    backgroundColor: '#fff',
+    padding: 20,
+    paddingBottom: 30,
+    backgroundColor: COLORS.background,
     borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
-    gap: 12,
+    borderTopColor: COLORS.border,
+    gap: 14,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
+    shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 8,
+    shadowRadius: 8,
+    elevation: 10,
   },
   cancelButton: {
     flex: 1,
@@ -608,36 +657,38 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 16,
-    backgroundColor: '#f5f5f5',
-    borderRadius: 12,
+    backgroundColor: COLORS.backgroundLight,
+    borderRadius: 16,
     gap: 8,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   cancelButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#666',
+    color: COLORS.textLight,
   },
   saveButton: {
     flex: 2,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 16,
-    backgroundColor: '#E83D4D',
-    borderRadius: 12,
-    gap: 8,
-    shadowColor: '#E83D4D',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 4,
+    paddingVertical: 18,
+    backgroundColor: COLORS.primary,
+    borderRadius: 16,
+    gap: 10,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 6,
   },
   saveButtonDisabled: {
     backgroundColor: '#ccc',
     shadowOpacity: 0,
   },
   saveButtonText: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '700',
     color: '#fff',
   },

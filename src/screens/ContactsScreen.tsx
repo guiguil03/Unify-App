@@ -18,6 +18,8 @@ import { ContactsService } from '../services/ContactsService';
 import { Contact, ContactRequest, ContactRelationshipStatus } from '../types/contact';
 import { showSuccessToast, showErrorToast, showInfoToast } from '../utils/errorHandler';
 import { NavigationProp } from '../types/navigation';
+import { ScreenHeader } from '../components/common/ScreenHeader';
+import { BottomNav } from '../components/common/BottomNav';
 
 type Tab = 'friends' | 'requests' | 'search';
 
@@ -194,6 +196,7 @@ export default function ContactsScreen() {
 
   return (
     <View style={styles.container}>
+      <ScreenHeader title="Contacts" />
       {/* Tabs */}
       <View style={styles.tabs}>
         <TouchableOpacity
@@ -203,7 +206,7 @@ export default function ContactsScreen() {
           <MaterialCommunityIcons 
             name="account-group" 
             size={20} 
-            color={activeTab === 'friends' ? '#E83D4D' : '#666'} 
+            color={activeTab === 'friends' ? '#7D80F4' : '#666'} 
           />
           <Text style={[styles.tabText, activeTab === 'friends' && styles.activeTabText]}>
             Mes amis ({contacts.length})
@@ -217,7 +220,7 @@ export default function ContactsScreen() {
           <MaterialCommunityIcons 
             name="account-clock" 
             size={20} 
-            color={activeTab === 'requests' ? '#E83D4D' : '#666'} 
+            color={activeTab === 'requests' ? '#7D80F4' : '#666'} 
           />
           <Text style={[styles.tabText, activeTab === 'requests' && styles.activeTabText]}>
             Demandes ({requestsCount})
@@ -231,7 +234,7 @@ export default function ContactsScreen() {
           <MaterialCommunityIcons 
             name="account-plus" 
             size={20} 
-            color={activeTab === 'search' ? '#E83D4D' : '#666'} 
+            color={activeTab === 'search' ? '#7D80F4' : '#666'} 
           />
           <Text style={[styles.tabText, activeTab === 'search' && styles.activeTabText]}>
             Ajouter
@@ -277,7 +280,7 @@ export default function ContactsScreen() {
         {activeTab === 'requests' && (
           <View>
             {isLoadingRequests ? (
-              <ActivityIndicator size="large" color="#E83D4D" style={{ marginTop: 32 }} />
+              <ActivityIndicator size="large" color="#7D80F4" style={{ marginTop: 32 }} />
             ) : incomingRequests.length === 0 && outgoingRequests.length === 0 ? (
               <View style={styles.emptyState}>
                 <MaterialCommunityIcons name="account-clock-outline" size={64} color="#ccc" />
@@ -340,7 +343,7 @@ export default function ContactsScreen() {
             </View>
 
             {isSearching ? (
-              <ActivityIndicator size="large" color="#E83D4D" style={{ marginTop: 32 }} />
+              <ActivityIndicator size="large" color="#7D80F4" style={{ marginTop: 32 }} />
             ) : searchQuery.trim().length === 0 ? (
               <View style={styles.emptyState}>
                 <MaterialCommunityIcons name="account-search-outline" size={64} color="#ccc" />
@@ -405,6 +408,7 @@ export default function ContactsScreen() {
           </View>
         )}
       </ScrollView>
+      <BottomNav />
     </View>
   );
 }
@@ -432,7 +436,7 @@ const styles = StyleSheet.create({
     borderBottomColor: 'transparent',
   },
   activeTab: {
-    borderBottomColor: '#E83D4D',
+    borderBottomColor: '#7D80F4',
   },
   tabText: {
     fontSize: 14,
@@ -440,12 +444,13 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   activeTabText: {
-    color: '#E83D4D',
+    color: '#7D80F4',
     fontWeight: '600',
   },
   scrollView: {
     flex: 1,
     padding: 16,
+    paddingBottom: 100,
   },
   emptyState: {
     alignItems: 'center',
@@ -469,7 +474,7 @@ const styles = StyleSheet.create({
   addButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#E83D4D',
+    backgroundColor: '#7D80F4',
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 24,
@@ -605,7 +610,7 @@ const styles = StyleSheet.create({
   addContactButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#E83D4D',
+    backgroundColor: '#7D80F4',
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 20,

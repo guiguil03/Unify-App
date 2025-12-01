@@ -21,7 +21,7 @@ export const NavigationButton: React.FC<NavigationButtonProps> = ({
 
 const styles = StyleSheet.create({
   button: {
-    backgroundColor: "#E83D4D",
+    backgroundColor: "#7D80F4",
     padding: 16,
     borderRadius: 8,
     flexDirection: "row",

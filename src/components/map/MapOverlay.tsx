@@ -17,7 +17,7 @@ export function MapOverlay({ location, radius, visible }: MapOverlayProps) {
       center={location}
       radius={radius * 1000} // Convert km to meters
       fillColor="rgba(101, 173, 241, 0.2)"
-      strokeColor="#E83D4D"
+      strokeColor="#7D80F4"
       strokeWidth={2}
     />
   );

@@ -17,7 +17,7 @@ export function ActivityCard({ activity, onPress }: ActivityCardProps) {
     >
       <View style={styles.header}>
         <Text style={styles.date}>{activity.date}</Text>
-        <MaterialCommunityIcons name="run" size={24} color="#E83D4D" />
+        <MaterialCommunityIcons name="run" size={24} color="#7D80F4" />
       </View>
 
       <ActivityStats activity={activity} />

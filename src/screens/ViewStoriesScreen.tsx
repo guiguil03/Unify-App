@@ -267,7 +267,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   backButton: {
-    color: '#E83D4D',
+    color: '#7D80F4',
     fontSize: 16,
     fontWeight: '600',
   },

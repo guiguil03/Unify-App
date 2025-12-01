@@ -3,14 +3,14 @@
 @tailwind utilities;
 
 ActionBar {
-  background-color: #e83d4d;
+  background-color: #7D80F4;
   color: white;
 }
 
 .btn {
   font-size: 18;
   color: white;
-  background-color: #e83d4d;
+  background-color: #7D80F4;
   padding: 12 24;
   border-radius: 8;
   text-align: center;

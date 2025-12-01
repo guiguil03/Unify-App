@@ -1,7 +1,8 @@
 import React from 'react';
-import { ScrollView, StyleSheet } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { EventCard } from '../components/events/EventCard';
 import { Event } from '../types/event';
+import { ScreenHeader } from '../components/common/ScreenHeader';
 
 const MOCK_EVENTS: Event[] = [
   {
@@ -24,18 +25,23 @@ const MOCK_EVENTS: Event[] = [
 
 export default function EventsScreen() {
   return (
-    <ScrollView style={styles.container}>
-      {MOCK_EVENTS.map((event) => (
-        <EventCard key={event.id} event={event} />
-      ))}
-    </ScrollView>
+    <View style={styles.container}>
+      <ScreenHeader title="Événements" />
+      <ScrollView contentContainerStyle={styles.list}>
+        {MOCK_EVENTS.map((event) => (
+          <EventCard key={event.id} event={event} />
+        ))}
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 16,
     backgroundColor: 'white',
+  },
+  list: {
+    padding: 16,
   },
 });

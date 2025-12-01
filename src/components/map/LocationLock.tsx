@@ -58,7 +58,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   locked: {
-    backgroundColor: "#E83D4D",
+    backgroundColor: "#7D80F4",
   },
   lockText: {
     fontSize: 14,
