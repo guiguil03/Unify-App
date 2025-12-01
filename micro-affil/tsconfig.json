@@ -25,6 +25,6 @@
       "@config/*": ["src/config/*"]
     }
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "test/create-affiliation-code.usecase.spec.ts", "test/code-generator.service.spec.ts"],
   "exclude": ["node_modules", "dist"]
 }
