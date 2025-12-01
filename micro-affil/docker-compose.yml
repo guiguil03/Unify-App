@@ -1,0 +1,29 @@
+services:
+  micro-affil:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: micro-affil
+    ports:
+      - '3001:3001'
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - PORT=${PORT:-3001}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
+    env_file:
+      - .env
+    restart: unless-stopped
+    networks:
+      - unify-network
+    healthcheck:
+      test: ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://localhost:3001/api']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  unify-network:
+    driver: bridge
