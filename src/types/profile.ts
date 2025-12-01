@@ -16,5 +16,7 @@ export interface Profile {
   preferredTerrain?: string;
   groupPreference?: string;
   memberSince?: string;
+  gender?: 'male' | 'female' | 'other';
+  birthDate?: string;
   stats: ProfileStats;
 }

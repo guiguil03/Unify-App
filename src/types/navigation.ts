@@ -3,6 +3,7 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 export type RootStackParamList = {
   Welcome: undefined;
   Login: { mode?: "login" | "signup" } | undefined;
+  Onboarding: undefined;
   MainTabs: undefined;
   Home: undefined;
   Map: undefined;
@@ -24,6 +25,7 @@ export type RootStackParamList = {
   ViewStories: {
     userId: string;
   };
+  CreatePost: undefined;
 };
 
 export type NavigationProp = NativeStackNavigationProp<RootStackParamList>;

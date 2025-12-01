@@ -311,6 +311,77 @@ export class StoriesService {
   }
 
   /**
+   * Récupère toutes les stories d'un utilisateur (y compris expirées) pour l'historique
+   */
+  static async getUserStoriesHistory(userId: string): Promise<Story[]> {
+    try {
+      const currentUser = await getCurrentUserFromDB();
+      if (!currentUser) {
+        throw new Error('Utilisateur non authentifié');
+      }
+
+      // Si ce n'est pas l'utilisateur actuel, vérifier qu'ils sont amis
+      if (userId !== currentUser.id) {
+        const friendIds = await this.getFriendIds(currentUser.id);
+        if (!friendIds.includes(userId)) {
+          return [];
+        }
+      }
+
+      // Récupérer toutes les stories (y compris expirées)
+      const { data, error } = await supabase
+        .from('stories')
+        .select(`
+          id,
+          user_id,
+          image_url,
+          video_url,
+          caption,
+          view_count,
+          created_at,
+          expires_at,
+          users:user_id (
+            id,
+            name,
+            avatar
+          )
+        `)
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      if (error) throw error;
+
+      // Vérifier les vues
+      const storyIds = data?.map((s: any) => s.id) || [];
+      const { data: views } = await supabase
+        .from('story_views')
+        .select('story_id')
+        .in('story_id', storyIds)
+        .eq('viewer_id', currentUser.id);
+
+      const viewedStoryIds = new Set(views?.map((v: any) => v.story_id) || []);
+
+      return data?.map((story: any) => ({
+        id: story.id,
+        userId: story.user_id,
+        userName: story.users?.name || 'Utilisateur',
+        userAvatar: story.users?.avatar,
+        imageUrl: story.image_url,
+        videoUrl: story.video_url,
+        caption: story.caption,
+        createdAt: story.created_at,
+        expiresAt: story.expires_at,
+        viewCount: story.view_count || 0,
+        hasViewed: viewedStoryIds.has(story.id),
+      })) || [];
+    } catch (error) {
+      console.error('Erreur dans getUserStoriesHistory:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Récupère les viewers d'une story
    */
   static async getStoryViewers(storyId: string): Promise<Array<{

@@ -9,6 +9,7 @@ import Toast, { BaseToast, ErrorToast } from "react-native-toast-message";
 
 import LoginScreen from "./screens/LoginScreen";
 import WelcomeScreen from "./screens/WelcomeScreen";
+import OnboardingScreen from "./screens/OnboardingScreen";
 import HomeScreen from "./screens/HomeScreen";
 import MapScreen from "./screens/MapScreen/index";
 import ActivitiesScreen from "./screens/ActivitiesScreen";
@@ -22,6 +23,8 @@ import ChatScreen from "./screens/ChatScreen";
 import SettingsScreen from "./screens/SettingsScreen";
 import CreateStoryScreen from "./screens/CreateStoryScreen";
 import ViewStoriesScreen from "./screens/ViewStoriesScreen";
+import CreatePostScreen from "./screens/CreatePostScreen";
+import { OnboardingChecker } from "./components/OnboardingChecker";
 
 console.log("=== DÉMARRAGE DE L'APPLICATION UNIFY ===");
 
@@ -40,19 +43,27 @@ function AuthStack() {
 // Stack pour utilisateurs authentifiés ou qui ont cliqué sur "Continuer sans compte"
 function AppStack() {
   return (
-    <Stack.Navigator
-      screenOptions={{
-        headerStyle: {
-          backgroundColor: "#7D80F4",
-        },
-        headerTintColor: "white",
-      }}
-    >
-      <Stack.Screen
-        name="Home"
-        component={HomeScreen}
-        options={{ title: "Unify" }}
-      />
+    <>
+      <OnboardingChecker />
+      <Stack.Navigator
+        screenOptions={{
+          headerStyle: {
+            backgroundColor: "#7D80F4",
+          },
+          headerTintColor: "white",
+        }}
+        initialRouteName="Home"
+      >
+        <Stack.Screen
+          name="Onboarding"
+          component={OnboardingScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="Home"
+          component={HomeScreen}
+          options={{ title: "Unify" }}
+        />
       <Stack.Screen
         name="Map"
         component={MapScreen}
@@ -126,7 +137,15 @@ function AppStack() {
           animation: 'fade',
         }}
       />
-    </Stack.Navigator>
+      <Stack.Screen
+        name="CreatePost"
+        component={CreatePostScreen}
+        options={{
+          headerShown: false,
+        }}
+      />
+      </Stack.Navigator>
+    </>
   );
 }
 

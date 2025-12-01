@@ -81,7 +81,9 @@ export default function LoginScreen({ route, navigation }: Props) {
         // Attendre explicitement la fin de l'inscription
         success = await signUp(name, email, password);
         if (success) {
-          console.log("Inscription réussie");
+          console.log("Inscription réussie - redirection vers onboarding");
+          // Rediriger vers l'onboarding après l'inscription
+          navigation.navigate("Onboarding");
         } else {
           // Si l'inscription a échoué, ne rien faire d'autre - reste sur la page de login
           console.log("Échec de l'inscription - reste sur la page de login");

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -46,29 +46,48 @@ const GROUP_PREFERENCES = [
 
 export default function EditProfileScreen() {
   const navigation = useNavigation();
-  const { profile, loading } = useProfile();
+  const { profile, loading, refetch } = useProfile();
   
-  const [name, setName] = useState(profile?.name || '');
-  const [bio, setBio] = useState(profile?.bio || '');
-  const [avatar, setAvatar] = useState(profile?.avatar || '');
-  const [level, setLevel] = useState(profile?.level || '');
-  const [goal, setGoal] = useState(profile?.goal || '');
-  const [preferredTime, setPreferredTime] = useState(profile?.preferredTime || '');
-  const [preferredTerrain, setPreferredTerrain] = useState<string[]>(
-    profile?.preferredTerrain ? profile.preferredTerrain.split(',') : []
-  );
-  const [groupPreference, setGroupPreference] = useState(profile?.groupPreference || '');
+  const [name, setName] = useState('');
+  const [bio, setBio] = useState('');
+  const [avatar, setAvatar] = useState('');
+  const [level, setLevel] = useState('');
+  const [goal, setGoal] = useState('');
+  const [preferredTime, setPreferredTime] = useState('');
+  const [preferredTerrain, setPreferredTerrain] = useState<string[]>([]);
+  const [groupPreference, setGroupPreference] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
+  // Mettre à jour les champs quand le profil est chargé
+  useEffect(() => {
+    if (profile) {
+      console.log('📥 Chargement des données du profil:', profile);
+      setName(profile.name || '');
+      setBio(profile.bio || '');
+      setAvatar(profile.avatar || '');
+      setLevel(profile.level || '');
+      setGoal(profile.goal || '');
+      setPreferredTime(profile.preferredTime || '');
+      setPreferredTerrain(profile.preferredTerrain ? profile.preferredTerrain.split(',').filter(t => t.trim()) : []);
+      setGroupPreference(profile.groupPreference || '');
+    }
+  }, [profile]);
+
   const handleSave = async () => {
+    console.log('🔵 handleSave appelé');
+    console.log('🔵 Nom:', name);
+    console.log('🔵 isSaving:', isSaving);
+    
     if (!name.trim()) {
+      console.log('❌ Nom vide, affichage du toast');
       showErrorToast('Le nom est obligatoire');
       return;
     }
 
+    console.log('✅ Nom valide, début de la sauvegarde');
     setIsSaving(true);
     try {
-      await ProfileService.updateProfile({
+      const updateData: any = {
         name: name.trim(),
         bio: bio.trim() || undefined,
         avatar: avatar.trim() || undefined,
@@ -77,13 +96,23 @@ export default function EditProfileScreen() {
         preferredTime: preferredTime || undefined,
         preferredTerrain: preferredTerrain.length > 0 ? preferredTerrain.join(',') : undefined,
         groupPreference: groupPreference || undefined,
-      });
+      };
+
+      console.log('📤 Données à sauvegarder:', updateData);
+
+      await ProfileService.updateProfile(updateData);
+      
+      console.log('✅ Sauvegarde réussie');
+      
+      // Rafraîchir le profil après la sauvegarde
+      await refetch();
       
       showSuccessToast('Profil mis à jour !');
       navigation.goBack();
-    } catch (error) {
-      console.error('Erreur lors de la sauvegarde:', error);
-      showErrorToast('Impossible de sauvegarder le profil');
+    } catch (error: any) {
+      console.error('❌ Erreur lors de la sauvegarde:', error);
+      const errorMessage = error?.message || error?.error?.message || 'Impossible de sauvegarder le profil';
+      showErrorToast(errorMessage);
     } finally {
       setIsSaving(false);
     }
@@ -344,10 +373,25 @@ export default function EditProfileScreen() {
         <TouchableOpacity
           style={[
             styles.saveButton,
-            isSaving && styles.saveButtonDisabled
+            (isSaving || !name.trim()) && styles.saveButtonDisabled
           ]}
-          onPress={handleSave}
-          disabled={isSaving || !name.trim()}
+          onPress={() => {
+            console.log('🔵 Bouton Enregistrer pressé');
+            console.log('🔵 name:', name);
+            console.log('🔵 name.trim():', name.trim());
+            console.log('🔵 name.trim().length:', name.trim().length);
+            console.log('🔵 isSaving:', isSaving);
+            console.log('🔵 disabled:', isSaving || !name.trim());
+            if (!isSaving && name.trim()) {
+              handleSave();
+            } else {
+              console.log('⚠️ Bouton désactivé - nom vide ou en cours de sauvegarde');
+              if (!name.trim()) {
+                showErrorToast('Le nom est obligatoire');
+              }
+            }
+          }}
+          activeOpacity={0.7}
         >
           {isSaving ? (
             <ActivityIndicator size="small" color="#fff" />
