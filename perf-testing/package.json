@@ -1,0 +1,32 @@
+{
+  "name": "unify-perf-testing",
+  "version": "1.0.0",
+  "description": "Tests de performance pour Unify App",
+  "scripts": {
+    "seed": "node seed-database.js",
+    "perf:start": "docker-compose up -d",
+    "perf:stop": "docker-compose down",
+    "perf:restart": "docker-compose restart",
+    "perf:logs": "docker-compose logs -f",
+    "perf:clean": "docker-compose down -v",
+    "perf:build": "docker-compose build",
+    "test:load": "k6 run k6/load-test.js",
+    "test:stress": "k6 run k6/stress-test.js",
+    "test:spike": "k6 run k6/spike-test.js",
+    "test:soak": "k6 run k6/soak-test.js",
+    "test:nearby-runners": "k6 run k6/nearby-runners-test.js",
+    "test:contacts": "k6 run k6/contacts-test.js",
+    "test:stress-real": "k6 run k6/stress-real-endpoints-test.js",
+    "test:spike-real": "k6 run k6/spike-real-endpoints-test.js",
+    "test:soak-real": "k6 run k6/soak-real-endpoints-test.js",
+    "test:all": "npm run test:load && npm run test:nearby-runners && npm run test:contacts",
+    "test:all-real": "npm run test:nearby-runners && npm run test:stress-real && npm run test:spike-real"
+  },
+  "keywords": ["performance", "testing", "k6", "prometheus", "grafana"],
+  "author": "Unify Team",
+  "license": "MIT",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.80.0",
+    "dotenv": "^16.0.0"
+  }
+}

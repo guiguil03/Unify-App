@@ -1,0 +1,39 @@
+Parfait ! Analysons tes deux endpoints pour identifier les hypothèses de goulots AVANT mesure :
+:mag: Analyse du Code
+Endpoint 1 : GET /api/nearby-runners (lignes 307-410)
+Ce qui se passe :
+Query Supabase : récupère TOUS les users (100 rows) avec lat/lon
+Boucle sur 100 users : calcule distance Haversine pour chacun
+Filter + sort + slice côté application
+Query runners avec .in(userIds)
+Goulots identifiés :
+:red_circle: CPU/loop : Calculs Haversine × 100 users × 30 VUs = intensif
+:yellow_circle: DB : Pas de filtrage géographique côté DB → récupère tout
+:warning: Réseau : 100 rows récupérées alors qu'on en veut ~10-20
+Endpoint 2 : GET /api/contacts (lignes 439-543)
+Ce qui se passe :
+Deux queries Supabase en parallèle :
+WHERE user_id = X AND status = 'accepted'
+WHERE contact_id = X AND status = 'accepted'
+Joins avec users via foreign keys (pas de N+1 :white_check_mark:)
+Traitement mémoire pour symétrie
+Goulots identifiés :
+:red_circle: DB (indexes) : Pas d'index composite sur (user_id, status) et (contact_id, status)
+:green_circle: N+1 : Non présent (joins bien faits)
+:white_check_mark: Réponse pour ton Rapport
+Hypothèses de goulots (avant mesure) :[X] DB (indexes, N+1, pool)    - Endpoint contacts : index manquants sur (user_id, status) et (contact_id, status)    - Endpoint nearby-runners : pas de filtrage géographique côté DB (full table scan)[X] CPU/loop    - Endpoint nearby-runners : calculs Haversine sur 100 users à chaque requête    - Complexité O(n) où n = nombre total d'utilisateurs[ ] Cache    - Aucun système de cache implémenté (Redis, in-memory)    - Données recalculées à chaque requête[X] Réseau    - Endpoint nearby-runners : récupère 100 rows alors que ~10-20 nécessaires    - Transfert de données inutiles entre Supabase et app-exporter[ ] Autre : BaaS Supabase    - Free tier : limite de 500 req/min    - Pool de connexions limité (2 connexions simultanées)    - Rate limiting possible sous forte charge
+:bar_chart: Hypothèses Priorisées
+Rang	Goulot	Endpoint	Impact estimé	Facilité fix
+1	CPU/loop (Haversine)	nearby-runners	Élevé	Moyen
+2	DB indexes	contacts	Élevé	Facile
+3	Réseau (over-fetching)	nearby-runners	Moyen	Moyen
+4	Rate limiting Supabase	both	Moyen	Difficile
+:bulb: Version courte pour le rapport
+Si tu veux une version plus concise :
+Hypothèses de goulots (avant mesure) :
+
+[X] DB (indexes) - Pas d'index sur contacts(user_id, status)
+[X] CPU/loop - Calculs Haversine × 100 users (O(n))
+[ ] Cache - Aucun cache implémenté
+[X] Réseau - Over-fetching (100 users récupérés vs ~15 nécessaires)
+[X] Autre : Supabase free tier (rate limiting 500 req/min)

@@ -1,0 +1,55 @@
+# Règles d'alerte pour Unify App
+
+groups:
+  - name: unify_slo_alerts
+    interval: 30s
+    rules:
+      # Alerte si latence p95 dépasse le seuil
+      - alert: HighLatencyP95
+        expr: |
+          histogram_quantile(0.95, 
+            sum(rate(http_request_duration_seconds_bucket[5m])) by (le, route)
+          ) > 0.6
+        for: 2m
+        labels:
+          severity: warning
+          slo: latency
+        annotations:
+          summary: "Latence p95 élevée sur {{ $labels.route }}"
+          description: "La latence p95 est de {{ $value }}s (seuil: 0.6s)"
+
+      # Alerte si taux d'erreur 5xx dépasse le seuil
+      - alert: HighErrorRate
+        expr: |
+          sum(rate(http_requests_total{status_code=~"5.."}[5m])) by (route) 
+          / 
+          sum(rate(http_requests_total[5m])) by (route) 
+          * 100 > 5
+        for: 2m
+        labels:
+          severity: critical
+          slo: errors
+        annotations:
+          summary: "Taux d'erreur élevé sur {{ $labels.route }}"
+          description: "Le taux d'erreur 5xx est de {{ $value }}% (seuil: 5%)"
+
+      # Alerte si throughput est anormalement bas
+      - alert: LowThroughput
+        expr: |
+          sum(rate(http_requests_total[5m])) by (route) < 0.1
+        for: 5m
+        labels:
+          severity: info
+        annotations:
+          summary: "Throughput bas sur {{ $labels.route }}"
+          description: "Moins de 0.1 requête/sec pendant 5 minutes"
+
+      # Alerte si l'app est down
+      - alert: AppDown
+        expr: up{job="unify-app"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Application Unify est down"
+          description: "L'application ne répond plus depuis 1 minute"
