@@ -23,36 +23,49 @@ export default function ActivityDetailScreen({ route }: ActivityDetailScreenProp
   
   const activity = activities.find(a => a.id === activityId);
 
+  // Tous les Hooks doivent être appelés avant tout return conditionnel
+  const handleDelete = React.useCallback(() => {
+    if (activity) {
+      deleteActivity(activity.id);
+      navigation.goBack();
+    }
+  }, [activity, deleteActivity, navigation]);
+
+  React.useLayoutEffect(() => {
+    if (activity) {
+      navigation.setOptions({
+        headerRight: () => (
+          <DeleteActivityButton
+            onDelete={handleDelete}
+            style={styles.headerButton}
+          />
+        ),
+      });
+    }
+  }, [navigation, activity, handleDelete]);
+
   if (!activity) {
     return null;
   }
 
-  const initialRegion = activity.route?.coordinates[0] ? {
-    latitude: activity.route.coordinates[0].latitude,
-    longitude: activity.route.coordinates[0].longitude,
-    latitudeDelta: 0.01,
-    longitudeDelta: 0.01,
-  } : null;
-
-  const handleDelete = () => {
-    deleteActivity(activity.id);
-    navigation.goBack();
-  };
-
-  React.useLayoutEffect(() => {
-    navigation.setOptions({
-      headerRight: () => (
-        <DeleteActivityButton
-          onDelete={handleDelete}
-          style={styles.headerButton}
-        />
-      ),
-    });
-  }, [navigation]);
+  // Créer une région initiale par défaut même si les coordonnées existent
+  const initialRegion = activity.route?.coordinates && activity.route.coordinates.length > 0
+    ? {
+        latitude: activity.route.coordinates[0].latitude,
+        longitude: activity.route.coordinates[0].longitude,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      }
+    : {
+        latitude: 0,
+        longitude: 0,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      };
 
   return (
     <ScrollView style={styles.container}>
-      {activity.route && initialRegion && (
+      {activity.route && activity.route.coordinates && activity.route.coordinates.length > 0 && (
         <ActivityMap route={activity.route} initialRegion={initialRegion} />
       )}
 

@@ -20,6 +20,7 @@ interface LiveActivityProps {
     distance: number;
     duration: string;
     date: string;
+    trackedPath?: Array<{ latitude: number; longitude: number }>;
   }) => void;
   onCancel: () => void;
   route?: Route; // Parcours optionnel à suivre
@@ -30,6 +31,7 @@ export function LiveActivity({ onFinish, onCancel, route }: LiveActivityProps) {
   const [startTime] = useState(new Date());
   const [duration, setDuration] = useState(0);
   const [distance, setDistance] = useState(0);
+  const [trackedPath, setTrackedPath] = useState<Array<{ latitude: number; longitude: number; timestamp: number }>>([]);
   const { location, refreshLocation } = useLocation();
   const previousLocationRef = useRef<{ latitude: number; longitude: number } | null>(null);
   const activityIdRef = useRef<string | null>(null);
@@ -52,7 +54,7 @@ export function LiveActivity({ onFinish, onCancel, route }: LiveActivityProps) {
   // Activer le coureur quand la location est disponible
   useEffect(() => {
     const activateRunner = async () => {
-      if (isRunning) {
+      if (isRunning && trackedPath.length === 0) {
         // Essayer d'obtenir la location si elle n'est pas encore disponible
         let currentLocation = location;
         if (!currentLocation) {
@@ -71,6 +73,14 @@ export function LiveActivity({ onFinish, onCancel, route }: LiveActivityProps) {
               isActive: true,
             });
             previousLocationRef.current = { ...currentLocation };
+            
+            // Initialiser le tracé avec le point de départ
+            setTrackedPath([{ 
+              latitude: currentLocation.latitude, 
+              longitude: currentLocation.longitude,
+              timestamp: Math.floor((Date.now() - startTime.getTime()) / 1000)
+            }]);
+            
             console.log('✅ Coureur activé avec succès dans la table runners');
           } catch (error) {
             console.error('❌ Erreur lors de l\'activation du coureur:', error);
@@ -84,7 +94,7 @@ export function LiveActivity({ onFinish, onCancel, route }: LiveActivityProps) {
       }
     };
     activateRunner();
-  }, [location, isRunning, refreshLocation]);
+  }, [location, isRunning, refreshLocation, trackedPath.length]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -171,6 +181,43 @@ export function LiveActivity({ onFinish, onCancel, route }: LiveActivityProps) {
               activityId: activityIdRef.current || undefined,
             });
 
+            // Ajouter le point au tracé réel avec timestamp
+            setTrackedPath((prev) => {
+              const currentTimestamp = Math.floor((Date.now() - startTime.getTime()) / 1000);
+              
+              // Éviter d'ajouter des points trop proches (seuil de ~10m)
+              if (prev.length > 0) {
+                const lastPoint = prev[prev.length - 1];
+                const R = 6371; // Rayon de la Terre en km
+                const dLat = ((currentLocation.latitude - lastPoint.latitude) * Math.PI) / 180;
+                const dLon = ((currentLocation.longitude - lastPoint.longitude) * Math.PI) / 180;
+                const a =
+                  Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                  Math.cos((lastPoint.latitude * Math.PI) / 180) *
+                    Math.cos((currentLocation.latitude * Math.PI) / 180) *
+                    Math.sin(dLon / 2) *
+                    Math.sin(dLon / 2);
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+                const distanceKm = R * c;
+                
+                // Ajouter seulement si la distance est supérieure à ~10m (0.01 km)
+                if (distanceKm > 0.01) {
+                  return [...prev, { 
+                    latitude: currentLocation.latitude, 
+                    longitude: currentLocation.longitude,
+                    timestamp: currentTimestamp
+                  }];
+                }
+                return prev;
+              }
+              // Premier point
+              return [{ 
+                latitude: currentLocation.latitude, 
+                longitude: currentLocation.longitude,
+                timestamp: currentTimestamp
+              }];
+            });
+
             previousLocationRef.current = { ...currentLocation };
           }
         } catch (error) {
@@ -221,6 +268,9 @@ export function LiveActivity({ onFinish, onCancel, route }: LiveActivityProps) {
         month: "long",
         year: "numeric",
       }),
+      trackedPath: trackedPath.length > 0 
+        ? trackedPath.map(p => ({ latitude: p.latitude, longitude: p.longitude }))
+        : undefined,
     };
     onFinish(activity);
   };
@@ -241,28 +291,45 @@ export function LiveActivity({ onFinish, onCancel, route }: LiveActivityProps) {
 
   // Calculer la région de la carte pour afficher le parcours et la position actuelle
   const getMapRegion = () => {
+    const allLatitudes: number[] = [];
+    const allLongitudes: number[] = [];
+    
+    // Ajouter les points du parcours prévu
     if (route?.points && route.points.length > 0) {
-      const latitudes = route.points.map((p) => p.latitude);
-      const longitudes = route.points.map((p) => p.longitude);
+      route.points.forEach((p) => {
+        allLatitudes.push(p.latitude);
+        allLongitudes.push(p.longitude);
+      });
+    }
+    
+    // Ajouter les points du tracé réel
+    if (trackedPath.length > 0) {
+      trackedPath.forEach((p) => {
+        allLatitudes.push(p.latitude);
+        allLongitudes.push(p.longitude);
+      });
+    }
+    
+    // Ajouter la position actuelle
+    if (location) {
+      allLatitudes.push(location.latitude);
+      allLongitudes.push(location.longitude);
+    }
+    
+    if (allLatitudes.length > 0 && allLongitudes.length > 0) {
+      const minLat = Math.min(...allLatitudes);
+      const maxLat = Math.max(...allLatitudes);
+      const minLon = Math.min(...allLongitudes);
+      const maxLon = Math.max(...allLongitudes);
       
-      if (location) {
-        latitudes.push(location.latitude);
-        longitudes.push(location.longitude);
-      }
-      
-      const minLat = Math.min(...latitudes);
-      const maxLat = Math.max(...latitudes);
-      const minLon = Math.min(...longitudes);
-      const maxLon = Math.max(...longitudes);
-      
-      const latDelta = (maxLat - minLat) * 1.5 || 0.01;
-      const lonDelta = (maxLon - minLon) * 1.5 || 0.01;
+      const latDelta = Math.max((maxLat - minLat) * 1.5, 0.01);
+      const lonDelta = Math.max((maxLon - minLon) * 1.5, 0.01);
       
       return {
         latitude: (minLat + maxLat) / 2,
         longitude: (minLon + maxLon) / 2,
-        latitudeDelta: latDelta || 0.01,
-        longitudeDelta: lonDelta || 0.01,
+        latitudeDelta: latDelta,
+        longitudeDelta: lonDelta,
       };
     }
     
@@ -286,49 +353,73 @@ export function LiveActivity({ onFinish, onCancel, route }: LiveActivityProps) {
   return (
     <View style={styles.container}>
       {/* Carte avec le parcours */}
-      {route && route.points && route.points.length > 0 && (
-        <View style={styles.mapContainer}>
-          <MapView
-            style={styles.map}
-            initialRegion={getMapRegion() || undefined}
-            showsUserLocation
-            followsUserLocation={isRunning}
-          >
-            {/* Parcours à suivre */}
-            {routeCoordinates.length > 1 && (
-              <Polyline
-                coordinates={routeCoordinates}
-                strokeColor={COLORS.primary}
-                strokeWidth={4}
-              />
-            )}
-            {/* Point de départ */}
+      <View style={styles.mapContainer}>
+        <MapView
+          style={styles.map}
+          initialRegion={getMapRegion() || undefined}
+          region={getMapRegion() || undefined}
+          showsUserLocation
+          followsUserLocation={isRunning}
+        >
+          {/* Parcours à suivre (si disponible) */}
+          {route && routeCoordinates.length > 1 && (
+            <Polyline
+              coordinates={routeCoordinates}
+              strokeColor={COLORS.textLight}
+              strokeWidth={3}
+              lineDashPattern={[5, 5]}
+            />
+          )}
+          
+          {/* Tracé réel de la course en temps réel */}
+          {trackedPath.length > 1 && (
+            <Polyline
+              coordinates={trackedPath}
+              strokeColor={COLORS.primary}
+              strokeWidth={5}
+            />
+          )}
+          
+          {/* Point de départ du parcours prévu */}
+          {route && route.points && route.points.length > 0 && (
             <Marker
               coordinate={{
                 latitude: route.points[0].latitude,
                 longitude: route.points[0].longitude,
               }}
-              title="Départ"
+              title="Départ prévu"
               pinColor="green"
             />
-            {/* Point d'arrivée */}
-            {route.points.length > 1 && (
-              <Marker
-                coordinate={{
-                  latitude: route.points[route.points.length - 1].latitude,
-                  longitude: route.points[route.points.length - 1].longitude,
-                }}
-                title="Arrivée"
-                pinColor="red"
-              />
-            )}
-          </MapView>
+          )}
+          
+          {/* Point de départ du tracé réel */}
+          {trackedPath.length > 0 && (
+            <Marker
+              coordinate={trackedPath[0]}
+              title="Départ"
+              pinColor="blue"
+            />
+          )}
+          
+          {/* Point d'arrivée du parcours prévu */}
+          {route && route.points && route.points.length > 1 && (
+            <Marker
+              coordinate={{
+                latitude: route.points[route.points.length - 1].latitude,
+                longitude: route.points[route.points.length - 1].longitude,
+              }}
+              title="Arrivée prévue"
+              pinColor="red"
+            />
+          )}
+        </MapView>
+        {route && (
           <View style={styles.routeInfoOverlay}>
             <Text style={styles.routeInfoText}>{route.title}</Text>
             <Text style={styles.routeInfoSubtext}>{route.distance.toFixed(2)} km</Text>
           </View>
-        </View>
-      )}
+        )}
+      </View>
 
       <View style={styles.card}>
         <Text style={styles.title}>
@@ -504,3 +595,4 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 });
+

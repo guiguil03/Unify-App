@@ -69,12 +69,32 @@ export default function ActivitiesScreen() {
     distance: number;
     duration: string;
     date: string;
+    trackedPath?: Array<{ latitude: number; longitude: number }>;
   }) => {
     try {
+      // Convertir le tracé en format ActivityRoute avec timestamps
+      // On utilise des timestamps approximatifs basés sur l'ordre des points
+      const route = newActivity.trackedPath && newActivity.trackedPath.length > 0
+        ? {
+            coordinates: newActivity.trackedPath.map((point, index) => {
+              // Estimer le timestamp en fonction de la position dans le parcours
+              // On suppose que les points sont espacés d'environ 10 secondes
+              const estimatedTimestamp = index * 10;
+              return {
+                latitude: point.latitude,
+                longitude: point.longitude,
+                timestamp: estimatedTimestamp,
+              };
+            }),
+            pauses: [],
+          }
+        : undefined;
+
       await addActivity({
         distance: newActivity.distance,
         duration: newActivity.duration,
         date: newActivity.date,
+        route,
       });
       setIsLiveActivityActive(false);
     } catch (error) {

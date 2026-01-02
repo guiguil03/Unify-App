@@ -10,7 +10,6 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import MapView, { Polyline, Marker, PROVIDER_GOOGLE } from 'react-native-maps';
-import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { RoutesService } from '../services/RoutesService';
@@ -37,6 +36,7 @@ export default function CreateRouteScreen() {
   const [saving, setSaving] = useState(false);
   const [isDrawing, setIsDrawing] = useState(false);
   const [lastPoint, setLastPoint] = useState<{ latitude: number; longitude: number } | null>(null);
+  const lastPointRef = useRef<{ latitude: number; longitude: number } | null>(null);
   const [mapRegion, setMapRegion] = useState<any>(null);
   const [mapDimensions, setMapDimensions] = useState({ width: 0, height: 0 });
   const [mapPosition, setMapPosition] = useState({ x: 0, y: 0 });
@@ -56,155 +56,49 @@ export default function CreateRouteScreen() {
     }
   }, [location]);
 
-  // Fonction pour convertir les coordonnées de l'écran en coordonnées géographiques
-  const screenToCoordinate = (x: number, y: number, region: any, width: number, height: number) => {
-    try {
-      if (!region || width === 0 || height === 0) {
-        console.log('screenToCoordinate: paramètres invalides', { region: !!region, width, height });
-        return null;
-      }
-      
-      if (typeof x !== 'number' || typeof y !== 'number' || isNaN(x) || isNaN(y)) {
-        console.log('screenToCoordinate: coordonnées invalides', { x, y });
-        return null;
-      }
-      
-      // Calculer la latitude et longitude à partir des coordonnées de l'écran
-      // La latitude diminue vers le bas (y augmente)
-      // La longitude augmente vers la droite (x augmente)
-      const latitude = region.latitude - ((y - height / 2) / height) * region.latitudeDelta;
-      const longitude = region.longitude + ((x - width / 2) / width) * region.longitudeDelta;
-      
-      if (isNaN(latitude) || isNaN(longitude)) {
-        console.log('screenToCoordinate: résultat invalide', { latitude, longitude });
-        return null;
-      }
-      
-      return { latitude, longitude };
-    } catch (error) {
-      console.error('Erreur dans screenToCoordinate:', error);
-      return null;
-    }
-  };
-
-  // Fonction pour obtenir les coordonnées géographiques depuis les coordonnées de l'écran
-  const getCoordinateFromScreenPoint = async (x: number, y: number) => {
-    if (!mapRegion || mapDimensions.width === 0 || mapDimensions.height === 0) return null;
-
-    // Calcul manuel des coordonnées géographiques
-    // Les coordonnées x, y sont relatives au conteneur de la carte
-    return screenToCoordinate(x, y, mapRegion, mapDimensions.width, mapDimensions.height);
-  };
+  // Le tracé avec la main est temporairement désactivé
+  // Les fonctions de conversion de coordonnées ont été supprimées car non utilisées
 
   // Utiliser onPress de MapView pour capturer les coordonnées directement
   const handleMapPressInDrawingMode = (event: any) => {
     if (!isDrawing) return;
     
     const { latitude, longitude } = event.nativeEvent.coordinate;
-    const newPoint = { latitude, longitude };
-    
-    if (lastPoint) {
-      const distance = calculateDistance(
-        lastPoint.latitude,
-        lastPoint.longitude,
-        latitude,
-        longitude
-      );
-      
-      if (distance >= 0.003) {
-        setRoutePoints((prev) => [...prev, newPoint]);
-        setLastPoint(newPoint);
-      }
-    } else {
-      setRoutePoints((prev) => [...prev, newPoint]);
-      setLastPoint(newPoint);
-    }
+    addPointFromCoordinate(latitude, longitude);
   };
 
-
-  // Gesture pour le glissement - version simplifiée et sécurisée
-  const panGesture = React.useMemo(() => {
-    if (!isDrawing) {
-      return Gesture.Pan().enabled(false);
+  // Fonction pour ajouter un point depuis des coordonnées géographiques
+  const addPointFromCoordinate = React.useCallback((latitude: number, longitude: number) => {
+    try {
+      const newPoint = { latitude, longitude };
+      const prevPoint = lastPointRef.current;
+      
+      if (prevPoint) {
+        const distance = calculateDistance(
+          prevPoint.latitude,
+          prevPoint.longitude,
+          latitude,
+          longitude
+        );
+        
+        // Ajouter un point si la distance est suffisante (environ 300m)
+        if (distance >= 0.003) {
+          setRoutePoints((prev) => [...prev, newPoint]);
+          lastPointRef.current = newPoint;
+          setLastPoint(newPoint);
+        }
+      } else {
+        setRoutePoints((prev) => [...prev, newPoint]);
+        lastPointRef.current = newPoint;
+        setLastPoint(newPoint);
+      }
+    } catch (error) {
+      console.error('Erreur dans addPointFromCoordinate:', error);
     }
-    
-    return Gesture.Pan()
-      .minPointers(1)
-      .maxPointers(1)
-      .onStart((event) => {
-        try {
-          if (!mapRegion || !mapRegion.latitude || !mapRegion.longitude || 
-              mapDimensions.width === 0 || mapDimensions.height === 0) {
-            return;
-          }
-          
-          const x = event.x;
-          const y = event.y;
-          
-          if (typeof x !== 'number' || typeof y !== 'number' || isNaN(x) || isNaN(y)) {
-            return;
-          }
-          
-          const coordinate = screenToCoordinate(x, y, mapRegion, mapDimensions.width, mapDimensions.height);
-          if (coordinate && typeof coordinate.latitude === 'number' && typeof coordinate.longitude === 'number' &&
-              !isNaN(coordinate.latitude) && !isNaN(coordinate.longitude)) {
-            const newPoint = { latitude: coordinate.latitude, longitude: coordinate.longitude };
-            setRoutePoints((prev) => [...prev, newPoint]);
-            setLastPoint(newPoint);
-          }
-        } catch (error: any) {
-          const errorMsg = error?.message || String(error) || 'Erreur inconnue';
-          console.error('Erreur dans onStart:', errorMsg);
-        }
-      })
-      .onUpdate((event) => {
-        try {
-          if (!mapRegion || !mapRegion.latitude || !mapRegion.longitude || 
-              mapDimensions.width === 0 || mapDimensions.height === 0) {
-            return;
-          }
-          
-          const x = event.x;
-          const y = event.y;
-          
-          if (typeof x !== 'number' || typeof y !== 'number' || isNaN(x) || isNaN(y)) {
-            return;
-          }
-          
-          const coordinate = screenToCoordinate(x, y, mapRegion, mapDimensions.width, mapDimensions.height);
-          if (coordinate && typeof coordinate.latitude === 'number' && typeof coordinate.longitude === 'number' &&
-              !isNaN(coordinate.latitude) && !isNaN(coordinate.longitude)) {
-            setLastPoint((prevLastPoint) => {
-              if (prevLastPoint) {
-                const distance = calculateDistance(
-                  prevLastPoint.latitude,
-                  prevLastPoint.longitude,
-                  coordinate.latitude,
-                  coordinate.longitude
-                );
-                
-                if (distance >= 0.003) {
-                  const newPoint = { latitude: coordinate.latitude, longitude: coordinate.longitude };
-                  setRoutePoints((prev) => [...prev, newPoint]);
-                  return newPoint;
-                }
-                return prevLastPoint;
-              } else {
-                const newPoint = { latitude: coordinate.latitude, longitude: coordinate.longitude };
-                setRoutePoints((prev) => [...prev, newPoint]);
-                return newPoint;
-              }
-            });
-          }
-        } catch (error: any) {
-          const errorMsg = error?.message || String(error) || 'Erreur inconnue';
-          console.error('Erreur dans onUpdate:', errorMsg);
-        }
-      })
-      .onEnd(() => {
-        setLastPoint(null);
-      });
-  }, [isDrawing, mapRegion, mapDimensions.width, mapDimensions.height]);
+  }, []);
+
+  // Le tracé avec la main est temporairement désactivé pour éviter les erreurs
+  // On utilise seulement le mode clic pour ajouter des points
 
   // Nettoyer l'interval quand on quitte le mode dessin
   useEffect(() => {
@@ -213,6 +107,7 @@ export default function CreateRouteScreen() {
         clearInterval(drawingIntervalRef.current);
         drawingIntervalRef.current = null;
       }
+      lastPointRef.current = null;
       setLastPoint(null);
     }
     
@@ -450,28 +345,14 @@ export default function CreateRouteScreen() {
           )}
         </MapView>
         
-        {/* Overlay pour capturer les gestes de glissement */}
-        {isDrawing && (
-          <GestureDetector gesture={panGesture}>
-            <View 
-              style={StyleSheet.absoluteFill} 
-              pointerEvents="box-only"
-              onLayout={(event) => {
-                const { x, y, width, height } = event.nativeEvent.layout;
-                // Les coordonnées du geste sont déjà relatives à ce View
-              }}
-            />
-          </GestureDetector>
-        )}
-        
         {/* Instructions pour le mode dessin */}
         {isDrawing && (
           <View style={styles.drawingHint}>
             <View style={styles.drawingHintIcon}>
-              <MaterialCommunityIcons name="gesture" size={18} color="white" />
+              <MaterialCommunityIcons name="gesture-tap" size={18} color="white" />
             </View>
             <Text style={styles.drawingHintText}>
-              Glissez votre doigt sur la carte
+              Appuyez sur la carte pour ajouter des points
             </Text>
           </View>
         )}
