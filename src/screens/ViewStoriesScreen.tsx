@@ -8,11 +8,18 @@ import {
   Dimensions,
   Animated,
   ActivityIndicator,
+  TextInput,
+  Modal,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StoriesService, Story } from '../services/StoriesService';
+import { MessagesService } from '../services/MessagesService';
 import { RootStackParamList } from '../types/navigation';
+import { showSuccessToast, showErrorToast } from '../utils/errorHandler';
+import { COLORS } from '../constants/colors';
 
 type ViewStoriesRouteProp = RouteProp<RootStackParamList, 'ViewStories'>;
 
@@ -28,6 +35,9 @@ export default function ViewStoriesScreen() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [paused, setPaused] = useState(false);
+  const [showReactionModal, setShowReactionModal] = useState(false);
+  const [reactionText, setReactionText] = useState('');
+  const [isSendingReaction, setIsSendingReaction] = useState(false);
 
   const progressAnims = useRef<Animated.Value[]>([]);
   const progressTimers = useRef<NodeJS.Timeout[]>([]);
@@ -117,6 +127,41 @@ export default function ViewStoriesScreen() {
   };
 
   const handleLongPressOut = () => {
+    setPaused(false);
+  };
+
+  const handleReaction = () => {
+    setShowReactionModal(true);
+    setPaused(true);
+  };
+
+  const handleSendReaction = async () => {
+    if (!reactionText.trim() || isSendingReaction) return;
+
+    const currentStory = stories[currentIndex];
+    if (!currentStory) return;
+
+    setIsSendingReaction(true);
+    try {
+      await MessagesService.sendMessage(
+        currentStory.userId,
+        `Réaction à votre story: ${reactionText.trim()}`
+      );
+      showSuccessToast('Réaction envoyée !');
+      setShowReactionModal(false);
+      setReactionText('');
+      setPaused(false);
+    } catch (error) {
+      showErrorToast('Erreur lors de l\'envoi de la réaction');
+      setPaused(false);
+    } finally {
+      setIsSendingReaction(false);
+    }
+  };
+
+  const handleCloseReactionModal = () => {
+    setShowReactionModal(false);
+    setReactionText('');
     setPaused(false);
   };
 
@@ -229,6 +274,65 @@ export default function ViewStoriesScreen() {
         <MaterialCommunityIcons name="eye" size={16} color="#fff" />
         <Text style={styles.viewsText}>{currentStory.viewCount} vues</Text>
       </View>
+
+      {/* Bouton de réaction */}
+      <TouchableOpacity style={styles.reactionButton} onPress={handleReaction}>
+        <MaterialCommunityIcons name="message-outline" size={24} color="#fff" />
+      </TouchableOpacity>
+
+      {/* Modal de réaction */}
+      <Modal
+        visible={showReactionModal}
+        transparent
+        animationType="slide"
+        onRequestClose={handleCloseReactionModal}
+      >
+        <KeyboardAvoidingView
+          style={styles.modalContainer}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Réagir à la story</Text>
+                <TouchableOpacity onPress={handleCloseReactionModal}>
+                  <MaterialCommunityIcons name="close" size={24} color={COLORS.text} />
+                </TouchableOpacity>
+              </View>
+
+              <TextInput
+                style={styles.modalInput}
+                placeholder="Écrivez votre réaction..."
+                placeholderTextColor={COLORS.textLight}
+                value={reactionText}
+                onChangeText={setReactionText}
+                multiline
+                textAlignVertical="top"
+                maxLength={200}
+                autoFocus
+              />
+
+              <TouchableOpacity
+                style={[
+                  styles.modalSendButton,
+                  (!reactionText.trim() || isSendingReaction) && styles.modalSendButtonDisabled
+                ]}
+                onPress={handleSendReaction}
+                disabled={!reactionText.trim() || isSendingReaction}
+              >
+                {isSendingReaction ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <>
+                    <MaterialCommunityIcons name="send" size={20} color="#fff" />
+                    <Text style={styles.modalSendButtonText}>Envoyer</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }
@@ -367,6 +471,77 @@ const styles = StyleSheet.create({
   viewsText: {
     color: '#fff',
     fontSize: 14,
+  },
+  reactionButton: {
+    position: 'absolute',
+    bottom: 30,
+    right: 16,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(125, 128, 244, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  modalContainer: {
+    flex: 1,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: COLORS.background,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    paddingBottom: 40,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  modalInput: {
+    backgroundColor: COLORS.backgroundLight,
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
+    color: COLORS.text,
+    minHeight: 120,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  modalSendButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.primary,
+    borderRadius: 12,
+    padding: 16,
+    gap: 8,
+  },
+  modalSendButtonDisabled: {
+    backgroundColor: COLORS.border,
+    opacity: 0.6,
+  },
+  modalSendButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 

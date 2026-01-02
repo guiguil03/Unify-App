@@ -10,4 +10,7 @@ export interface Runner {
   bio?: string;
   isActive?: boolean;
   lastSeen?: string;
+  gender?: string;
+  averagePace?: string;
+  preferredTime?: string;
 }

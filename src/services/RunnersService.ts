@@ -46,6 +46,9 @@ export class RunnersService {
           name,
           avatar,
           bio,
+          gender,
+          average_pace,
+          preferred_time,
           last_latitude,
           last_longitude,
           updated_at
@@ -104,6 +107,9 @@ export class RunnersService {
           bio: user.bio,
           isActive: runnerInfo?.is_active || false,
           lastSeen: runnerInfo?.updated_at || user.updated_at,
+          gender: user.gender,
+          averagePace: user.average_pace,
+          preferredTime: user.preferred_time,
         };
       });
     } catch (error) {

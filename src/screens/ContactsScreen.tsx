@@ -18,7 +18,6 @@ import { ContactsService } from '../services/ContactsService';
 import { Contact, ContactRequest, ContactRelationshipStatus } from '../types/contact';
 import { showSuccessToast, showErrorToast, showInfoToast } from '../utils/errorHandler';
 import { NavigationProp } from '../types/navigation';
-import { ScreenHeader } from '../components/common/ScreenHeader';
 import { BottomNav } from '../components/common/BottomNav';
 
 type Tab = 'friends' | 'requests' | 'search';
@@ -196,7 +195,6 @@ export default function ContactsScreen() {
 
   return (
     <View style={styles.container}>
-      <ScreenHeader title="Contacts" />
       {/* Tabs */}
       <View style={styles.tabs}>
         <TouchableOpacity

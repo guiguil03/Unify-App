@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   Image,
   Alert,
+  SafeAreaView,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -18,7 +19,6 @@ import * as ImagePicker from 'expo-image-picker';
 import { PostsService } from '../services/PostsService';
 import { COLORS } from '../constants/colors';
 import { showSuccessToast, showErrorToast } from '../utils/errorHandler';
-import { ScreenHeader } from '../components/common/ScreenHeader';
 
 export default function CreatePostScreen() {
   const navigation = useNavigation();
@@ -80,17 +80,28 @@ export default function CreatePostScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <ScreenHeader title="Créer un post" />
-      
-      <ScrollView 
-        style={styles.content} 
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
+    <SafeAreaView style={styles.safeArea}>
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity 
+            onPress={() => navigation.goBack()}
+            style={styles.backButton}
+          >
+            <MaterialCommunityIcons name="arrow-left" size={24} color="#333" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Créer un post</Text>
+          <View style={styles.headerSpacer} />
+        </View>
+        
+        <ScrollView 
+          style={styles.content} 
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
         <View style={styles.inputContainer}>
           <TextInput
             style={styles.textInput}
@@ -143,21 +154,65 @@ export default function CreatePostScreen() {
           )}
         </TouchableOpacity>
       </View>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
   container: {
     flex: 1,
     backgroundColor: COLORS.backgroundLight,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: '#fff',
+    paddingTop: 8,
+  },
+  backButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  headerSpacer: {
+    width: 56,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#7D80F4',
+    paddingHorizontal: 24,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
   content: {
     flex: 1,
   },
   scrollContent: {
     padding: 16,
-    paddingTop: 32,
+    paddingTop: 16,
     paddingBottom: 20,
   },
   inputContainer: {

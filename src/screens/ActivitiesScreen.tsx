@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, ScrollView, StyleSheet, TouchableOpacity } from "react-native";
+import { View, ScrollView, StyleSheet, TouchableOpacity, Text } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { ActivityCard } from "../components/activities/ActivityCard";
@@ -68,15 +68,25 @@ export default function ActivitiesScreen() {
 
   return (
     <View style={styles.container}>
-      <ScrollView style={styles.scrollView}>
-        {activities.map((activity) => (
-          <ActivityCard
-            key={activity.id}
-            activity={activity}
-            onPress={handleActivityPress}
-            onDelete={deleteActivity}
-          />
-        ))}
+      <ScrollView style={styles.scrollView} contentContainerStyle={activities.length === 0 ? styles.emptyContainer : undefined}>
+        {activities.length === 0 ? (
+          <View style={styles.emptyState}>
+            <MaterialCommunityIcons name="run" size={64} color="#ccc" />
+            <Text style={styles.emptyText}>Aucune activité</Text>
+            <Text style={styles.emptySubtext}>
+              Commencez votre première course en appuyant sur le bouton +
+            </Text>
+          </View>
+        ) : (
+          activities.map((activity) => (
+            <ActivityCard
+              key={activity.id}
+              activity={activity}
+              onPress={handleActivityPress}
+              onDelete={deleteActivity}
+            />
+          ))
+        )}
       </ScrollView>
 
       <TouchableOpacity
@@ -106,6 +116,31 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 16,
     paddingBottom: 100,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 60,
+  },
+  emptyState: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 60,
+  },
+  emptyText: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#666",
+    marginTop: 16,
+    textAlign: "center",
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: "#999",
+    marginTop: 8,
+    textAlign: "center",
+    paddingHorizontal: 40,
   },
   fab: {
     position: "absolute",

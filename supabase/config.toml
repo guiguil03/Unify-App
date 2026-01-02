@@ -1,0 +1,5 @@
+# Configuration des Edge Functions Supabase
+
+[functions.stripe-webhook]
+verify_jwt = false
+

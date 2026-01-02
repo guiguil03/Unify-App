@@ -4,8 +4,8 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { ProfileHeader } from '../components/profile/ProfileHeader';
 import { ProfileStats } from '../components/profile/ProfileStats';
 import { ProfileInfo } from '../components/profile/ProfileInfo';
+import { SubscriptionCard } from '../components/profile/SubscriptionCard';
 import { useProfile } from '../hooks/useProfile';
-import { ScreenHeader } from '../components/common/ScreenHeader';
 import { BottomNav } from '../components/common/BottomNav';
 import { PostsService } from '../services/PostsService';
 import { StoriesService, Story } from '../services/StoriesService';
@@ -124,7 +124,6 @@ export default function ProfileScreen() {
 
   return (
     <View style={styles.container}>
-      <ScreenHeader title="Profil" />
       <ScrollView 
         contentContainerStyle={styles.contentContainer}
         refreshControl={
@@ -133,6 +132,7 @@ export default function ProfileScreen() {
       >
         <ProfileHeader profile={profile} />
         <ProfileStats stats={profile.stats} />
+        <SubscriptionCard />
         <ProfileInfo profile={profile} />
 
         {/* Section Posts et Stories */}

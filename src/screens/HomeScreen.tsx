@@ -12,7 +12,6 @@ import {
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { StoriesRow } from "../components/stories/StoriesRow";
-import { ScreenHeader } from "../components/common/ScreenHeader";
 import { BottomNav } from "../components/common/BottomNav";
 import { PostCard } from "../components/posts/PostCard";
 import { usePosts } from "../hooks/usePosts";
@@ -44,7 +43,6 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScreenHeader title="Accueil" showSearch />
 
       {/* Content */}
       <ScrollView

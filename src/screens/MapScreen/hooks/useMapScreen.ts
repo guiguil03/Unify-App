@@ -3,8 +3,10 @@ import { useNavigation } from "@react-navigation/native";
 import MapView from "react-native-maps";
 import { useLocation } from "../../../hooks/useLocation";
 import { useContacts } from "../../../hooks/useContacts";
+import { useSettings } from "../../../hooks/useSettings";
+import { useProfile } from "../../../hooks/useProfile";
 import { useRealtimeRunners } from "../../../hooks/useRealtimeRunners";
-import { filterRunnersByDistance } from "../../../utils/runners";
+import { filterRunnersByDistance, filterRunnersByPreferences } from "../../../utils/runners";
 import { createRegionFromLocation, createRegionFromRadius } from "../../../utils/map/region";
 import { RunnersService } from "../../../services/RunnersService";
 import { MAP_DEFAULTS } from "../../../constants/mapDefaults";
@@ -20,6 +22,8 @@ export function useMapScreen() {
   const navigation = useNavigation<NavigationProp>();
   const { location, loading, refreshLocation } = useLocation();
   const { contacts, relationships, addContact } = useContacts();
+  const { settings } = useSettings();
+  const { profile } = useProfile();
 
   const [state, setState] = useState({
     selectedLocation: null as Location | null,
@@ -54,10 +58,19 @@ export function useMapScreen() {
       );
       
       // Filtrer par distance avec le rayon de recherche
-      const filtered = filterRunnersByDistance(
+      let filtered = filterRunnersByDistance(
         nearbyRunners,
         center,
         radius
+      );
+
+      // Appliquer les filtres de préférences
+      filtered = filterRunnersByPreferences(
+        filtered,
+        settings,
+        profile?.gender,
+        profile?.stats?.averagePace,
+        profile?.preferredTime
       );
 
       setState(prev => ({
@@ -74,7 +87,7 @@ export function useMapScreen() {
         loadingRunners: false,
       }));
     }
-  }, []);
+  }, [settings, profile]);
 
   // Charger les coureurs au démarrage et mettre à jour la position de l'utilisateur
   useEffect(() => {
@@ -115,7 +128,7 @@ export function useMapScreen() {
       const searchCenter = state.selectedLocation || location;
       loadNearbyRunners(searchCenter, state.searchRadius);
     }
-  }, [state.searchRadius, state.activeSearchZone, location, state.selectedLocation, loadNearbyRunners]);
+  }, [state.searchRadius, state.activeSearchZone, location, state.selectedLocation, loadNearbyRunners, settings, profile]);
 
   const handlers = {
     handleLocationSelect: (location: Location, address: string) => {

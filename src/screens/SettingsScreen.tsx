@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -12,11 +12,59 @@ import {
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useSettings } from "../hooks/useSettings";
 import { useAuth } from "../contexts/AuthContext";
-import { ScreenHeader } from "../components/common/ScreenHeader";
+import { IdentityVerificationModal } from "../components/identity/IdentityVerificationModal";
+import { IdentityVerificationService } from "../services/IdentityVerificationService";
+import { IdentityVerification } from "../types/identityVerification";
+import { COLORS } from "../constants/colors";
 
 export default function SettingsScreen() {
   const { settings, loading, updateSetting } = useSettings();
   const { signOut, user } = useAuth();
+  const [verification, setVerification] = useState<IdentityVerification | null>(null);
+  const [loadingVerification, setLoadingVerification] = useState(true);
+  const [showVerificationModal, setShowVerificationModal] = useState(false);
+
+  useEffect(() => {
+    loadVerification();
+  }, []);
+
+  const loadVerification = async () => {
+    try {
+      setLoadingVerification(true);
+      const verif = await IdentityVerificationService.getVerification();
+      setVerification(verif);
+    } catch (error) {
+      console.error('Erreur lors du chargement de la vérification:', error);
+    } finally {
+      setLoadingVerification(false);
+    }
+  };
+
+  const getStatusColor = (status?: string) => {
+    switch (status) {
+      case 'verified':
+        return COLORS.success;
+      case 'rejected':
+        return COLORS.error;
+      case 'pending':
+        return '#FFA500';
+      default:
+        return '#999';
+    }
+  };
+
+  const getStatusText = (status?: string) => {
+    switch (status) {
+      case 'verified':
+        return 'Vérifié';
+      case 'rejected':
+        return 'Rejeté';
+      case 'pending':
+        return 'En attente';
+      default:
+        return 'Non vérifié';
+    }
+  };
 
   const handleLogout = () => {
     Alert.alert(
@@ -46,7 +94,6 @@ export default function SettingsScreen() {
 
   return (
     <View style={styles.container}>
-      <ScreenHeader title="Paramètres" showSearch={false} />
       <ScrollView>
         {user && (
           <View style={styles.userSection}>
@@ -58,6 +105,56 @@ export default function SettingsScreen() {
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Sécurité et confidentialité</Text>
+
+        {/* Vérification d'identité */}
+        <View style={styles.setting}>
+          <View style={styles.settingHeader}>
+            <MaterialCommunityIcons
+              name="shield-check"
+              size={24}
+              color="#7D80F4"
+            />
+            <Text style={styles.settingTitle}>Vérification d'identité</Text>
+          </View>
+          <Text style={styles.settingDescription}>
+            Vérifiez votre identité pour renforcer la sécurité de la communauté
+          </Text>
+          {loadingVerification ? (
+            <ActivityIndicator size="small" color="#7D80F4" style={{ marginTop: 12 }} />
+          ) : (
+            <View style={styles.verificationContainer}>
+              <View style={styles.verificationStatus}>
+                <View
+                  style={[
+                    styles.statusIndicator,
+                    { backgroundColor: getStatusColor(verification?.status) },
+                  ]}
+                />
+                <Text style={styles.statusText}>
+                  {getStatusText(verification?.status)}
+                </Text>
+              </View>
+              {verification?.rejectionReason && (
+                <Text style={styles.rejectionReason}>
+                  Raison: {verification.rejectionReason}
+                </Text>
+              )}
+              <TouchableOpacity
+                style={styles.verificationButton}
+                onPress={() => setShowVerificationModal(true)}
+              >
+                <MaterialCommunityIcons
+                  name={verification ? "pencil" : "upload"}
+                  size={20}
+                  color="white"
+                />
+                <Text style={styles.verificationButtonText}>
+                  {verification ? "Mettre à jour" : "Vérifier mon identité"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
 
         <View style={styles.setting}>
           <View style={styles.settingHeader}>
@@ -189,6 +286,14 @@ export default function SettingsScreen() {
         )}
       </View>
       </ScrollView>
+
+      <IdentityVerificationModal
+        visible={showVerificationModal}
+        onClose={() => setShowVerificationModal(false)}
+        onSuccess={() => {
+          loadVerification();
+        }}
+      />
     </View>
   );
 }
@@ -267,6 +372,45 @@ const styles = StyleSheet.create({
   logoutButtonText: {
     color: "white",
     fontSize: 16,
+    fontWeight: "600",
+  },
+  verificationContainer: {
+    marginTop: 12,
+  },
+  verificationStatus: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+    gap: 8,
+  },
+  statusIndicator: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
+  statusText: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#333",
+  },
+  rejectionReason: {
+    fontSize: 12,
+    color: COLORS.error,
+    marginBottom: 12,
+    fontStyle: "italic",
+  },
+  verificationButton: {
+    backgroundColor: COLORS.primary,
+    borderRadius: 8,
+    padding: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  verificationButtonText: {
+    color: "white",
+    fontSize: 14,
     fontWeight: "600",
   },
 });

@@ -5,12 +5,14 @@ import {
   StyleSheet,
   TouchableOpacity,
   Image,
+  TextInput,
+  ScrollView,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Post } from '../../types/post';
+import { Post, Comment } from '../../types/post';
 import { COLORS } from '../../constants/colors';
 import { PostsService } from '../../services/PostsService';
-import { showErrorToast } from '../../utils/errorHandler';
+import { showErrorToast, showSuccessToast } from '../../utils/errorHandler';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface PostCardProps {
@@ -25,6 +27,12 @@ export function PostCard({ post, onLike, onDelete, isOwnPost }: PostCardProps) {
   const [isLiked, setIsLiked] = React.useState(post.isLiked || false);
   const [likesCount, setLikesCount] = React.useState(post.likesCount);
   const [isToggling, setIsToggling] = React.useState(false);
+  const [comments, setComments] = React.useState<Comment[]>([]);
+  const [showComments, setShowComments] = React.useState(false);
+  const [commentText, setCommentText] = React.useState('');
+  const [isLoadingComments, setIsLoadingComments] = React.useState(false);
+  const [isSubmittingComment, setIsSubmittingComment] = React.useState(false);
+  const [commentsCount, setCommentsCount] = React.useState(post.commentsCount);
   
   // Vérifier si c'est le post de l'utilisateur actuel
   const isUserPost = isOwnPost !== undefined ? isOwnPost : post.userId === user?.id;
@@ -65,6 +73,47 @@ export function PostCard({ post, onLike, onDelete, isOwnPost }: PostCardProps) {
       onDelete(post.id);
     } catch (error) {
       showErrorToast('Erreur lors de la suppression');
+    }
+  };
+
+  const loadComments = async () => {
+    if (showComments && comments.length === 0 && !isLoadingComments) {
+      setIsLoadingComments(true);
+      try {
+        const postComments = await PostsService.getPostComments(post.id);
+        setComments(postComments);
+      } catch (error) {
+        showErrorToast('Erreur lors du chargement des commentaires');
+      } finally {
+        setIsLoadingComments(false);
+      }
+    }
+  };
+
+  React.useEffect(() => {
+    if (showComments) {
+      loadComments();
+    }
+  }, [showComments]);
+
+  const handleToggleComments = () => {
+    setShowComments(!showComments);
+  };
+
+  const handleAddComment = async () => {
+    if (!commentText.trim() || isSubmittingComment) return;
+
+    setIsSubmittingComment(true);
+    try {
+      const newComment = await PostsService.addComment(post.id, { content: commentText });
+      setComments([...comments, newComment]);
+      setCommentsCount(commentsCount + 1);
+      setCommentText('');
+      showSuccessToast('Commentaire ajouté');
+    } catch (error) {
+      showErrorToast('Erreur lors de l\'ajout du commentaire');
+    } finally {
+      setIsSubmittingComment(false);
     }
   };
 
@@ -132,15 +181,88 @@ export function PostCard({ post, onLike, onDelete, isOwnPost }: PostCardProps) {
           </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.actionButton}>
-          <MaterialCommunityIcons name="comment-outline" size={24} color={COLORS.textLight} />
-          <Text style={styles.actionText}>{post.commentsCount}</Text>
+        <TouchableOpacity 
+          style={styles.actionButton}
+          onPress={handleToggleComments}
+        >
+          <MaterialCommunityIcons 
+            name={showComments ? "comment" : "comment-outline"} 
+            size={24} 
+            color={showComments ? COLORS.primary : COLORS.textLight} 
+          />
+          <Text style={[styles.actionText, showComments && styles.actionTextLiked]}>
+            {commentsCount}
+          </Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.actionButton}>
           <MaterialCommunityIcons name="share-outline" size={24} color={COLORS.textLight} />
         </TouchableOpacity>
       </View>
+
+      {/* Section des commentaires */}
+      {showComments && (
+        <View style={styles.commentsSection}>
+          <ScrollView style={styles.commentsList} nestedScrollEnabled>
+            {isLoadingComments ? (
+              <Text style={styles.commentPlaceholder}>Chargement des commentaires...</Text>
+            ) : comments.length === 0 ? (
+              <Text style={styles.commentPlaceholder}>Aucun commentaire</Text>
+            ) : (
+              comments.map((comment) => (
+                <View key={comment.id} style={styles.commentItem}>
+                  {comment.userAvatar ? (
+                    <Image source={{ uri: comment.userAvatar }} style={styles.commentAvatar} />
+                  ) : (
+                    <View style={[styles.commentAvatar, styles.commentAvatarPlaceholder]}>
+                      <MaterialCommunityIcons name="account" size={16} color={COLORS.textLight} />
+                    </View>
+                  )}
+                  <View style={styles.commentContent}>
+                    <Text style={styles.commentUserName}>{comment.userName}</Text>
+                    <Text style={styles.commentText}>{comment.content}</Text>
+                    <Text style={styles.commentTime}>{formatDate(comment.createdAt)}</Text>
+                  </View>
+                </View>
+              ))
+            )}
+          </ScrollView>
+
+          {/* Input pour ajouter un commentaire */}
+          <View style={styles.commentInputContainer}>
+            {user?.avatar ? (
+              <Image source={{ uri: user.avatar }} style={styles.commentInputAvatar} />
+            ) : (
+              <View style={[styles.commentInputAvatar, styles.commentInputAvatarPlaceholder]}>
+                <MaterialCommunityIcons name="account" size={16} color={COLORS.textLight} />
+              </View>
+            )}
+            <TextInput
+              style={styles.commentInput}
+              placeholder="Ajouter un commentaire..."
+              placeholderTextColor={COLORS.textLight}
+              value={commentText}
+              onChangeText={setCommentText}
+              multiline
+              editable={!isSubmittingComment}
+            />
+            <TouchableOpacity
+              onPress={handleAddComment}
+              disabled={!commentText.trim() || isSubmittingComment}
+              style={[
+                styles.commentSendButton,
+                (!commentText.trim() || isSubmittingComment) && styles.commentSendButtonDisabled
+              ]}
+            >
+              <MaterialCommunityIcons
+                name="send"
+                size={20}
+                color={commentText.trim() && !isSubmittingComment ? COLORS.primary : COLORS.textLight}
+              />
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
     </View>
   );
 }
@@ -233,5 +355,91 @@ const styles = StyleSheet.create({
   actionTextLiked: {
     color: COLORS.primary,
     fontWeight: '600',
+  },
+  commentsSection: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+    maxHeight: 300,
+  },
+  commentsList: {
+    maxHeight: 200,
+    marginBottom: 12,
+  },
+  commentPlaceholder: {
+    color: COLORS.textLight,
+    fontSize: 14,
+    textAlign: 'center',
+    paddingVertical: 12,
+  },
+  commentItem: {
+    flexDirection: 'row',
+    marginBottom: 12,
+  },
+  commentAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    marginRight: 10,
+  },
+  commentAvatarPlaceholder: {
+    backgroundColor: COLORS.backgroundLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  commentContent: {
+    flex: 1,
+  },
+  commentUserName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.text,
+    marginBottom: 4,
+  },
+  commentText: {
+    fontSize: 14,
+    color: COLORS.text,
+    lineHeight: 20,
+    marginBottom: 4,
+  },
+  commentTime: {
+    fontSize: 12,
+    color: COLORS.textLight,
+  },
+  commentInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+  },
+  commentInputAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    marginRight: 10,
+  },
+  commentInputAvatarPlaceholder: {
+    backgroundColor: COLORS.backgroundLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  commentInput: {
+    flex: 1,
+    backgroundColor: COLORS.backgroundLight,
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    fontSize: 14,
+    color: COLORS.text,
+    maxHeight: 100,
+  },
+  commentSendButton: {
+    marginLeft: 8,
+    padding: 8,
+  },
+  commentSendButtonDisabled: {
+    opacity: 0.5,
   },
 });

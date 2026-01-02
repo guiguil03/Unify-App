@@ -3,7 +3,7 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { RootStackParamList } from "./types/navigation";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { StyleSheet, Text, View, ActivityIndicator } from "react-native";
+import { StyleSheet, Text, View, ActivityIndicator, TouchableWithoutFeedback } from "react-native";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import Toast, { BaseToast, ErrorToast } from "react-native-toast-message";
 
@@ -25,10 +25,31 @@ import CreateStoryScreen from "./screens/CreateStoryScreen";
 import ViewStoriesScreen from "./screens/ViewStoriesScreen";
 import CreatePostScreen from "./screens/CreatePostScreen";
 import { OnboardingChecker } from "./components/OnboardingChecker";
+import { TouchableOpacity } from "react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 console.log("=== DÉMARRAGE DE L'APPLICATION UNIFY ===");
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
+
+// Composant pour les boutons du header (réglages et messages)
+const HeaderButtons = ({ navigation }: { navigation: any }) => (
+  <TouchableWithoutFeedback
+    onPress={() => navigation.navigate("Messages")}
+    style={{  backgroundColor: 'blue' }}
+  >
+    <MaterialCommunityIcons name="message-outline" size={24} color="white" />
+</TouchableWithoutFeedback>
+);
+
+const HeaderLeft = ({ navigation }: { navigation: any }) => (
+  <TouchableOpacity
+    onPress={() => navigation.navigate("Settings")}
+    style={{ marginLeft: 6, backgroundColor: 'transparent' }}
+  >
+    <MaterialCommunityIcons name="cog-outline" size={24} color="white" />
+  </TouchableOpacity>
+);
 
 // Stack pour utilisateurs non authentifiés
 function AuthStack() {
@@ -62,17 +83,29 @@ function AppStack() {
         <Stack.Screen
           name="Home"
           component={HomeScreen}
-          options={{ title: "Unify" }}
+          options={({ navigation }) => ({
+            title: "Accueil",
+            headerLeft: () => <HeaderLeft navigation={navigation} />,
+            headerRight: () => <HeaderButtons navigation={navigation} />,
+          })}
         />
       <Stack.Screen
         name="Map"
         component={MapScreen}
-        options={{ title: "Carte" }}
+        options={({ navigation }) => ({
+          title: "Carte",
+          headerLeft: () => <HeaderLeft navigation={navigation} />,
+          headerRight: () => <HeaderButtons navigation={navigation} />,
+        })}
       />
       <Stack.Screen
         name="Activities"
         component={ActivitiesScreen}
-        options={{ title: "Mes Activités" }}
+        options={({ navigation }) => ({
+          title: "Mes Activités",
+          headerLeft: () => <HeaderLeft navigation={navigation} />,
+          headerRight: () => <HeaderButtons navigation={navigation} />,
+        })}
       />
       <Stack.Screen
         name="ActivityDetail"
@@ -82,12 +115,20 @@ function AppStack() {
       <Stack.Screen
         name="Events"
         component={EventsScreen}
-        options={{ title: "Événements" }}
+        options={({ navigation }) => ({
+          title: "Événements",
+          headerLeft: () => <HeaderLeft navigation={navigation} />,
+          headerRight: () => <HeaderButtons navigation={navigation} />,
+        })}
       />
       <Stack.Screen
         name="Profile"
         component={ProfileScreen}
-        options={{ title: "Mon Profil" }}
+        options={({ navigation }) => ({
+          title: "Mon Profil",
+          headerLeft: () => <HeaderLeft navigation={navigation} />,
+          headerRight: () => <HeaderButtons navigation={navigation} />,
+        })}
       />
       <Stack.Screen
         name="EditProfile"
@@ -100,12 +141,19 @@ function AppStack() {
       <Stack.Screen
         name="Contacts"
         component={ContactsScreen}
-        options={{ title: "Contacts" }}
+        options={({ navigation }) => ({
+          title: "Contacts",
+          headerLeft: () => <HeaderLeft navigation={navigation} />,
+          headerRight: () => <HeaderButtons navigation={navigation} />,
+        })}
       />
       <Stack.Screen
         name="Messages"
         component={MessagesScreen}
-        options={{ title: "Messages" }}
+        options={({ navigation }) => ({
+          title: "Messages",
+          headerLeft: () => <HeaderLeft navigation={navigation} />,
+        })}
       />
       <Stack.Screen
         name="Chat"
@@ -117,7 +165,7 @@ function AppStack() {
       <Stack.Screen
         name="Settings"
         component={SettingsScreen}
-        options={{ title: "Parametres" }}
+        options={{ title: "Paramètres" }}
       />
       <Stack.Screen
         name="CreateStory"

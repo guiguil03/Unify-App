@@ -1,7 +1,7 @@
 // src/services/PostsService.ts
 import { supabase } from '../config/supabase';
 import { getCurrentUserFromDB } from '../utils/supabaseHelpers';
-import { Post, CreatePostData } from '../types/post';
+import { Post, CreatePostData, Comment, CreateCommentData } from '../types/post';
 
 export class PostsService {
   /**
@@ -240,6 +240,106 @@ export class PostsService {
       if (error) throw error;
     } catch (error: any) {
       console.error('Erreur lors de la suppression du post:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Récupère les commentaires d'un post
+   */
+  static async getPostComments(postId: string): Promise<Comment[]> {
+    try {
+      const currentUser = await getCurrentUserFromDB();
+      if (!currentUser) {
+        throw new Error('Utilisateur non authentifié');
+      }
+
+      const { data: comments, error } = await supabase
+        .from('post_comments')
+        .select('*')
+        .eq('post_id', postId)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+
+      // Récupérer les informations des utilisateurs
+      const userIds = [...new Set((comments || []).map((c: any) => c.user_id))];
+      const { data: users } = await supabase
+        .from('users')
+        .select('id, name, avatar')
+        .in('id', userIds);
+
+      const usersMap = new Map((users || []).map((u: any) => [u.id, u]));
+
+      return (comments || []).map((comment: any) => {
+        const user = usersMap.get(comment.user_id);
+        return {
+          id: comment.id,
+          postId: comment.post_id,
+          userId: comment.user_id,
+          userName: user?.name || 'Utilisateur inconnu',
+          userAvatar: user?.avatar,
+          content: comment.content,
+          createdAt: comment.created_at,
+        };
+      });
+    } catch (error: any) {
+      console.error('Erreur lors de la récupération des commentaires:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Ajoute un commentaire à un post
+   */
+  static async addComment(postId: string, commentData: CreateCommentData): Promise<Comment> {
+    try {
+      const currentUser = await getCurrentUserFromDB();
+      if (!currentUser) {
+        throw new Error('Utilisateur non authentifié');
+      }
+
+      if (!commentData.content.trim()) {
+        throw new Error('Le contenu du commentaire est requis');
+      }
+
+      const { data: comment, error } = await supabase
+        .from('post_comments')
+        .insert({
+          post_id: postId,
+          user_id: currentUser.id,
+          content: commentData.content.trim(),
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Mettre à jour le compteur de commentaires
+      const { data: postData } = await supabase
+        .from('posts')
+        .select('comments_count')
+        .eq('id', postId)
+        .single();
+      
+      if (postData) {
+        await supabase
+          .from('posts')
+          .update({ comments_count: (postData.comments_count || 0) + 1 })
+          .eq('id', postId);
+      }
+
+      return {
+        id: comment.id,
+        postId: comment.post_id,
+        userId: comment.user_id,
+        userName: currentUser.name || 'Utilisateur inconnu',
+        userAvatar: currentUser.avatar,
+        content: comment.content,
+        createdAt: comment.created_at,
+      };
+    } catch (error: any) {
+      console.error('Erreur lors de l\'ajout du commentaire:', error);
       throw error;
     }
   }

@@ -6,7 +6,6 @@ import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { ErrorMessage } from '../components/common/ErrorMessage';
 import { useNavigation } from '@react-navigation/native';
 import { NavigationProp } from '../types/navigation';
-import { ScreenHeader } from '../components/common/ScreenHeader';
 
 export default function MessagesScreen() {
   const { messages, loading, error } = useMessages();
@@ -26,7 +25,6 @@ export default function MessagesScreen() {
 
   return (
     <View style={styles.container}>
-      <ScreenHeader title="Messages" showSearch={false} />
       <FlatList
         data={messages}
         keyExtractor={(item) => item.id}
