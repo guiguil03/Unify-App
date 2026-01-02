@@ -7,10 +7,15 @@ import { Profile } from '../../types/profile';
 
 interface ProfileInfoProps {
   profile: Profile;
+  editable?: boolean;
 }
 
-export function ProfileInfo({ profile }: ProfileInfoProps) {
+export function ProfileInfo({ profile, editable = true }: ProfileInfoProps) {
   const navigation = useNavigation<NavigationProp>();
+
+  const handleRoutesPress = () => {
+    navigation.navigate('Routes');
+  };
 
   // Mapper les valeurs aux labels
   const getLevelLabel = (level?: string) => {
@@ -65,9 +70,11 @@ export function ProfileInfo({ profile }: ProfileInfoProps) {
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>À propos</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('EditProfile')}>
-            <MaterialCommunityIcons name="pencil" size={20} color="#7D80F4" />
-          </TouchableOpacity>
+          {editable && (
+            <TouchableOpacity onPress={() => navigation.navigate('EditProfile')}>
+              <MaterialCommunityIcons name="pencil" size={20} color="#7D80F4" />
+            </TouchableOpacity>
+          )}
         </View>
 
         <InfoItem

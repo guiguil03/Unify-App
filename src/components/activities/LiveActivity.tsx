@@ -6,11 +6,14 @@ import {
   TouchableOpacity,
   AppState,
 } from "react-native";
+import MapView, { Polyline, Marker } from "react-native-maps";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useLocation } from "../../hooks/useLocation";
 import { formatDuration, formatDistance } from "../../utils/format";
 import { LiveActivityService } from "../../services/LiveActivityService";
 import { RunnersService } from "../../services/RunnersService";
+import { Route } from "../../types/route";
+import { COLORS } from "../../constants/colors";
 
 interface LiveActivityProps {
   onFinish: (activity: {
@@ -19,9 +22,10 @@ interface LiveActivityProps {
     date: string;
   }) => void;
   onCancel: () => void;
+  route?: Route; // Parcours optionnel à suivre
 }
 
-export function LiveActivity({ onFinish, onCancel }: LiveActivityProps) {
+export function LiveActivity({ onFinish, onCancel, route }: LiveActivityProps) {
   const [isRunning, setIsRunning] = useState(true);
   const [startTime] = useState(new Date());
   const [duration, setDuration] = useState(0);
@@ -235,10 +239,101 @@ export function LiveActivity({ onFinish, onCancel }: LiveActivityProps) {
     onCancel();
   };
 
+  // Calculer la région de la carte pour afficher le parcours et la position actuelle
+  const getMapRegion = () => {
+    if (route?.points && route.points.length > 0) {
+      const latitudes = route.points.map((p) => p.latitude);
+      const longitudes = route.points.map((p) => p.longitude);
+      
+      if (location) {
+        latitudes.push(location.latitude);
+        longitudes.push(location.longitude);
+      }
+      
+      const minLat = Math.min(...latitudes);
+      const maxLat = Math.max(...latitudes);
+      const minLon = Math.min(...longitudes);
+      const maxLon = Math.max(...longitudes);
+      
+      const latDelta = (maxLat - minLat) * 1.5 || 0.01;
+      const lonDelta = (maxLon - minLon) * 1.5 || 0.01;
+      
+      return {
+        latitude: (minLat + maxLat) / 2,
+        longitude: (minLon + maxLon) / 2,
+        latitudeDelta: latDelta || 0.01,
+        longitudeDelta: lonDelta || 0.01,
+      };
+    }
+    
+    if (location) {
+      return {
+        latitude: location.latitude,
+        longitude: location.longitude,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      };
+    }
+    
+    return null;
+  };
+
+  const routeCoordinates = route?.points?.map((p) => ({
+    latitude: p.latitude,
+    longitude: p.longitude,
+  })) || [];
+
   return (
     <View style={styles.container}>
+      {/* Carte avec le parcours */}
+      {route && route.points && route.points.length > 0 && (
+        <View style={styles.mapContainer}>
+          <MapView
+            style={styles.map}
+            initialRegion={getMapRegion() || undefined}
+            showsUserLocation
+            followsUserLocation={isRunning}
+          >
+            {/* Parcours à suivre */}
+            {routeCoordinates.length > 1 && (
+              <Polyline
+                coordinates={routeCoordinates}
+                strokeColor={COLORS.primary}
+                strokeWidth={4}
+              />
+            )}
+            {/* Point de départ */}
+            <Marker
+              coordinate={{
+                latitude: route.points[0].latitude,
+                longitude: route.points[0].longitude,
+              }}
+              title="Départ"
+              pinColor="green"
+            />
+            {/* Point d'arrivée */}
+            {route.points.length > 1 && (
+              <Marker
+                coordinate={{
+                  latitude: route.points[route.points.length - 1].latitude,
+                  longitude: route.points[route.points.length - 1].longitude,
+                }}
+                title="Arrivée"
+                pinColor="red"
+              />
+            )}
+          </MapView>
+          <View style={styles.routeInfoOverlay}>
+            <Text style={styles.routeInfoText}>{route.title}</Text>
+            <Text style={styles.routeInfoSubtext}>{route.distance.toFixed(2)} km</Text>
+          </View>
+        </View>
+      )}
+
       <View style={styles.card}>
-        <Text style={styles.title}>Course en cours</Text>
+        <Text style={styles.title}>
+          {route ? `Course sur: ${route.title}` : 'Course en cours'}
+        </Text>
 
         <View style={styles.stats}>
           <View style={styles.stat}>
@@ -301,8 +396,49 @@ export function LiveActivity({ onFinish, onCancel }: LiveActivityProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 16,
     backgroundColor: "white",
+  },
+  mapContainer: {
+    height: 300,
+    width: '100%',
+    position: 'relative',
+  },
+  map: {
+    flex: 1,
+  },
+  routeInfoOverlay: {
+    position: 'absolute',
+    top: 16,
+    left: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    padding: 12,
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  routeInfoText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  routeInfoSubtext: {
+    fontSize: 14,
+    color: COLORS.textLight,
+    marginTop: 4,
+  },
+  card: {
+    backgroundColor: "white",
+    borderRadius: 12,
+    padding: 20,
+    margin: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   card: {
     backgroundColor: "white",

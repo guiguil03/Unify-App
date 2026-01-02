@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Linking, Alert } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import { NavigationProp } from '../../types/navigation';
 import { SubscriptionService } from '../../services/SubscriptionService';
 import { Subscription, SubscriptionStatus } from '../../types/subscription';
 import { COLORS } from '../../constants/colors';
@@ -8,6 +10,7 @@ import { showSuccessToast, showErrorToast } from '../../utils/errorHandler';
 import { getEnvOptional } from '../../utils/env';
 
 export function SubscriptionCard() {
+  const navigation = useNavigation<NavigationProp>();
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
@@ -174,6 +177,7 @@ export function SubscriptionCard() {
           <View style={styles.premiumContent}>
             <View style={styles.featureList}>
               <FeatureItem icon="check-circle" text="Accès à toutes les fonctionnalités premium" />
+              <FeatureItem icon="check-circle" text="Créer et partager des parcours" />
               <FeatureItem icon="check-circle" text="Recherche avancée de coureurs" />
               <FeatureItem icon="check-circle" text="Statistiques détaillées" />
               <FeatureItem icon="check-circle" text="Support prioritaire" />
@@ -189,6 +193,14 @@ export function SubscriptionCard() {
                 </Text>
               </View>
             )}
+
+            <TouchableOpacity
+              style={[styles.button, styles.routesButton]}
+              onPress={() => navigation.navigate('Routes')}
+            >
+              <MaterialCommunityIcons name="map" size={20} color="white" />
+              <Text style={styles.buttonText}>Mes parcours</Text>
+            </TouchableOpacity>
 
             {isCancelled ? (
               <TouchableOpacity
@@ -233,6 +245,7 @@ export function SubscriptionCard() {
           </Text>
 
           <View style={styles.featureList}>
+            <FeatureItem icon="map" text="Créer et partager des parcours personnalisés" />
             <FeatureItem icon="star" text="Recherche avancée de coureurs" />
             <FeatureItem icon="chart-line" text="Statistiques détaillées" />
             <FeatureItem icon="headset" text="Support prioritaire" />
@@ -366,6 +379,9 @@ const styles = StyleSheet.create({
   },
   reactivateButton: {
     backgroundColor: COLORS.success,
+  },
+  routesButton: {
+    backgroundColor: '#4CAF50',
   },
   buttonText: {
     color: 'white',

@@ -1,8 +1,10 @@
 import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Image, Alert } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
 import { Contact } from "../../types/contact";
 import { COLORS } from "../../constants/colors";
+import { NavigationProp } from "../../types/navigation";
 
 interface ContactCardProps {
   contact: Contact;
@@ -13,6 +15,12 @@ interface ContactCardProps {
 }
 
 export function ContactCard({ contact, onChatPress, onRemove, onAcceptRequest, relationshipStatus = 'friends' }: ContactCardProps) {
+  const navigation = useNavigation<NavigationProp>();
+
+  const handleProfilePress = () => {
+    navigation.navigate('UserProfile', { userId: contact.id });
+  };
+
   const confirmRemove = () => {
     let title = 'Supprimer le contact';
     let message = `Voulez-vous vraiment supprimer ${contact.name} de vos contacts ?`;
@@ -43,7 +51,11 @@ export function ContactCard({ contact, onChatPress, onRemove, onAcceptRequest, r
 
   return (
     <View style={styles.card}>
-      <View style={styles.contactInfo}>
+      <TouchableOpacity 
+        style={styles.contactInfo}
+        onPress={handleProfilePress}
+        activeOpacity={0.7}
+      >
         {contact.avatar ? (
           <Image source={{ uri: contact.avatar }} style={styles.avatar} />
         ) : (
@@ -57,7 +69,7 @@ export function ContactCard({ contact, onChatPress, onRemove, onAcceptRequest, r
             Dernière activité: {contact.lastActivity}
           </Text>
         </View>
-      </View>
+      </TouchableOpacity>
       {relationshipStatus === 'incoming' ? (
         <View style={styles.requestActionsContainer}>
           {onAcceptRequest && (

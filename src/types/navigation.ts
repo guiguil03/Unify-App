@@ -7,7 +7,7 @@ export type RootStackParamList = {
   MainTabs: undefined;
   Home: undefined;
   Map: undefined;
-  Activities: undefined;
+  Activities: { routeToFollow?: any } | undefined;
   ActivityDetail: { 
     activityId: string;
   };
@@ -26,6 +26,10 @@ export type RootStackParamList = {
     userId: string;
   };
   CreatePost: undefined;
+  Routes: undefined;
+  CreateRoute: undefined;
+  RouteDetail: { routeId: string };
+  UserProfile: { userId: string };
 };
 
 export type NavigationProp = NativeStackNavigationProp<RootStackParamList>;

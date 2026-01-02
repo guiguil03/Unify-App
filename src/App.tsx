@@ -24,6 +24,10 @@ import SettingsScreen from "./screens/SettingsScreen";
 import CreateStoryScreen from "./screens/CreateStoryScreen";
 import ViewStoriesScreen from "./screens/ViewStoriesScreen";
 import CreatePostScreen from "./screens/CreatePostScreen";
+import RoutesScreen from "./screens/RoutesScreen";
+import CreateRouteScreen from "./screens/CreateRouteScreen";
+import RouteDetailScreen from "./screens/RouteDetailScreen";
+import UserProfileScreen from "./screens/UserProfileScreen";
 import { OnboardingChecker } from "./components/OnboardingChecker";
 import { TouchableOpacity } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -188,6 +192,36 @@ function AppStack() {
       <Stack.Screen
         name="CreatePost"
         component={CreatePostScreen}
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="Routes"
+        component={RoutesScreen}
+        options={({ navigation }) => ({
+          title: "Parcours",
+          headerLeft: () => <HeaderLeft navigation={navigation} />,
+          headerRight: () => <HeaderButtons navigation={navigation} />,
+        })}
+      />
+      <Stack.Screen
+        name="CreateRoute"
+        component={CreateRouteScreen}
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="RouteDetail"
+        component={RouteDetailScreen}
+        options={{
+          title: "Détails du parcours",
+        }}
+      />
+      <Stack.Screen
+        name="UserProfile"
+        component={UserProfileScreen}
         options={{
           headerShown: false,
         }}

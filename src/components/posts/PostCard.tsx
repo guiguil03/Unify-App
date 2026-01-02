@@ -9,11 +9,13 @@ import {
   ScrollView,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { Post, Comment } from '../../types/post';
 import { COLORS } from '../../constants/colors';
 import { PostsService } from '../../services/PostsService';
 import { showErrorToast, showSuccessToast } from '../../utils/errorHandler';
 import { useAuth } from '../../contexts/AuthContext';
+import { NavigationProp } from '../../types/navigation';
 
 interface PostCardProps {
   post: Post;
@@ -24,6 +26,7 @@ interface PostCardProps {
 
 export function PostCard({ post, onLike, onDelete, isOwnPost }: PostCardProps) {
   const { user } = useAuth();
+  const navigation = useNavigation<NavigationProp>();
   const [isLiked, setIsLiked] = React.useState(post.isLiked || false);
   const [likesCount, setLikesCount] = React.useState(post.likesCount);
   const [isToggling, setIsToggling] = React.useState(false);
@@ -136,7 +139,17 @@ export function PostCard({ post, onLike, onDelete, isOwnPost }: PostCardProps) {
     <View style={styles.container}>
       {/* Header du post */}
       <View style={styles.header}>
-        <View style={styles.userInfo}>
+        <TouchableOpacity 
+          style={styles.userInfo}
+          onPress={() => {
+            if (post.userId && post.userId !== user?.id) {
+              navigation.navigate('UserProfile', { userId: post.userId });
+            } else if (post.userId === user?.id) {
+              navigation.navigate('Profile');
+            }
+          }}
+          activeOpacity={0.7}
+        >
           {post.userAvatar ? (
             <Image source={{ uri: post.userAvatar }} style={styles.avatar} />
           ) : (
@@ -148,7 +161,7 @@ export function PostCard({ post, onLike, onDelete, isOwnPost }: PostCardProps) {
             <Text style={styles.userName}>{post.userName}</Text>
             <Text style={styles.timestamp}>{formatDate(post.createdAt)}</Text>
           </View>
-        </View>
+        </TouchableOpacity>
         {isUserPost && (
           <TouchableOpacity onPress={handleDelete} style={styles.deleteButton}>
             <MaterialCommunityIcons name="delete-outline" size={20} color={COLORS.textLight} />
