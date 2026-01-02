@@ -15,14 +15,19 @@ serve(async (req) => {
   // La vérification JWT est désactivée via config.toml (verify_jwt = false)
   // La sécurité est assurée par la vérification de signature Stripe ci-dessous
 
+  console.log('Webhook reçu, vérification de la signature...');
+
   // Vérifier que la requête vient bien de Stripe (via le header user-agent)
   const userAgent = req.headers.get('user-agent') || '';
+  console.log('User-Agent:', userAgent);
+  
   if (!userAgent.includes('Stripe')) {
     console.warn('User-Agent non-Stripe détecté:', userAgent);
     // On continue quand même car la signature Stripe sera vérifiée
   }
 
   const signature = req.headers.get('stripe-signature');
+  console.log('Signature présente:', !!signature);
 
   if (!signature) {
     console.error('Signature Stripe manquante');
@@ -34,24 +39,48 @@ serve(async (req) => {
 
   // Lire le body comme texte brut (important pour la vérification de signature)
   const body = await req.text();
+  console.log('Body length:', body.length);
   
   if (!webhookSecret) {
     console.error('STRIPE_WEBHOOK_SECRET non configuré');
     return new Response(
-      JSON.stringify({ error: 'Configuration webhook manquante' }),
+      JSON.stringify({ error: 'Configuration webhook manquante. Vérifiez que STRIPE_WEBHOOK_SECRET est défini dans les secrets Supabase.' }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
 
+  console.log('Webhook secret présent:', !!webhookSecret);
+
   let event: Stripe.Event;
 
   try {
-    event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
-    console.log('Webhook vérifié avec succès:', event.type);
+    // Le secret Stripe doit commencer par whsec_
+    // Si ce n'est pas le cas, on l'ajoute
+    const secretToUse = webhookSecret.startsWith('whsec_') 
+      ? webhookSecret 
+      : `whsec_${webhookSecret}`;
+    
+    console.log('Tentative de vérification avec secret (premiers caractères):', secretToUse.substring(0, 15) + '...');
+    
+    // Dans Deno, il faut utiliser constructEventAsync au lieu de constructEvent
+    event = await stripe.webhooks.constructEventAsync(body, signature, secretToUse);
+    console.log('✅ Webhook vérifié avec succès, type:', event.type);
   } catch (err: any) {
-    console.error('Erreur de vérification webhook:', err.message);
+    console.error('❌ Erreur de vérification webhook:', err.message);
+    console.error('Détails:', {
+      signatureLength: signature.length,
+      bodyLength: body.length,
+      webhookSecretLength: webhookSecret.length,
+      webhookSecretPrefix: webhookSecret.substring(0, Math.min(15, webhookSecret.length)) + '...',
+      errorType: err.constructor.name,
+      errorMessage: err.message
+    });
+    
     return new Response(
-      JSON.stringify({ error: `Webhook Error: ${err.message}` }),
+      JSON.stringify({ 
+        error: `Webhook Error: ${err.message}`,
+        hint: 'Vérifiez que STRIPE_WEBHOOK_SECRET dans Supabase correspond EXACTEMENT au "Signing secret" du webhook dans Stripe Dashboard. Allez dans Stripe Dashboard > Developers > Webhooks > votre webhook > section "Signing secret" et copiez la valeur complète (elle doit commencer par whsec_)'
+      }),
       { status: 400, headers: { 'Content-Type': 'application/json' } }
     );
   }
@@ -73,6 +102,7 @@ serve(async (req) => {
             .from('users')
             .update({
               subscription_status: 'premium',
+              subscription_plan: 'premium',
               stripe_subscription_id: subscription.id,
               subscription_current_period_start: new Date(
                 subscription.current_period_start * 1000
@@ -99,11 +129,12 @@ serve(async (req) => {
           .single();
 
         if (user) {
+          const isActive = subscription.status === 'active';
           await supabase
             .from('users')
             .update({
-              subscription_status:
-                subscription.status === 'active' ? 'premium' : 'expired',
+              subscription_status: isActive ? 'premium' : 'expired',
+              subscription_plan: isActive ? 'premium' : 'free',
               subscription_current_period_start: new Date(
                 subscription.current_period_start * 1000
               ).toISOString(),
@@ -133,6 +164,7 @@ serve(async (req) => {
             .from('users')
             .update({
               subscription_status: 'expired',
+              subscription_plan: 'free',
               subscription_updated_at: new Date().toISOString(),
             })
             .eq('id', user.id);
@@ -155,6 +187,7 @@ serve(async (req) => {
             .from('users')
             .update({
               subscription_status: 'premium',
+              subscription_plan: 'premium',
               subscription_updated_at: new Date().toISOString(),
             })
             .eq('id', user.id);
@@ -180,14 +213,19 @@ serve(async (req) => {
       }
     }
 
+    console.log('✅ Webhook traité avec succès');
     return new Response(
       JSON.stringify({ received: true }),
       { headers: { 'Content-Type': 'application/json' } }
     );
   } catch (error: any) {
-    console.error('Erreur lors du traitement du webhook:', error);
+    console.error('❌ Erreur lors du traitement du webhook:', error);
+    console.error('Stack:', error.stack);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message || 'Erreur serveur',
+        type: error.constructor.name
+      }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
