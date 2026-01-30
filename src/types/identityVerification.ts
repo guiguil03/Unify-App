@@ -10,6 +10,10 @@ export interface IdentityVerification {
   submittedAt: string;
   verifiedAt?: string;
   rejectionReason?: string;
+  diditSessionId?: string;
+  diditDecisionData?: any;
+  diditSubmittedAt?: string;
+  diditCompletedAt?: string;
 }
 
 export interface CreateIdentityVerificationData {

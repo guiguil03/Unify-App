@@ -29,7 +29,6 @@ export const useRealtimeRunners = ({
       return;
     }
 
-    console.log('🔔 [useRealtimeRunners] Activation de la synchronisation en temps réel');
     
     // S'abonner aux changements
     channelRef.current = RunnersService.subscribeToRunners(() => {
@@ -40,7 +39,6 @@ export const useRealtimeRunners = ({
     // Cleanup : se désabonner quand le composant se démonte
     return () => {
       if (channelRef.current) {
-        console.log('🔕 [useRealtimeRunners] Désactivation de la synchronisation en temps réel');
         RunnersService.unsubscribeFromRunners(channelRef.current);
         channelRef.current = null;
       }

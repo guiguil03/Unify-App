@@ -30,6 +30,7 @@ export type RootStackParamList = {
   CreateRoute: undefined;
   RouteDetail: { routeId: string };
   UserProfile: { userId: string };
+  ResetPassword: { token?: string; email?: string } | undefined;
 };
 
 export type NavigationProp = NativeStackNavigationProp<RootStackParamList>;

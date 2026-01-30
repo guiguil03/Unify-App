@@ -14,10 +14,6 @@ export function useSettings() {
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadSettings();
-  }, []);
-
   const loadSettings = async () => {
     try {
       const savedSettings = await SettingsService.getSettings();
@@ -30,6 +26,10 @@ export function useSettings() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    loadSettings();
+  }, []);
 
   const updateSetting = async (key: keyof Settings, value: boolean) => {
     const newSettings = {
@@ -44,5 +44,6 @@ export function useSettings() {
     settings,
     loading,
     updateSetting,
+    reloadSettings: loadSettings,
   };
 }

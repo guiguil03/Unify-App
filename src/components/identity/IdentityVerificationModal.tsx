@@ -139,15 +139,23 @@ export function IdentityVerificationModal({
       return;
     }
 
+    if (!selfie) {
+      showErrorToast('Veuillez ajouter un selfie pour la vérification faciale');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      await IdentityVerificationService.submitVerification({
+      const verification = await IdentityVerificationService.submitVerification({
         idDocumentFrontUrl: idDocumentFront,
         idDocumentBackUrl: idDocumentBack || undefined,
         selfieUrl: selfie || undefined,
       });
 
-      showSuccessToast('Vérification d\'identité soumise avec succès. Elle sera examinée sous peu.');
+      // Soumettre à didit pour vérification automatique
+      await IdentityVerificationService.submitToDidit(verification.id);
+
+      showSuccessToast('Vérification soumise. Résultats sous quelques minutes.');
       onSuccess();
       onClose();
       // Reset
@@ -270,9 +278,9 @@ export function IdentityVerificationModal({
 
             {/* Selfie */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Photo de vous (optionnel)</Text>
+              <Text style={styles.sectionTitle}>Photo de vous (selfie) *</Text>
               <Text style={styles.sectionDescription}>
-                Un selfie pour confirmer votre identité
+                Un selfie pour vérifier que vous êtes bien la personne sur le document (Face Match)
               </Text>
               {selfie && selfieUri ? (
                 <View style={styles.imagePreview}>
@@ -333,7 +341,7 @@ export function IdentityVerificationModal({
             <TouchableOpacity
               style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
               onPress={handleSubmit}
-              disabled={isSubmitting || !idDocumentFront}
+              disabled={isSubmitting || !idDocumentFront || !selfie}
             >
               {isSubmitting ? (
                 <ActivityIndicator size="small" color="white" />

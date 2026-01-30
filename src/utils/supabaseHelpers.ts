@@ -39,7 +39,6 @@ export async function getCurrentUserFromDB(): Promise<any | null> {
       return null;
     }
 
-    console.log('✅ Utilisateur Supabase Auth trouvé:', authUser.id);
 
     // Chercher l'utilisateur dans la table users
     const { data, error } = await supabase

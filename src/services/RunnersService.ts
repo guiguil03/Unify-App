@@ -250,7 +250,6 @@ export class RunnersService {
   static subscribeToRunners(
     callback: (runners: any[]) => void
   ): RealtimeChannel {
-    console.log('🔔 Abonnement aux changements des positions utilisateurs');
     
     const channel = supabase
       .channel('users-location-changes')
@@ -263,7 +262,6 @@ export class RunnersService {
           filter: 'last_latitude=not.is.null', // Seulement si la position existe
         },
         (payload) => {
-          console.log('🔔 Position utilisateur mise à jour:', payload);
           // Déclencher le callback pour recharger les données
           callback([]);
         }
@@ -276,14 +274,11 @@ export class RunnersService {
           table: 'runners',
         },
         (payload) => {
-          console.log('🔔 Activité runner mise à jour:', payload);
           // Déclencher le callback pour recharger les données
           callback([]);
         }
       )
-      .subscribe((status) => {
-        console.log('🔔 Statut de l\'abonnement:', status);
-      });
+      
 
     return channel;
   }
@@ -292,7 +287,6 @@ export class RunnersService {
    * Se désabonner des changements en temps réel
    */
   static unsubscribeFromRunners(channel: RealtimeChannel): void {
-    console.log('🔕 Désabonnement de la table runners');
     supabase.removeChannel(channel);
   }
 }

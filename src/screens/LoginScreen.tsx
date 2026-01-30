@@ -176,6 +176,16 @@ export default function LoginScreen({ route, navigation }: Props) {
             />
           </View>
 
+          {/* Lien mot de passe oublié */}
+          {isLoginMode && (
+            <TouchableOpacity
+              style={styles.forgotPasswordLink}
+              onPress={() => navigation.navigate("ResetPassword")}
+            >
+              <Text style={styles.forgotPasswordText}>Mot de passe oublié ?</Text>
+            </TouchableOpacity>
+          )}
+
           <TouchableOpacity
             style={styles.primaryButton}
             onPress={handleSubmit}
@@ -350,5 +360,15 @@ const styles = StyleSheet.create({
   guestText: {
     fontSize: 14,
     color: "#A29ACF",
+  },
+  forgotPasswordLink: {
+    alignSelf: "flex-end",
+    marginTop: 4,
+    marginBottom: 8,
+  },
+  forgotPasswordText: {
+    fontSize: 14,
+    color: "#7D80F4",
+    fontWeight: "600",
   },
 });

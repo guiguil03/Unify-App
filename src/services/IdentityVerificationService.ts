@@ -37,6 +37,10 @@ export class IdentityVerificationService {
         submittedAt: data.submitted_at,
         verifiedAt: data.verified_at,
         rejectionReason: data.rejection_reason,
+        diditSessionId: data.didit_session_id,
+        diditDecisionData: data.didit_decision_data,
+        diditSubmittedAt: data.didit_submitted_at,
+        diditCompletedAt: data.didit_completed_at,
       };
     } catch (error) {
       console.error('Erreur dans getVerification:', error);
@@ -49,8 +53,9 @@ export class IdentityVerificationService {
    */
   static async uploadIdentityDocument(imageUri: string, fileName: string): Promise<string> {
     try {
-      const currentUser = await getCurrentUserFromDB();
-      if (!currentUser) {
+      // Récupérer l'utilisateur authentifié (ID Supabase Auth)
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) {
         throw new Error('Utilisateur non authentifié');
       }
 
@@ -70,8 +75,8 @@ export class IdentityVerificationService {
       };
       const contentType = mimeTypes[fileExt] || 'image/jpeg';
 
-      // Créer un nom de fichier unique avec le userId
-      const storageFileName = `${currentUser.id}/${fileName}_${Date.now()}.${fileExt}`;
+      // Créer un nom de fichier unique avec le auth user ID (pour les policies Storage)
+      const storageFileName = `${authUser.id}/${fileName}_${Date.now()}.${fileExt}`;
 
       // Upload vers Supabase Storage (bucket privé)
       const { data, error } = await supabase.storage
@@ -147,6 +152,10 @@ export class IdentityVerificationService {
         submittedAt: result.submitted_at,
         verifiedAt: result.verified_at,
         rejectionReason: result.rejection_reason,
+        diditSessionId: result.didit_session_id,
+        diditDecisionData: result.didit_decision_data,
+        diditSubmittedAt: result.didit_submitted_at,
+        diditCompletedAt: result.didit_completed_at,
       };
     } catch (error: any) {
       console.error('Erreur dans submitVerification:', error);
@@ -168,6 +177,37 @@ export class IdentityVerificationService {
     } catch (error) {
       console.error('Erreur lors de la récupération de l\'URL signée:', error);
       return null;
+    }
+  }
+
+  /**
+   * Soumet la vérification d'identité à didit pour traitement
+   */
+  static async submitToDidit(verificationId: string): Promise<void> {
+    try {
+      console.log('🚀 Appel didit-create-session avec verification_id:', verificationId);
+
+      const { data, error } = await supabase.functions.invoke(
+        'didit-create-session',
+        { body: { verification_id: verificationId } }
+      );
+
+      console.log('📥 Réponse Edge Function:', { data, error });
+
+      if (error) {
+        console.error('❌ Erreur Edge Function:', error);
+        throw error;
+      }
+
+      if (data?.error) {
+        console.error('❌ Erreur dans data:', data.error);
+        throw new Error(data.error);
+      }
+
+      console.log('✅ Session didit créée:', data?.session_id);
+    } catch (error: any) {
+      console.error('❌ Exception submitToDidit:', error);
+      throw new Error(error.message || 'Impossible de soumettre la vérification à didit');
     }
   }
 }

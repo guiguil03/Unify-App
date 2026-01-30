@@ -28,6 +28,7 @@ import RoutesScreen from "./screens/RoutesScreen";
 import CreateRouteScreen from "./screens/CreateRouteScreen";
 import RouteDetailScreen from "./screens/RouteDetailScreen";
 import UserProfileScreen from "./screens/UserProfileScreen";
+import ResetPasswordScreen from "./screens/ResetPasswordScreen";
 import { OnboardingChecker } from "./components/OnboardingChecker";
 import { TouchableOpacity } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -61,6 +62,7 @@ function AuthStack() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Welcome" component={WelcomeScreen} />
       <Stack.Screen name="Login" component={LoginScreen} />
+      <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
     </Stack.Navigator>
   );
 }

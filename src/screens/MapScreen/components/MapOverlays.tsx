@@ -3,6 +3,7 @@ import { StyleSheet } from "react-native";
 import { SearchBar } from "../../../components/map/SearchBar";
 import { LocationSelector } from "../../../components/map/LocationSelector";
 import { MapControls } from "../../../components/map/MapControls";
+import { MapFilters } from "../../../components/map/MapFilters";
 import { RunnersList } from "../../../components/map/RunnersList";
 import { RunnerProfileModal } from "../../../components/runners/RunnerProfileModal";
 
@@ -26,6 +27,15 @@ export function MapOverlays({ state, handlers }) {
           onRadiusChange={handlers.handleRadiusChange}
           onValidate={handlers.handleValidateZone}
           style={styles.locationSelector}
+        />
+      )}
+
+      {/* Afficher les filtres seulement après validation de la zone */}
+      {state.activeSearchZone && !state.showLocationSelector && (
+        <MapFilters
+          settings={state.settings}
+          onSettingChange={handlers.handleFilterChange}
+          style={styles.mapFilters}
         />
       )}
 
@@ -54,5 +64,8 @@ const styles = StyleSheet.create({
     bottom: 120,
     left: 16,
     right: 16,
+  },
+  mapFilters: {
+    // Le style est géré dans le composant MapFilters lui-même
   },
 });
