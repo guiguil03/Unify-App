@@ -21,25 +21,43 @@ const logo = require("../assets/logo.png");
 type Props = NativeStackScreenProps<RootStackParamList, "ResetPassword">;
 
 export default function ResetPasswordScreen({ route, navigation }: Props) {
-  const { token, email } = route.params || {};
-  const [step, setStep] = useState<"request" | "reset">(token && email ? "reset" : "request");
+  const [step, setStep] = useState<"request" | "verify" | "reset">("request");
   
   // État pour la demande d'email
-  const [emailInput, setEmailInput] = useState(email || "");
+  const [emailInput, setEmailInput] = useState("");
   const [isSendingEmail, setIsSendingEmail] = useState(false);
+  
+  // État pour la vérification du code
+  const [code, setCode] = useState("");
+  const [isVerifying, setIsVerifying] = useState(false);
   
   // État pour la réinitialisation
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isResetting, setIsResetting] = useState(false);
 
-  // Si on reçoit un token via les paramètres de route, passer directement à l'étape de réinitialisation
-  useEffect(() => {
-    if (token && email) {
-      setStep("reset");
-      setEmailInput(email);
+  const handleVerifyCode = async () => {
+    if (!code || code.length !== 6) {
+      showInfoToast("Veuillez entrer un code à 6 chiffres", "Code invalide");
+      return;
     }
-  }, [token, email]);
+
+    setIsVerifying(true);
+    try {
+      const isValid = await AuthService.verifyResetCode(emailInput, code);
+      if (isValid) {
+        showSuccessToast("Code vérifié !");
+        setStep("reset");
+      } else {
+        showErrorToast("Code invalide ou expiré");
+      }
+    } catch (error: any) {
+      console.error("Erreur lors de la vérification du code:", error);
+      showErrorToast(error.message || "Code invalide ou expiré");
+    } finally {
+      setIsVerifying(false);
+    }
+  };
 
   const handleSendResetEmail = async () => {
     if (!emailInput) {
@@ -56,8 +74,8 @@ export default function ResetPasswordScreen({ route, navigation }: Props) {
     setIsSendingEmail(true);
     try {
       await AuthService.sendPasswordResetEmail(emailInput);
-      showSuccessToast("Email envoyé ! Vérifiez votre boîte de réception.");
-      // Optionnel: rediriger vers un écran de confirmation
+      showSuccessToast("Code envoyé ! Vérifiez votre boîte de réception.");
+      setStep("verify");
     } catch (error: any) {
       console.error("Erreur lors de l'envoi de l'email:", error);
       // Le service gère déjà l'affichage des messages
@@ -82,14 +100,14 @@ export default function ResetPasswordScreen({ route, navigation }: Props) {
       return;
     }
 
-    if (!token) {
-      showErrorToast("Token de réinitialisation manquant");
+    if (!code) {
+      showErrorToast("Code de réinitialisation manquant");
       return;
     }
 
     setIsResetting(true);
     try {
-      await AuthService.resetPassword(newPassword, token, emailInput);
+      await AuthService.resetPassword(newPassword, code, emailInput);
       showSuccessToast("Mot de passe réinitialisé avec succès !");
       // Rediriger vers la page de connexion
       navigation.navigate("Login", { mode: "login" });
@@ -122,7 +140,7 @@ export default function ResetPasswordScreen({ route, navigation }: Props) {
           <View style={styles.logoBlock}>
             <Image source={logo} style={styles.logo} />
             <Text style={styles.screenTitle}>
-              {step === "request" ? "Mot de passe oublié" : "Nouveau mot de passe"}
+              {step === "request" ? "Mot de passe oublié" : step === "verify" ? "Vérification du code" : "Nouveau mot de passe"}
             </Text>
           </View>
 
@@ -131,7 +149,7 @@ export default function ResetPasswordScreen({ route, navigation }: Props) {
             {step === "request" ? (
               <>
                 <Text style={styles.description}>
-                  Entrez votre adresse email et nous vous enverrons un lien pour réinitialiser votre mot de passe.
+                  Entrez votre adresse email et nous vous enverrons un code pour réinitialiser votre mot de passe.
                 </Text>
                 <View style={styles.inputWrapper}>
                   <TextInput
@@ -153,8 +171,46 @@ export default function ResetPasswordScreen({ route, navigation }: Props) {
                   {isSendingEmail ? (
                     <ActivityIndicator color="#fff" />
                   ) : (
-                    <Text style={styles.primaryButtonText}>Envoyer l'email</Text>
+                    <Text style={styles.primaryButtonText}>Envoyer le code</Text>
                   )}
+                </TouchableOpacity>
+              </>
+            ) : step === "verify" ? (
+              <>
+                <Text style={styles.description}>
+                  Entrez le code à 6 chiffres que nous avons envoyé à {emailInput}
+                </Text>
+                <View style={styles.inputWrapper}>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Code à 6 chiffres ..."
+                    placeholderTextColor="#C4BCEB"
+                    value={code}
+                    onChangeText={setCode}
+                    keyboardType="number-pad"
+                    maxLength={6}
+                    autoCapitalize="none"
+                  />
+                </View>
+                <TouchableOpacity
+                  style={styles.primaryButton}
+                  onPress={handleVerifyCode}
+                  disabled={isVerifying}
+                >
+                  {isVerifying ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={styles.primaryButtonText}>Vérifier le code</Text>
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.secondaryButton}
+                  onPress={() => {
+                    setStep("request");
+                    setCode("");
+                  }}
+                >
+                  <Text style={styles.secondaryButtonText}>Renvoyer le code</Text>
                 </TouchableOpacity>
               </>
             ) : (
@@ -301,6 +357,20 @@ const styles = StyleSheet.create({
     color: "#8C7ACF",
   },
   bottomTextBold: {
+    fontWeight: "700",
+  },
+  secondaryButton: {
+    backgroundColor: "transparent",
+    borderRadius: 999,
+    paddingVertical: 14,
+    alignItems: "center",
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: "#7D80F4",
+  },
+  secondaryButtonText: {
+    color: "#7D80F4",
+    fontSize: 17,
     fontWeight: "700",
   },
 });

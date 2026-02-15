@@ -8,9 +8,10 @@ export type RootStackParamList = {
   Home: undefined;
   Map: undefined;
   Activities: { routeToFollow?: any } | undefined;
-  ActivityDetail: { 
+  ActivityDetail: {
     activityId: string;
   };
+  Stats: undefined;
   Events: undefined;
   Profile: undefined;
   EditProfile: undefined;

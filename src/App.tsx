@@ -5,6 +5,7 @@ import { RootStackParamList } from "./types/navigation";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { StyleSheet, Text, View, ActivityIndicator, TouchableWithoutFeedback } from "react-native";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import { SubscriptionProvider } from "./contexts/SubscriptionContext";
 import Toast, { BaseToast, ErrorToast } from "react-native-toast-message";
 
 import LoginScreen from "./screens/LoginScreen";
@@ -14,6 +15,7 @@ import HomeScreen from "./screens/HomeScreen";
 import MapScreen from "./screens/MapScreen/index";
 import ActivitiesScreen from "./screens/ActivitiesScreen";
 import ActivityDetailScreen from "./screens/ActivityDetailScreen";
+import StatsScreen from "./screens/StatsScreen";
 import EventsScreen from "./screens/EventsScreen";
 import ProfileScreen from "./screens/ProfileScreen";
 import EditProfileScreen from "./screens/EditProfileScreen";
@@ -117,6 +119,15 @@ function AppStack() {
         name="ActivityDetail"
         component={ActivityDetailScreen}
         options={{ title: "Détails de l'activité" }}
+      />
+      <Stack.Screen
+        name="Stats"
+        component={StatsScreen}
+        options={({ navigation }) => ({
+          title: "Statistiques",
+          headerLeft: () => <HeaderLeft navigation={navigation} />,
+          headerRight: () => <HeaderButtons navigation={navigation} />,
+        })}
       />
       <Stack.Screen
         name="Events"
@@ -289,8 +300,10 @@ export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <AuthProvider>
-        <NavigationSwitcher />
-        <Toast config={toastConfig} />
+        <SubscriptionProvider>
+          <NavigationSwitcher />
+          <Toast config={toastConfig} />
+        </SubscriptionProvider>
       </AuthProvider>
     </GestureHandlerRootView>
   );

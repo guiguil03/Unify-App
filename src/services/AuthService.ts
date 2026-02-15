@@ -319,9 +319,43 @@ export class AuthService {
   }
 
   /**
-   * Réinitialise le mot de passe avec un token
+   * Vérifie le code OTP de réinitialisation
    */
-  static async resetPassword(newPassword: string, token: string, email: string): Promise<void> {
+  static async verifyResetCode(email: string, code: string): Promise<boolean> {
+    try {
+      console.log('Vérification du code de réinitialisation');
+
+      if (!email || !code) {
+        throw new Error('Email et code requis');
+      }
+
+      // Appeler notre Edge Function pour vérifier le code
+      const { data, error } = await supabase.functions.invoke(
+        'verify-reset-code',
+        {
+          body: {
+            email: email,
+            code: code,
+          },
+        }
+      );
+
+      if (error) {
+        console.error('Erreur lors de la vérification du code:', error);
+        throw new Error('Code invalide ou expiré');
+      }
+
+      return data?.success === true;
+    } catch (error: any) {
+      console.error('Erreur lors de la vérification du code:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Réinitialise le mot de passe avec un code OTP
+   */
+  static async resetPassword(newPassword: string, code: string, email: string): Promise<void> {
     try {
       console.log('Tentative de réinitialisation du mot de passe');
 
@@ -329,35 +363,33 @@ export class AuthService {
         throw new Error('Le mot de passe doit contenir au moins 6 caractères');
       }
 
-      if (!token) {
-        throw new Error('Token de réinitialisation requis');
+      if (!code) {
+        throw new Error('Code de réinitialisation requis');
       }
 
       if (!email) {
         throw new Error('Email requis');
       }
 
-      // Vérifier le token et mettre à jour le mot de passe
-      // Supabase utilise verifyOtp pour les tokens de réinitialisation
-      const { data, error: verifyError } = await supabase.auth.verifyOtp({
-        token_hash: token,
-        type: 'recovery',
-        email: email,
-      });
+      // Appeler notre Edge Function pour vérifier le code et réinitialiser le mot de passe
+      const { data, error } = await supabase.functions.invoke(
+        'verify-reset-code',
+        {
+          body: {
+            email: email,
+            code: code,
+            newPassword: newPassword,
+          },
+        }
+      );
 
-      if (verifyError) {
-        console.error('Erreur lors de la vérification du token:', verifyError);
-        throw new Error('Token invalide ou expiré. Veuillez demander un nouveau lien de réinitialisation.');
+      if (error) {
+        console.error('Erreur lors de la réinitialisation:', error);
+        throw new Error(error.message || 'Erreur lors de la réinitialisation du mot de passe');
       }
 
-      // Mettre à jour le mot de passe
-      const { error: updateError } = await supabase.auth.updateUser({
-        password: newPassword,
-      });
-
-      if (updateError) {
-        console.error('Erreur lors de la mise à jour du mot de passe:', updateError);
-        throw updateError;
+      if (!data?.success) {
+        throw new Error(data?.error || 'Erreur lors de la réinitialisation du mot de passe');
       }
 
       console.log('✅ Mot de passe réinitialisé avec succès');

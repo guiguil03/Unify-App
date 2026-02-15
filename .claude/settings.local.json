@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "WebSearch",
-      "WebFetch(domain:docs.didit.me)"
+      "WebFetch(domain:docs.didit.me)",
+      "Bash(npm install:*)"
     ]
   }
 }

@@ -11,9 +11,12 @@ import { PostsService } from '../services/PostsService';
 import { StoriesService, Story } from '../services/StoriesService';
 import { Post } from '../types/post';
 import { useAuth } from '../contexts/AuthContext';
+import { useNavigation } from '@react-navigation/native';
+import { NavigationProp } from '../types/navigation';
 import { COLORS } from '../constants/colors';
 
 export default function ProfileScreen() {
+  const navigation = useNavigation<NavigationProp>();
   const { profile, loading, error } = useProfile();
   const { user } = useAuth();
   const [userPosts, setUserPosts] = useState<Post[]>([]);
@@ -132,6 +135,24 @@ export default function ProfileScreen() {
       >
         <ProfileHeader profile={profile} />
         <ProfileStats stats={profile.stats} />
+
+        {/* Bouton Statistiques Avancées */}
+        <TouchableOpacity
+          style={styles.statsButton}
+          onPress={() => navigation.navigate('Stats')}
+        >
+          <View style={styles.statsButtonContent}>
+            <MaterialCommunityIcons name="chart-line" size={24} color={COLORS.primary} />
+            <View style={styles.statsButtonText}>
+              <Text style={styles.statsButtonTitle}>Statistiques Avancées</Text>
+              <Text style={styles.statsButtonSubtitle}>
+                Suivi détaillé de vos performances
+              </Text>
+            </View>
+          </View>
+          <MaterialCommunityIcons name="chevron-right" size={24} color={COLORS.textLight} />
+        </TouchableOpacity>
+
         <SubscriptionCard />
         <ProfileInfo profile={profile} />
 
@@ -376,5 +397,36 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: COLORS.textLight,
     textAlign: 'center',
+  },
+  statsButton: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  statsButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  statsButtonText: {
+    flex: 1,
+  },
+  statsButtonTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+  },
+  statsButtonSubtitle: {
+    fontSize: 13,
+    color: '#666',
+    marginTop: 2,
   },
 });
