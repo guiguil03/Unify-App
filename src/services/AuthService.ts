@@ -2,8 +2,15 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { User } from '../types/user';
 import { supabase } from '../config/supabase';
-import { showSuccessToast } from '../utils/errorHandler';
+import { showSuccessToast, showErrorToast } from '../utils/errorHandler';
 import { getEnv } from '../utils/env';
+import * as WebBrowser from 'expo-web-browser';
+import * as AuthSession from 'expo-auth-session';
+import * as AppleAuthentication from 'expo-apple-authentication';
+import { Platform } from 'react-native';
+
+// Fermer la session web après authentification
+WebBrowser.maybeCompleteAuthSession();
 
 export class AuthService {
   private static readonly USER_STORAGE_KEY = 'unify_user';
@@ -396,6 +403,178 @@ export class AuthService {
       showSuccessToast('Votre mot de passe a été réinitialisé avec succès');
     } catch (error: any) {
       console.error('Erreur lors de la réinitialisation du mot de passe:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Connexion avec Google OAuth
+   */
+  static async signInWithGoogle(): Promise<User> {
+    try {
+      console.log('🔵 Début de la connexion Google...');
+
+      // Créer l'URL de redirection
+      // En développement, utiliser useProxy pour Expo Go
+      // En production, utiliser le scheme personnalisé
+      const redirectTo = AuthSession.makeRedirectUri({
+        scheme: 'com.unify.app',
+        path: 'auth/callback',
+        useProxy: __DEV__, // Utiliser le proxy Expo en développement
+      });
+
+      console.log('📍 URL de redirection:', redirectTo);
+      console.log('🔧 Mode développement:', __DEV__);
+
+      // Démarrer la session OAuth avec Google
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
+        },
+      });
+
+      if (error) {
+        console.error('❌ Erreur OAuth Google:', error);
+        throw error;
+      }
+
+      if (!data.url) {
+        throw new Error('Aucune URL retournée par Supabase');
+      }
+
+      // Ouvrir le navigateur pour l'authentification
+      const result = await WebBrowser.openAuthSessionAsync(
+        data.url,
+        redirectTo
+      );
+
+      if (result.type === 'success') {
+        // Extraire le code d'authentification de l'URL
+        const url = new URL(result.url);
+        const code = url.searchParams.get('code');
+
+        if (code) {
+          // Échanger le code contre un token
+          const { data: sessionData, error: sessionError } = await supabase.auth.exchangeCodeForSession(code);
+
+          if (sessionError) {
+            console.error('❌ Erreur lors de l\'échange du code:', sessionError);
+            throw sessionError;
+          }
+
+          if (!sessionData.user) {
+            throw new Error('Aucun utilisateur retourné après l\'authentification');
+          }
+
+          console.log('✅ Connexion Google réussie pour l\'utilisateur:', sessionData.user.id);
+
+          // Récupérer les informations utilisateur
+          const email = sessionData.user.email || '';
+          const name = sessionData.user.user_metadata?.full_name || 
+                       sessionData.user.user_metadata?.name || 
+                       email.split('@')[0] || 
+                       'Utilisateur Google';
+
+          // Récupérer ou créer les données utilisateur dans la table users
+          const user = await this.getOrCreateUserFromDB(sessionData.user.id, email, name);
+
+          // Stocker localement l'utilisateur
+          await this.setCurrentUser(user);
+
+          showSuccessToast('Connexion Google réussie !');
+          return user;
+        } else {
+          throw new Error('Code d\'authentification non trouvé dans l\'URL');
+        }
+      } else {
+        throw new Error('L\'utilisateur a annulé l\'authentification');
+      }
+    } catch (error: any) {
+      console.error('❌ Erreur lors de la connexion Google:', error);
+      showErrorToast(error.message || 'Erreur lors de la connexion Google');
+      throw error;
+    }
+  }
+
+  /**
+   * Connexion avec Apple (iOS uniquement)
+   */
+  static async signInWithApple(): Promise<User> {
+    try {
+      if (Platform.OS !== 'ios') {
+        throw new Error('Apple Sign In est uniquement disponible sur iOS');
+      }
+
+      console.log('🍎 Début de la connexion Apple...');
+
+      // Vérifier si Apple Authentication est disponible
+      const isAvailable = await AppleAuthentication.isAvailableAsync();
+      if (!isAvailable) {
+        throw new Error('Apple Authentication n\'est pas disponible sur cet appareil');
+      }
+
+      // Demander les informations d'authentification Apple
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+
+      if (!credential.identityToken) {
+        throw new Error('Token d\'identité Apple non reçu');
+      }
+
+      console.log('✅ Credential Apple reçu');
+
+      // Authentifier avec Supabase en utilisant le token Apple
+      const { data, error } = await supabase.auth.signInWithIdToken({
+        provider: 'apple',
+        token: credential.identityToken,
+        nonce: credential.nonce || undefined,
+      });
+
+      if (error) {
+        console.error('❌ Erreur OAuth Apple:', error);
+        throw error;
+      }
+
+      if (!data.user) {
+        throw new Error('Aucun utilisateur retourné après l\'authentification');
+      }
+
+      console.log('✅ Connexion Apple réussie pour l\'utilisateur:', data.user.id);
+
+      // Récupérer les informations utilisateur
+      const email = data.user.email || credential.email || '';
+      const name = credential.fullName
+        ? `${credential.fullName.givenName || ''} ${credential.fullName.familyName || ''}`.trim()
+        : data.user.user_metadata?.full_name || 
+          data.user.user_metadata?.name || 
+          email.split('@')[0] || 
+          'Utilisateur Apple';
+
+      // Récupérer ou créer les données utilisateur dans la table users
+      const user = await this.getOrCreateUserFromDB(data.user.id, email, name);
+
+      // Stocker localement l'utilisateur
+      await this.setCurrentUser(user);
+
+      showSuccessToast('Connexion Apple réussie !');
+      return user;
+    } catch (error: any) {
+      console.error('❌ Erreur lors de la connexion Apple:', error);
+      
+      // Ne pas afficher d'erreur si l'utilisateur a annulé
+      if (error.code !== 'ERR_REQUEST_CANCELED') {
+        showErrorToast(error.message || 'Erreur lors de la connexion Apple');
+      }
+      
       throw error;
     }
   }

@@ -29,7 +29,7 @@ export default function LoginScreen({ route, navigation }: Props) {
   const [name, setName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { signIn, signUp, skipAuth, authenticating } = useAuth();
+  const { signIn, signUp, signInWithGoogle, signInWithApple, skipAuth, authenticating } = useAuth();
 
 
   const handleSubmit = async () => {
@@ -113,6 +113,36 @@ export default function LoginScreen({ route, navigation }: Props) {
     // une fois que isSkipped est mis à true
     skipAuth();
     showInfoToast("Mode invité activé", "Bienvenue");
+  };
+
+  const handleGoogleSignIn = async () => {
+    if (isSubmitting || authenticating) return;
+    setIsSubmitting(true);
+    try {
+      const success = await signInWithGoogle();
+      if (success) {
+        console.log("Connexion Google réussie");
+      }
+    } catch (error) {
+      console.error("Erreur lors de la connexion Google:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleAppleSignIn = async () => {
+    if (isSubmitting || authenticating) return;
+    setIsSubmitting(true);
+    try {
+      const success = await signInWithApple();
+      if (success) {
+        console.log("Connexion Apple réussie");
+      }
+    } catch (error) {
+      console.error("Erreur lors de la connexion Apple:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const isSignup = !isLoginMode;
@@ -207,14 +237,24 @@ export default function LoginScreen({ route, navigation }: Props) {
             <View style={styles.separatorLine} />
           </View>
 
-          {/* Boutons sociaux (statique / design) */}
+          {/* Boutons sociaux */}
           <View style={styles.socialRow}>
-            <View style={styles.socialButton}>
+            <TouchableOpacity
+              style={[styles.socialButton, (isSubmitting || authenticating) && styles.socialButtonDisabled]}
+              onPress={handleGoogleSignIn}
+              disabled={isSubmitting || authenticating}
+            >
               <Text style={styles.socialText}>G</Text>
-            </View>
-            <View style={styles.socialButton}>
-              <Text style={styles.socialText}></Text>
-            </View>
+            </TouchableOpacity>
+            {Platform.OS === 'ios' && (
+              <TouchableOpacity
+                style={[styles.socialButton, (isSubmitting || authenticating) && styles.socialButtonDisabled]}
+                onPress={handleAppleSignIn}
+                disabled={isSubmitting || authenticating}
+              >
+                <Text style={styles.socialText}>🍎</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 
@@ -336,6 +376,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
+  },
+  socialButtonDisabled: {
+    opacity: 0.5,
   },
   socialText: {
     fontSize: 24,

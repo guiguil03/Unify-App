@@ -9,6 +9,8 @@ interface AuthContextData {
   isSkipped: boolean;
   signIn: (email: string, password: string) => Promise<boolean>;
   signUp: (name: string, email: string, password: string) => Promise<boolean>;
+  signInWithGoogle: () => Promise<boolean>;
+  signInWithApple: () => Promise<boolean>;
   signOut: () => Promise<void>;
   skipAuth: () => void;
   hasCompletedInitialCheck: boolean;
@@ -115,6 +117,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }
 
+  async function signInWithGoogle() {
+    setAuthenticating(true);
+    try {
+      const user = await AuthService.signInWithGoogle();
+      setUser(user);
+      return true;
+    } catch (error: any) {
+      console.error("Échec de la connexion Google:", error);
+      return false;
+    } finally {
+      setAuthenticating(false);
+    }
+  }
+
+  async function signInWithApple() {
+    setAuthenticating(true);
+    try {
+      const user = await AuthService.signInWithApple();
+      setUser(user);
+      return true;
+    } catch (error: any) {
+      console.error("Échec de la connexion Apple:", error);
+      return false;
+    } finally {
+      setAuthenticating(false);
+    }
+  }
+
   async function signOut() {
     setIsLoading(true);
     try {
@@ -141,6 +171,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         isSkipped,
         signIn,
         signUp,
+        signInWithGoogle,
+        signInWithApple,
         signOut,
         skipAuth,
         hasCompletedInitialCheck,
