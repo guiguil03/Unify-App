@@ -32,7 +32,9 @@
       },
       "permissions": [
         "ACCESS_COARSE_LOCATION",
-        "ACCESS_FINE_LOCATION"
+        "ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
       ]
     },
     "plugins": [
@@ -49,7 +51,10 @@
     "extra": {
       "SUPABASE_URL": "https://muhexuopzmqdxonurktn.supabase.co",
       "SUPABASE_API_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im11aGV4dW9wem1xZHhvbnVya3RuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI0NTYyMzMsImV4cCI6MjA3ODAzMjIzM30.Q9c9BDzB1NeLOftXq4A9aqDM3bltWwcEL_LNJNxM3JI",
-      "STRIPE_PRICE_ID": ""
+      "STRIPE_PRICE_ID": "",
+      "eas": {
+        "projectId": "9a338c75-310c-475f-b889-d51119b70bdd"
+      }
     }
   }
 }

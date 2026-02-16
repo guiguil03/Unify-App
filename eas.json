@@ -7,8 +7,7 @@
       "developmentClient": true,
       "distribution": "internal",
       "ios": {
-        "simulator": true,
-        "bundleIdentifier": "com.unify.app"
+        "simulator": true
       },
       "android": {
         "buildType": "apk"
@@ -17,7 +16,6 @@
     "preview": {
       "distribution": "internal",
       "ios": {
-        "bundleIdentifier": "com.unify.app",
         "simulator": false
       },
       "android": {
@@ -25,9 +23,6 @@
       }
     },
     "production": {
-      "ios": {
-        "bundleIdentifier": "com.unify.app"
-      },
       "android": {
         "buildType": "apk"
       },
