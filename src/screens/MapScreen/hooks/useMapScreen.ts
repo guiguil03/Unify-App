@@ -184,6 +184,7 @@ export function useMapScreen() {
       setState(prev => ({
         ...prev,
         isRunnersListExpanded: false,
+        showLocationSelector: false,
       }));
     },
 
@@ -230,6 +231,14 @@ export function useMapScreen() {
           mapRef.current.animateToRegion(region, GOOGLE_MAPS_CONFIG.ANIMATION_DURATION);
         }
       }
+    },
+
+    handleCloseLocationSelector: () => {
+      setState(prev => ({
+        ...prev,
+        showLocationSelector: false,
+        activeSearchZone: false,
+      }));
     },
 
     handleConnect: async (runnerId: string) => {

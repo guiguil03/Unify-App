@@ -58,10 +58,14 @@ export class ContactsService {
         }
       });
 
-      // Ne garder que les amis mutuels (symétrie acceptée des deux côtés)
-      const mutualIds = Array.from(sentAccepted.keys()).filter(id => receivedAccepted.has(id));
+      // Combiner tous les IDs des deux côtés (sent et received)
+      const allContactIds = new Set([
+        ...Array.from(sentAccepted.keys()),
+        ...Array.from(receivedAccepted.keys())
+      ]);
 
-      const contactsList: Contact[] = mutualIds.map(id => {
+      // Créer la liste des contacts (inclut ceux qui ont au moins une relation acceptée)
+      const contactsList: Contact[] = Array.from(allContactIds).map(id => {
         const s = sentAccepted.get(id);
         const r = receivedAccepted.get(id);
         const name = (s?.contact?.name) || (r?.sender?.name) || 'Utilisateur';
@@ -405,29 +409,82 @@ export class ContactsService {
         throw new Error('Utilisateur non authentifié');
       }
 
-      // Mettre à jour la demande reçue
-      const { error: updateError } = await supabase
+      const now = new Date().toISOString();
+
+      // Mettre à jour la demande reçue (senderId -> currentUser)
+      const { error: updateError, data: updateData } = await supabase
         .from('contacts')
         .update({
           status: 'accepted',
-          last_interaction: new Date().toISOString(),
+          last_interaction: now,
         })
         .eq('user_id', senderId)
-        .eq('contact_id', currentUser.id);
+        .eq('contact_id', currentUser.id)
+        .select();
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error('Erreur lors de la mise à jour de la demande reçue:', updateError);
+        throw updateError;
+      }
 
-      // Créer la relation inverse pour que les deux utilisateurs soient amis
-      const { error: insertError } = await supabase
+      // Vérifier si la relation inverse existe déjà
+      const { data: existingRelation, error: checkError } = await supabase
         .from('contacts')
-        .upsert({
-          user_id: currentUser.id,
-          contact_id: senderId,
-          status: 'accepted',
-          last_interaction: new Date().toISOString(),
-        });
+        .select('id, status')
+        .eq('user_id', currentUser.id)
+        .eq('contact_id', senderId)
+        .maybeSingle();
 
-      if (insertError) throw insertError;
+      if (checkError && checkError.code !== 'PGRST116') {
+        // PGRST116 = aucune ligne trouvée, ce qui est OK
+        console.error('Erreur lors de la vérification de la relation inverse:', checkError);
+        throw checkError;
+      }
+
+      // Si la relation existe déjà, la mettre à jour, sinon l'insérer
+      if (existingRelation) {
+        const { error: updateInverseError } = await supabase
+          .from('contacts')
+          .update({
+            status: 'accepted',
+            last_interaction: now,
+          })
+          .eq('user_id', currentUser.id)
+          .eq('contact_id', senderId);
+
+        if (updateInverseError) {
+          console.error('Erreur lors de la mise à jour de la relation inverse:', updateInverseError);
+          throw updateInverseError;
+        }
+      } else {
+        // Créer la relation inverse pour que les deux utilisateurs soient amis
+        const { error: insertError } = await supabase
+          .from('contacts')
+          .insert({
+            user_id: currentUser.id,
+            contact_id: senderId,
+            status: 'accepted',
+            last_interaction: now,
+          });
+
+        if (insertError) {
+          console.error('Erreur lors de l\'insertion de la relation inverse:', insertError);
+          throw insertError;
+        }
+      }
+
+      // Vérifier que les deux relations sont bien créées
+      const { data: verifyData, error: verifyError } = await supabase
+        .from('contacts')
+        .select('id, status')
+        .or(`and(user_id.eq.${currentUser.id},contact_id.eq.${senderId}),and(user_id.eq.${senderId},contact_id.eq.${currentUser.id})`)
+        .eq('status', 'accepted');
+
+      if (verifyError) {
+        console.error('Erreur lors de la vérification finale:', verifyError);
+      } else if (!verifyData || verifyData.length < 2) {
+        console.warn('Les deux relations ne sont pas toutes acceptées après acceptation:', verifyData);
+      }
     } catch (error) {
       console.error('Erreur dans acceptContactRequest:', error);
       throw error;

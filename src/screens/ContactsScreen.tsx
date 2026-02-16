@@ -149,10 +149,19 @@ export default function ContactsScreen() {
       await ContactsService.acceptContactRequest(senderId);
       showSuccessToast('Demande acceptée ! 🎉');
       setIncomingRequests(prev => prev.filter(c => c.id !== senderId));
-      refetch();
-      loadPendingRequests();
+      
+      // Attendre un peu pour que la base de données soit synchronisée
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // Recharger les contacts et les demandes
+      await Promise.all([
+        refetch(),
+        loadPendingRequests()
+      ]);
+      
       setRequestsCount(prev => Math.max(0, prev - 1));
     } catch (error) {
+      console.error('Erreur lors de l\'acceptation de la demande:', error);
       showErrorToast('Impossible d\'accepter la demande');
     }
   };

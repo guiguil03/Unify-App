@@ -26,6 +26,7 @@ export function MapOverlays({ state, handlers }) {
           radius={state.searchRadius}
           onRadiusChange={handlers.handleRadiusChange}
           onValidate={handlers.handleValidateZone}
+          onClose={handlers.handleCloseLocationSelector}
           style={styles.locationSelector}
         />
       )}

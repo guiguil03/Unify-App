@@ -162,6 +162,74 @@ export default function CreateRouteScreen() {
     setMapPosition({ x, y });
   };
 
+  const handleZoomIn = () => {
+    if (!mapRegion) return;
+    const newRegion = {
+      ...mapRegion,
+      latitudeDelta: mapRegion.latitudeDelta * 0.5,
+      longitudeDelta: mapRegion.longitudeDelta * 0.5,
+    };
+    setMapRegion(newRegion);
+    mapRef.current?.animateToRegion(newRegion, 300);
+  };
+
+  const handleZoomOut = () => {
+    if (!mapRegion) return;
+    const newRegion = {
+      ...mapRegion,
+      latitudeDelta: Math.min(mapRegion.latitudeDelta * 2, 180),
+      longitudeDelta: Math.min(mapRegion.longitudeDelta * 2, 360),
+    };
+    setMapRegion(newRegion);
+    mapRef.current?.animateToRegion(newRegion, 300);
+  };
+
+  const handleRecenter = () => {
+    if (!location) return;
+    const region = {
+      latitude: location.latitude,
+      longitude: location.longitude,
+      latitudeDelta: 0.01,
+      longitudeDelta: 0.01,
+    };
+    setMapRegion(region);
+    mapRef.current?.animateToRegion(region, 300);
+  };
+
+  const handleFitToRoute = () => {
+    if (routePoints.length === 0) return;
+    
+    const latitudes = routePoints.map(p => p.latitude);
+    const longitudes = routePoints.map(p => p.longitude);
+    
+    const minLat = Math.min(...latitudes);
+    const maxLat = Math.max(...latitudes);
+    const minLng = Math.min(...longitudes);
+    const maxLng = Math.max(...longitudes);
+    
+    const centerLat = (minLat + maxLat) / 2;
+    const centerLng = (minLng + maxLng) / 2;
+    
+    const latDelta = (maxLat - minLat) * 1.5;
+    const lngDelta = (maxLng - minLng) * 1.5;
+    
+    const region = {
+      latitude: centerLat,
+      longitude: centerLng,
+      latitudeDelta: Math.max(latDelta, 0.01),
+      longitudeDelta: Math.max(lngDelta, 0.01),
+    };
+    
+    setMapRegion(region);
+    mapRef.current?.fitToCoordinates(
+      routePoints.map(p => ({ latitude: p.latitude, longitude: p.longitude })),
+      {
+        edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
+        animated: true,
+      }
+    );
+  };
+
   const handleClearRoute = () => {
     Alert.alert('Effacer le parcours', 'Voulez-vous effacer tous les points du parcours ?', [
       { text: 'Annuler', style: 'cancel' },
@@ -320,10 +388,13 @@ export default function CreateRouteScreen() {
           onPress={handleMapPress}
           onRegionChangeComplete={handleRegionChangeComplete}
           onLayout={handleMapLayout}
-          scrollEnabled={!isDrawing}
-          zoomEnabled={!isDrawing}
-          pitchEnabled={!isDrawing}
-          rotateEnabled={!isDrawing}
+          scrollEnabled={true}
+          zoomEnabled={true}
+          pitchEnabled={true}
+          rotateEnabled={true}
+          showsUserLocation={true}
+          showsMyLocationButton={false}
+          toolbarEnabled={false}
         >
           {routePoints.length > 0 && (
             <>
@@ -331,7 +402,18 @@ export default function CreateRouteScreen() {
                 <Marker
                   key={index}
                   coordinate={point}
+                  draggable
+                  onDragEnd={(e) => {
+                    const newCoordinate = e.nativeEvent.coordinate;
+                    const updatedPoints = [...routePoints];
+                    updatedPoints[index] = {
+                      latitude: newCoordinate.latitude,
+                      longitude: newCoordinate.longitude,
+                    };
+                    setRoutePoints(updatedPoints);
+                  }}
                   title={index === 0 ? 'Départ' : index === routePoints.length - 1 ? 'Arrivée' : `Point ${index + 1}`}
+                  description="Glissez pour ajuster la position"
                 />
               ))}
               {coordinates.length > 1 && (
@@ -353,6 +435,18 @@ export default function CreateRouteScreen() {
             </View>
             <Text style={styles.drawingHintText}>
               Appuyez sur la carte pour ajouter des points
+            </Text>
+          </View>
+        )}
+
+        {/* Instructions pour glisser les points */}
+        {!isDrawing && routePoints.length > 0 && (
+          <View style={styles.dragHint}>
+            <View style={styles.dragHintIcon}>
+              <MaterialCommunityIcons name="drag" size={18} color={COLORS.primary} />
+            </View>
+            <Text style={styles.dragHintText}>
+              Glissez les marqueurs pour ajuster le parcours
             </Text>
           </View>
         )}
@@ -391,6 +485,59 @@ export default function CreateRouteScreen() {
               color={routePoints.length === 0 ? COLORS.textLight : COLORS.error}
             />
           </TouchableOpacity>
+        </View>
+
+        {/* Contrôles de zoom */}
+        <View style={styles.zoomControls}>
+          <TouchableOpacity 
+            style={styles.zoomButton} 
+            onPress={handleZoomIn}
+          >
+            <MaterialCommunityIcons
+              name="plus"
+              size={22}
+              color={COLORS.primary}
+            />
+          </TouchableOpacity>
+          <View style={styles.zoomDivider} />
+          <TouchableOpacity 
+            style={styles.zoomButton} 
+            onPress={handleZoomOut}
+          >
+            <MaterialCommunityIcons
+              name="minus"
+              size={22}
+              color={COLORS.primary}
+            />
+          </TouchableOpacity>
+        </View>
+
+        {/* Contrôles de navigation */}
+        <View style={styles.navigationControls}>
+          {location && (
+            <TouchableOpacity 
+              style={styles.navButton} 
+              onPress={handleRecenter}
+            >
+              <MaterialCommunityIcons
+                name="crosshairs-gps"
+                size={20}
+                color={COLORS.primary}
+              />
+            </TouchableOpacity>
+          )}
+          {routePoints.length > 0 && (
+            <TouchableOpacity 
+              style={styles.navButton} 
+              onPress={handleFitToRoute}
+            >
+              <MaterialCommunityIcons
+                name="fit-to-screen"
+                size={20}
+                color={COLORS.primary}
+              />
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Info du parcours */}
@@ -587,6 +734,50 @@ const styles = StyleSheet.create({
     top: 12,
     right: 12,
     gap: 10,
+  },
+  zoomControls: {
+    position: 'absolute',
+    right: 12,
+    bottom: 80,
+    backgroundColor: 'white',
+    borderRadius: 12,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  zoomButton: {
+    width: 44,
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'white',
+  },
+  zoomDivider: {
+    width: '100%',
+    height: 1,
+    backgroundColor: COLORS.border,
+  },
+  navigationControls: {
+    position: 'absolute',
+    left: 12,
+    bottom: 80,
+    gap: 10,
+  },
+  navButton: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    width: 44,
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
   },
   mapButton: {
     backgroundColor: 'white',
@@ -848,6 +1039,38 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: 'white',
+    flex: 1,
+  },
+  dragHint: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
+    right: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
+    gap: 10,
+  },
+  dragHintIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: COLORS.primary + '20',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  dragHintText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.text,
     flex: 1,
   },
 });

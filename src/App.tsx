@@ -3,7 +3,7 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { RootStackParamList } from "./types/navigation";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { StyleSheet, Text, View, ActivityIndicator, TouchableWithoutFeedback } from "react-native";
+import { StyleSheet, Text, View, ActivityIndicator, TouchableWithoutFeedback, Image } from "react-native";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { SubscriptionProvider } from "./contexts/SubscriptionContext";
 import Toast, { BaseToast, ErrorToast } from "react-native-toast-message";
@@ -283,6 +283,11 @@ function NavigationSwitcher() {
   if (isLoading || !hasCompletedInitialCheck) {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <Image 
+          source={require("./assets/logo.png")} 
+          style={{ width: 150, height: 150, marginBottom: 32 }}
+          resizeMode="contain"
+        />
         <ActivityIndicator size="large" color="#7D80F4" />
       </View>
     );

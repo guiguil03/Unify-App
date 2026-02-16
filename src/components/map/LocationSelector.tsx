@@ -13,6 +13,7 @@ interface LocationSelectorProps {
   radius: number;
   onRadiusChange: (radius: number) => void;
   onValidate: () => void;
+  onClose?: () => void;
   style?: any;
 }
 
@@ -21,15 +22,27 @@ export function LocationSelector({
   radius,
   onRadiusChange,
   onValidate,
+  onClose,
   style,
 }: LocationSelectorProps) {
   return (
     <Animated.View style={[styles.container, style]}>
-      <View style={styles.addressContainer}>
-        <MaterialCommunityIcons name="map-marker" size={20} color="#7D80F4" />
-        <Text style={styles.address} numberOfLines={2}>
-          {address}
-        </Text>
+      <View style={styles.header}>
+        <View style={styles.addressContainer}>
+          <MaterialCommunityIcons name="map-marker" size={20} color="#7D80F4" />
+          <Text style={styles.address} numberOfLines={2}>
+            {address}
+          </Text>
+        </View>
+        {onClose && (
+          <TouchableOpacity 
+            style={styles.closeButton} 
+            onPress={onClose}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <MaterialCommunityIcons name="close" size={20} color="#666" />
+          </TouchableOpacity>
+        )}
       </View>
 
       <View style={styles.radiusContainer}>
@@ -75,11 +88,22 @@ const styles = StyleSheet.create({
     elevation: 3,
     zIndex: 2,
   },
-  addressContainer: {
+  header: {
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 16,
     gap: 8,
+  },
+  addressContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+    gap: 8,
+  },
+  closeButton: {
+    padding: 4,
+    borderRadius: 12,
+    backgroundColor: "#f0f0f0",
   },
   address: {
     flex: 1,
