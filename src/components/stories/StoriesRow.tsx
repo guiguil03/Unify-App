@@ -4,11 +4,13 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useStories } from '../../hooks/useStories';
 import { useAuth } from '../../contexts/AuthContext';
+import { useProfile } from '../../hooks/useProfile';
 import { NavigationProp } from '../../types/navigation';
 
 export function StoriesRow() {
   const { stories, loading, refetch } = useStories();
   const { user } = useAuth();
+  const { profile } = useProfile();
   const navigation = useNavigation<NavigationProp>();
 
   // Rafraîchir les stories quand on revient sur l'écran
@@ -67,10 +69,16 @@ export function StoriesRow() {
           <View style={styles.avatarWrapper}>
             <TouchableOpacity onPress={() => navigation.navigate('ViewStories', { userId: user!.id })}>
               <View style={[styles.avatarContainer, styles.myStoryBorder]}>
-                <Image
-                  source={{ uri: currentUserStory.stories[0].imageUrl }}
-                  style={styles.avatar}
-                />
+                {profile?.avatar ? (
+                  <Image
+                    source={{ uri: profile.avatar }}
+                    style={styles.avatar}
+                  />
+                ) : (
+                  <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                    <MaterialCommunityIcons name="account" size={24} color="#999" />
+                  </View>
+                )}
               </View>
             </TouchableOpacity>
             <TouchableOpacity 

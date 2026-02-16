@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
   Image,
   Alert,
   SafeAreaView,
+  Animated,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -25,6 +26,57 @@ export default function CreatePostScreen() {
   const [content, setContent] = useState('');
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Animations
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
+  const imageScale = useRef(new Animated.Value(0.95)).current;
+  const buttonScale = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    // Animation d'entrée
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        tension: 50,
+        friction: 7,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
+
+  useEffect(() => {
+    if (imageUri) {
+      Animated.spring(imageScale, {
+        toValue: 1,
+        tension: 50,
+        friction: 7,
+        useNativeDriver: true,
+      }).start();
+    } else {
+      imageScale.setValue(0.95);
+    }
+  }, [imageUri]);
+
+  const animateButtonPress = () => {
+    Animated.sequence([
+      Animated.timing(buttonScale, {
+        toValue: 0.95,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.timing(buttonScale, {
+        toValue: 1,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
 
   const handlePickImage = async () => {
     try {
@@ -56,14 +108,31 @@ export default function CreatePostScreen() {
 
   const handleSubmit = async () => {
     if (!content.trim()) {
+      // Animation de shake
+      Animated.sequence([
+        Animated.timing(buttonScale, {
+          toValue: 0.9,
+          duration: 50,
+          useNativeDriver: true,
+        }),
+        Animated.timing(buttonScale, {
+          toValue: 1.1,
+          duration: 50,
+          useNativeDriver: true,
+        }),
+        Animated.timing(buttonScale, {
+          toValue: 1,
+          duration: 50,
+          useNativeDriver: true,
+        }),
+      ]).start();
       showErrorToast('Veuillez écrire quelque chose');
       return;
     }
 
+    animateButtonPress();
     setIsSubmitting(true);
     try {
-      // TODO: Upload l'image vers Supabase Storage si imageUri existe
-      // Pour l'instant, on utilise l'URI locale (à améliorer plus tard)
       await PostsService.createPost({
         content: content.trim(),
         imageUrl: imageUri || undefined,
@@ -86,74 +155,153 @@ export default function CreatePostScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity 
+        <Animated.View
+          style={[
+            styles.header,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }],
+            },
+          ]}
+        >
+          <TouchableOpacity
             onPress={() => navigation.goBack()}
             style={styles.backButton}
+            activeOpacity={0.7}
           >
-            <MaterialCommunityIcons name="arrow-left" size={24} color="#333" />
+            <MaterialCommunityIcons name="arrow-left" size={24} color={COLORS.text} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Créer un post</Text>
           <View style={styles.headerSpacer} />
-        </View>
-        
-        <ScrollView 
-          style={styles.content} 
+        </Animated.View>
+
+        <ScrollView
+          style={styles.content}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-        <View style={styles.inputContainer}>
-          <TextInput
-            style={styles.textInput}
-            placeholder="Quoi de neuf ?"
-            placeholderTextColor={COLORS.textLight}
-            value={content}
-            onChangeText={setContent}
-            multiline
-            textAlignVertical="top"
-            maxLength={500}
-            autoFocus
-          />
-          <Text style={styles.charCount}>{content.length} / 500</Text>
-        </View>
+          {/* Carte de contenu */}
+          <Animated.View
+            style={[
+              styles.card,
+              {
+                opacity: fadeAnim,
+                transform: [{ translateY: slideAnim }],
+              },
+            ]}
+          >
+            <View style={styles.cardHeader}>
+              <View style={styles.iconContainer}>
+                <MaterialCommunityIcons name="text" size={24} color={COLORS.primary} />
+              </View>
+              <Text style={styles.cardTitle}>Contenu</Text>
+            </View>
 
-        {imageUri && (
-          <View style={styles.imageContainer}>
-            <Image source={{ uri: imageUri }} style={styles.previewImage} />
-            <TouchableOpacity
-              style={styles.removeImageButton}
-              onPress={handleRemoveImage}
+            <TextInput
+              style={styles.textInput}
+              placeholder="Quoi de neuf ?"
+              placeholderTextColor={COLORS.textLight}
+              value={content}
+              onChangeText={setContent}
+              multiline
+              textAlignVertical="top"
+              maxLength={500}
+              autoFocus
+            />
+            <Animated.Text
+              style={[
+                styles.charCount,
+                {
+                  color: content.length > 450 ? COLORS.error : COLORS.textLight,
+                },
+              ]}
             >
-              <MaterialCommunityIcons name="close-circle" size={32} color={COLORS.background} />
-            </TouchableOpacity>
-          </View>
-        )}
+              {content.length} / 500
+            </Animated.Text>
+          </Animated.View>
 
-        <TouchableOpacity
-          style={styles.imageButton}
-          onPress={handlePickImage}
-        >
-          <MaterialCommunityIcons name="image-outline" size={24} color={COLORS.primary} />
-          <Text style={styles.imageButtonText}>Ajouter une photo</Text>
-        </TouchableOpacity>
-      </ScrollView>
-
-      <View style={styles.footer}>
-        <TouchableOpacity
-          style={[styles.submitButton, (!content.trim() || isSubmitting) && styles.submitButtonDisabled]}
-          onPress={handleSubmit}
-          disabled={!content.trim() || isSubmitting}
-        >
-          {isSubmitting ? (
-            <ActivityIndicator size="small" color={COLORS.background} />
-          ) : (
-            <>
-              <MaterialCommunityIcons name="send" size={20} color={COLORS.background} />
-              <Text style={styles.submitButtonText}>Publier</Text>
-            </>
+          {/* Image preview */}
+          {imageUri && (
+            <Animated.View
+              style={[
+                styles.imageCard,
+                {
+                  opacity: fadeAnim,
+                  transform: [{ scale: imageScale }],
+                },
+              ]}
+            >
+              <View style={styles.imageContainer}>
+                <Image source={{ uri: imageUri }} style={styles.previewImage} />
+                <TouchableOpacity
+                  style={styles.removeImageButton}
+                  onPress={handleRemoveImage}
+                  activeOpacity={0.7}
+                >
+                  <MaterialCommunityIcons name="close-circle" size={28} color={COLORS.background} />
+                </TouchableOpacity>
+              </View>
+            </Animated.View>
           )}
-        </TouchableOpacity>
-      </View>
+
+          {/* Bouton ajouter image */}
+          <Animated.View
+            style={[
+              styles.card,
+              {
+                opacity: fadeAnim,
+                transform: [{ translateY: slideAnim }],
+              },
+            ]}
+          >
+            <TouchableOpacity
+              style={styles.imageButton}
+              onPress={handlePickImage}
+              activeOpacity={0.8}
+            >
+              <View style={styles.imageButtonIcon}>
+                <MaterialCommunityIcons name="image-plus" size={24} color={COLORS.primary} />
+              </View>
+              <Text style={styles.imageButtonText}>Ajouter une photo</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        </ScrollView>
+
+        {/* Footer */}
+        <Animated.View
+          style={[
+            styles.footer,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }],
+            },
+          ]}
+        >
+          <Animated.View
+            style={{
+              transform: [{ scale: buttonScale }],
+            }}
+          >
+            <TouchableOpacity
+              style={[
+                styles.submitButton,
+                (!content.trim() || isSubmitting) && styles.submitButtonDisabled,
+              ]}
+              onPress={handleSubmit}
+              disabled={!content.trim() || isSubmitting}
+              activeOpacity={0.8}
+            >
+              {isSubmitting ? (
+                <ActivityIndicator size="small" color={COLORS.background} />
+              ) : (
+                <>
+                  <MaterialCommunityIcons name="send" size={20} color={COLORS.background} />
+                  <Text style={styles.submitButtonText}>Publier</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </Animated.View>
+        </Animated.View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -174,38 +322,31 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: '#fff',
+    backgroundColor: 'transparent',
     paddingTop: 8,
   },
   backButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#fff',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 3,
   },
   headerSpacer: {
-    width: 56,
+    width: 44,
   },
   headerTitle: {
-    fontSize: 18,
+    flex: 1,
+    fontSize: 20,
     fontWeight: '700',
-    color: '#7D80F4',
-    paddingHorizontal: 24,
-    paddingVertical: 8,
-    borderRadius: 999,
-    backgroundColor: '#fff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
+    color: COLORS.text,
+    marginLeft: 12,
   },
   content: {
     flex: 1,
@@ -215,53 +356,90 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 20,
   },
-  inputContainer: {
+  card: {
     backgroundColor: COLORS.background,
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
-    minHeight: 180,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    gap: 12,
+  },
+  iconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: COLORS.primary + '15',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.text,
   },
   textInput: {
     fontSize: 16,
     color: COLORS.text,
     lineHeight: 24,
-    flex: 1,
+    minHeight: 120,
+    paddingTop: 0,
   },
   charCount: {
     fontSize: 12,
-    color: COLORS.textLight,
     textAlign: 'right',
-    marginTop: 8,
+    marginTop: 12,
+    fontWeight: '500',
+  },
+  imageCard: {
+    backgroundColor: COLORS.background,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
   },
   imageContainer: {
     position: 'relative',
-    marginBottom: 16,
-    borderRadius: 16,
+    borderRadius: 12,
     overflow: 'hidden',
   },
   previewImage: {
     width: '100%',
     height: 300,
-    borderRadius: 16,
+    borderRadius: 12,
   },
   removeImageButton: {
     position: 'absolute',
     top: 12,
     right: 12,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
     borderRadius: 16,
   },
   imageButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.background,
-    borderRadius: 16,
-    padding: 16,
     gap: 12,
-    borderWidth: 2,
-    borderColor: COLORS.primary,
-    borderStyle: 'dashed',
+    paddingVertical: 4,
+  },
+  imageButtonIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: COLORS.primary + '15',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   imageButtonText: {
     fontSize: 16,
@@ -270,10 +448,15 @@ const styles = StyleSheet.create({
   },
   footer: {
     padding: 20,
-    paddingBottom: 30,
+    paddingBottom: Platform.OS === 'ios' ? 30 : 20,
     backgroundColor: COLORS.background,
     borderTopWidth: 1,
     borderTopColor: COLORS.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 8,
   },
   submitButton: {
     flexDirection: 'row',
@@ -281,11 +464,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: COLORS.primary,
     borderRadius: 16,
-    padding: 18,
+    paddingVertical: 16,
     gap: 10,
     shadowColor: COLORS.primary,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.4,
     shadowRadius: 8,
     elevation: 6,
   },
@@ -299,4 +482,3 @@ const styles = StyleSheet.create({
     color: COLORS.background,
   },
 });
-

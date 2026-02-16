@@ -5,6 +5,7 @@ import { useRoute, useNavigation } from '@react-navigation/native';
 import { ProfileService } from '../services/ProfileService';
 import { PostsService } from '../services/PostsService';
 import { StoriesService, Story } from '../services/StoriesService';
+import { ContactsService } from '../services/ContactsService';
 import { Profile } from '../types/profile';
 import { Post } from '../types/post';
 import { ProfileStats } from '../components/profile/ProfileStats';
@@ -12,7 +13,7 @@ import { ProfileInfo } from '../components/profile/ProfileInfo';
 import { COLORS } from '../constants/colors';
 import { NavigationProp } from '../types/navigation';
 import { useAuth } from '../contexts/AuthContext';
-import { showErrorToast } from '../utils/errorHandler';
+import { showErrorToast, showSuccessToast, showInfoToast } from '../utils/errorHandler';
 
 export default function UserProfileScreen() {
   const route = useRoute();
@@ -29,6 +30,8 @@ export default function UserProfileScreen() {
   const [loadingStories, setLoadingStories] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<'posts' | 'stories'>('posts');
+  const [contactStatus, setContactStatus] = useState<'none' | 'friends' | 'pending' | 'incoming'>('none');
+  const [loadingContact, setLoadingContact] = useState(false);
 
   const isOwnProfile = user?.id === userId;
 
@@ -36,8 +39,11 @@ export default function UserProfileScreen() {
     if (userId) {
       loadProfile();
       loadUserContent();
+      if (!isOwnProfile) {
+        checkContactStatus();
+      }
     }
-  }, [userId]);
+  }, [userId, isOwnProfile]);
 
   const loadProfile = async () => {
     if (!userId) return;
@@ -78,14 +84,83 @@ export default function UserProfileScreen() {
     }
   };
 
+  const checkContactStatus = async () => {
+    if (!userId || !user?.id || isOwnProfile) return;
+
+    try {
+      const relationships = await ContactsService.getRelationshipsMap();
+      const status = relationships[userId];
+      
+      if (status === 'friends') {
+        setContactStatus('friends');
+      } else if (status === 'pending') {
+        setContactStatus('pending');
+      } else if (status === 'incoming') {
+        setContactStatus('incoming');
+      } else {
+        setContactStatus('none');
+      }
+    } catch (err) {
+      console.error('Erreur lors de la vérification du statut de contact:', err);
+      setContactStatus('none');
+    }
+  };
+
+  const handleAddContact = async () => {
+    if (!userId) return;
+
+    try {
+      setLoadingContact(true);
+      await ContactsService.addContact(userId);
+      setContactStatus('pending');
+      showSuccessToast('Demande d\'ami envoyée ! 🎉');
+    } catch (err: any) {
+      if (err.message === 'ALREADY_FRIENDS') {
+        setContactStatus('friends');
+        showInfoToast('Vous êtes déjà amis.');
+      } else if (err.message === 'REQUEST_ALREADY_SENT') {
+        setContactStatus('pending');
+        showInfoToast('Vous avez déjà envoyé une demande.');
+      } else if (err.message === 'REQUEST_PENDING_FROM_CONTACT') {
+        setContactStatus('incoming');
+        showInfoToast('Cette personne vous a déjà envoyé une demande.');
+      } else {
+        showErrorToast('Impossible d\'envoyer la demande');
+      }
+    } finally {
+      setLoadingContact(false);
+    }
+  };
+
+  const handleSendMessage = () => {
+    if (!profile) return;
+    navigation.navigate('Chat', {
+      contactId: userId,
+      contactName: profile.name,
+    });
+  };
+
+  const handleViewStory = (story: Story) => {
+    navigation.navigate('ViewStories', { userId });
+  };
+
   const onRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([loadProfile(), loadUserContent()]);
+    await Promise.all([
+      loadProfile(), 
+      loadUserContent(),
+      !isOwnProfile ? checkContactStatus() : Promise.resolve()
+    ]);
     setRefreshing(false);
   };
 
   const renderPostItem = ({ item }: { item: Post }) => (
-    <TouchableOpacity style={styles.postItem}>
+    <TouchableOpacity 
+      style={styles.postItem}
+      onPress={() => {
+        // Navigation vers le détail du post si nécessaire
+      }}
+    >
       {item.imageUrl ? (
         <Image source={{ uri: item.imageUrl }} style={styles.postImage} />
       ) : (
@@ -106,7 +181,10 @@ export default function UserProfileScreen() {
     const isExpired = new Date(item.expiresAt) < new Date();
     
     return (
-      <TouchableOpacity style={styles.storyItem}>
+      <TouchableOpacity 
+        style={styles.storyItem}
+        onPress={() => !isExpired && handleViewStory(item)}
+      >
         {item.imageUrl ? (
           <Image source={{ uri: item.imageUrl }} style={styles.storyImage} />
         ) : (
@@ -189,6 +267,52 @@ export default function UserProfileScreen() {
             <Text style={styles.bio}>{profile.bio}</Text>
           ) : (
             <Text style={styles.noBio}>Aucune biographie</Text>
+          )}
+
+          {/* Boutons d'action pour les profils publics */}
+          {!isOwnProfile && (
+            <View style={styles.actionButtons}>
+              {contactStatus === 'friends' ? (
+                <TouchableOpacity 
+                  style={[styles.actionButton, styles.messageButton]}
+                  onPress={handleSendMessage}
+                >
+                  <MaterialCommunityIcons name="message-text" size={20} color="#fff" />
+                  <Text style={styles.actionButtonText}>Envoyer un message</Text>
+                </TouchableOpacity>
+              ) : contactStatus === 'pending' ? (
+                <TouchableOpacity 
+                  style={[styles.actionButton, styles.pendingButton]}
+                  disabled
+                >
+                  <MaterialCommunityIcons name="clock-outline" size={20} color={COLORS.primary} />
+                  <Text style={[styles.actionButtonText, styles.pendingButtonText]}>Demande envoyée</Text>
+                </TouchableOpacity>
+              ) : contactStatus === 'incoming' ? (
+                <TouchableOpacity 
+                  style={[styles.actionButton, styles.messageButton]}
+                  onPress={() => navigation.navigate('Contacts')}
+                >
+                  <MaterialCommunityIcons name="account-plus" size={20} color="#fff" />
+                  <Text style={styles.actionButtonText}>Voir la demande</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity 
+                  style={[styles.actionButton, styles.addButton]}
+                  onPress={handleAddContact}
+                  disabled={loadingContact}
+                >
+                  {loadingContact ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <>
+                      <MaterialCommunityIcons name="account-plus" size={20} color="#fff" />
+                      <Text style={styles.actionButtonText}>Ajouter en ami</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              )}
+            </View>
           )}
         </View>
 
@@ -285,14 +409,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     paddingTop: 50,
-    backgroundColor: 'white',
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    backgroundColor: 'transparent',
   },
   backButton: {
     padding: 4,
@@ -522,6 +639,49 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 12,
     fontWeight: '600',
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 20,
+    width: '100%',
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    gap: 8,
+  },
+  addButton: {
+    backgroundColor: COLORS.primary,
+  },
+  messageButton: {
+    backgroundColor: COLORS.primary,
+  },
+  pendingButton: {
+    backgroundColor: COLORS.backgroundLight,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+  },
+  secondaryButton: {
+    backgroundColor: COLORS.backgroundLight,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+  },
+  actionButtonText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  pendingButtonText: {
+    color: COLORS.primary,
+  },
+  secondaryButtonText: {
+    color: COLORS.primary,
   },
 });
 

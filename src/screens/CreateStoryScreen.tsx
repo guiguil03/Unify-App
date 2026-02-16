@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,8 @@ import {
   Image,
   Alert,
   SafeAreaView,
+  Animated,
+  Dimensions,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -19,6 +21,9 @@ import * as ImagePicker from 'expo-image-picker';
 import { StoriesService } from '../services/StoriesService';
 import { showSuccessToast, showErrorToast } from '../utils/errorHandler';
 import { supabase } from '../config/supabase';
+import { COLORS } from '../constants/colors';
+
+const { width } = Dimensions.get('window');
 
 export default function CreateStoryScreen() {
   const navigation = useNavigation();
@@ -27,6 +32,102 @@ export default function CreateStoryScreen() {
   const [isCreating, setIsCreating] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+
+  // Animations
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(50)).current;
+  const previewScale = useRef(new Animated.Value(0.9)).current;
+  const previewOpacity = useRef(new Animated.Value(0)).current;
+  const card1Anim = useRef(new Animated.Value(0)).current;
+  const card2Anim = useRef(new Animated.Value(0)).current;
+  const card3Anim = useRef(new Animated.Value(0)).current;
+  const buttonScale = useRef(new Animated.Value(1)).current;
+
+  // Animation d'entrée
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        tension: 50,
+        friction: 7,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    // Animations en cascade pour les cartes
+    Animated.stagger(100, [
+      Animated.spring(card1Anim, {
+        toValue: 1,
+        tension: 50,
+        friction: 7,
+        useNativeDriver: true,
+      }),
+      Animated.spring(card2Anim, {
+        toValue: 1,
+        tension: 50,
+        friction: 7,
+        useNativeDriver: true,
+      }),
+      Animated.spring(card3Anim, {
+        toValue: 1,
+        tension: 50,
+        friction: 7,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
+
+  // Animation de la prévisualisation
+  useEffect(() => {
+    if (showPreview) {
+      Animated.parallel([
+        Animated.spring(previewScale, {
+          toValue: 1,
+          tension: 50,
+          friction: 7,
+          useNativeDriver: true,
+        }),
+        Animated.timing(previewOpacity, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else {
+      Animated.parallel([
+        Animated.timing(previewScale, {
+          toValue: 0.9,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(previewOpacity, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [showPreview]);
+
+  const animateButtonPress = () => {
+    Animated.sequence([
+      Animated.timing(buttonScale, {
+        toValue: 0.95,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.timing(buttonScale, {
+        toValue: 1,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
 
   const pickImage = async () => {
     try {
@@ -112,6 +213,14 @@ export default function CreateStoryScreen() {
         .getPublicUrl(fileName);
 
       setImageUrl(publicUrl);
+      // Animation lors de l'upload réussi
+      Animated.sequence([
+        Animated.timing(previewOpacity, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start();
       setShowPreview(true);
       showSuccessToast('Image téléchargée ! 📸');
     } catch (error: any) {
@@ -124,10 +233,29 @@ export default function CreateStoryScreen() {
 
   const handleCreate = async () => {
     if (!imageUrl.trim()) {
+      // Animation de shake pour indiquer l'erreur
+      Animated.sequence([
+        Animated.timing(buttonScale, {
+          toValue: 0.9,
+          duration: 50,
+          useNativeDriver: true,
+        }),
+        Animated.timing(buttonScale, {
+          toValue: 1.1,
+          duration: 50,
+          useNativeDriver: true,
+        }),
+        Animated.timing(buttonScale, {
+          toValue: 1,
+          duration: 50,
+          useNativeDriver: true,
+        }),
+      ]).start();
       showErrorToast('Veuillez ajouter une image');
       return;
     }
 
+    animateButtonPress();
     setIsCreating(true);
     try {
       await StoriesService.createStory({
@@ -165,15 +293,25 @@ export default function CreateStoryScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         {/* Header */}
-        <View style={styles.header}>
+        <Animated.View 
+          style={[
+            styles.header,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }],
+            },
+          ]}
+        >
           <TouchableOpacity 
             onPress={() => navigation.goBack()}
             style={styles.backButton}
+            activeOpacity={0.7}
           >
-            <MaterialCommunityIcons name="arrow-left" size={24} color="#333" />
+            <MaterialCommunityIcons name="arrow-left" size={24} color={COLORS.text} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Créer une story</Text>
-        </View>
+          <View style={styles.headerSpacer} />
+        </Animated.View>
 
         <ScrollView 
           style={styles.content} 
@@ -182,7 +320,15 @@ export default function CreateStoryScreen() {
         >
         {/* Prévisualisation de l'image */}
         {imageUrl.trim() && showPreview ? (
-          <View style={styles.previewContainer}>
+          <Animated.View 
+            style={[
+              styles.previewContainer,
+              {
+                opacity: previewOpacity,
+                transform: [{ scale: previewScale }],
+              },
+            ]}
+          >
             <Image
               source={{ uri: imageUrl }}
               style={styles.previewImage}
@@ -193,23 +339,48 @@ export default function CreateStoryScreen() {
               }}
             />
             {caption.trim() && (
-              <View style={styles.captionOverlay}>
+              <Animated.View 
+                style={[
+                  styles.captionOverlay,
+                  {
+                    opacity: previewOpacity,
+                  },
+                ]}
+              >
                 <Text style={styles.captionPreview}>{caption}</Text>
-              </View>
+              </Animated.View>
             )}
             <TouchableOpacity
               style={styles.closePreview}
               onPress={() => setShowPreview(false)}
+              activeOpacity={0.7}
             >
-              <MaterialCommunityIcons name="close-circle" size={28} color="#fff" />
+              <MaterialCommunityIcons name="close-circle" size={32} color="#fff" />
             </TouchableOpacity>
-          </View>
+          </Animated.View>
         ) : null}
 
         {/* Sélection de l'image */}
-        <View style={styles.card}>
+        <Animated.View 
+          style={[
+            styles.card,
+            {
+              opacity: card1Anim,
+              transform: [
+                {
+                  translateY: card1Anim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [30, 0],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
           <View style={styles.cardHeader}>
-            <MaterialCommunityIcons name="image" size={24} color="#7D80F4" />
+            <View style={styles.iconContainer}>
+              <MaterialCommunityIcons name="image" size={24} color="#7D80F4" />
+            </View>
             <Text style={styles.cardTitle}>Image de la story</Text>
           </View>
 
@@ -218,6 +389,7 @@ export default function CreateStoryScreen() {
             style={styles.galleryButton}
             onPress={pickImage}
             disabled={isUploading || isCreating}
+            activeOpacity={0.8}
           >
             {isUploading ? (
               <ActivityIndicator size="small" color="#7D80F4" />
@@ -262,12 +434,29 @@ export default function CreateStoryScreen() {
               <Text style={styles.previewButtonText}>Aperçu de l'image</Text>
             </TouchableOpacity>
           )}
-        </View>
+        </Animated.View>
 
         {/* Légende */}
-        <View style={styles.card}>
+        <Animated.View 
+          style={[
+            styles.card,
+            {
+              opacity: card2Anim,
+              transform: [
+                {
+                  translateY: card2Anim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [30, 0],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
           <View style={styles.cardHeader}>
-            <MaterialCommunityIcons name="text" size={24} color="#7D80F4" />
+            <View style={styles.iconContainer}>
+              <MaterialCommunityIcons name="text" size={24} color="#7D80F4" />
+            </View>
             <Text style={styles.cardTitle}>Légende (optionnel)</Text>
           </View>
 
@@ -283,11 +472,35 @@ export default function CreateStoryScreen() {
             textAlignVertical="top"
             editable={!isCreating}
           />
-          <Text style={styles.charCount}>{caption.length} / 150</Text>
-        </View>
+          <Animated.Text 
+            style={[
+              styles.charCount,
+              {
+                color: caption.length > 140 ? '#ff4444' : '#999',
+              },
+            ]}
+          >
+            {caption.length} / 150
+          </Animated.Text>
+        </Animated.View>
 
         {/* Informations */}
-        <View style={styles.infoCard}>
+        <Animated.View 
+          style={[
+            styles.infoCard,
+            {
+              opacity: card3Anim,
+              transform: [
+                {
+                  translateY: card3Anim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [30, 0],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
           <View style={styles.infoHeader}>
             <MaterialCommunityIcons name="information-outline" size={24} color="#666" />
             <Text style={styles.infoTitle}>À propos des stories</Text>
@@ -313,73 +526,56 @@ export default function CreateStoryScreen() {
               Visible par tous vos contacts et coureurs
             </Text>
           </View>
-        </View>
-
-        {/* Idées de contenu */}
-        <View style={styles.tipsCard}>
-          <Text style={styles.tipsTitle}>💡 Idées de stories</Text>
-          
-          <View style={styles.tipRow}>
-            <View style={styles.tipBullet} />
-            <Text style={styles.tipText}>
-              Partagez votre course du matin
-            </Text>
-          </View>
-
-          <View style={styles.tipRow}>
-            <View style={styles.tipBullet} />
-            <Text style={styles.tipText}>
-              Montrez votre nouveau record
-            </Text>
-          </View>
-
-          <View style={styles.tipRow}>
-            <View style={styles.tipBullet} />
-            <Text style={styles.tipText}>
-              Votre parcours préféré
-            </Text>
-          </View>
-
-          <View style={styles.tipRow}>
-            <View style={styles.tipBullet} />
-            <Text style={styles.tipText}>
-              Motivez la communauté !
-            </Text>
-          </View>
-        </View>
+        </Animated.View>
 
         <View style={styles.bottomSpace} />
       </ScrollView>
 
       {/* Boutons de bas de page */}
-      <View style={styles.footer}>
+      <Animated.View
+        style={[
+          styles.footer,
+          {
+            opacity: fadeAnim,
+            transform: [{ translateY: slideAnim }],
+          },
+        ]}
+      >
         <TouchableOpacity
           style={styles.cancelButton}
           onPress={() => navigation.goBack()}
           disabled={isCreating}
+          activeOpacity={0.7}
         >
-          <MaterialCommunityIcons name="close" size={20} color="#666" />
+          <MaterialCommunityIcons name="close" size={20} color={COLORS.textLight} />
           <Text style={styles.cancelButtonText}>Annuler</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[
-            styles.publishButton,
-            (!imageUrl.trim() || isCreating) && styles.publishButtonDisabled
-          ]}
-          onPress={handleCreate}
-          disabled={isCreating || !imageUrl.trim()}
+        <Animated.View
+          style={{
+            transform: [{ scale: buttonScale }],
+          }}
         >
-          {isCreating ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : (
-            <>
-              <MaterialCommunityIcons name="check" size={20} color="#fff" />
-              <Text style={styles.publishButtonText}>Publier la story</Text>
-            </>
-          )}
-        </TouchableOpacity>
-      </View>
+          <TouchableOpacity
+            style={[
+              styles.publishButton,
+              (!imageUrl.trim() || isCreating) && styles.publishButtonDisabled
+            ]}
+            onPress={handleCreate}
+            disabled={isCreating || !imageUrl.trim()}
+            activeOpacity={0.8}
+          >
+            {isCreating ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <>
+                <MaterialCommunityIcons name="check" size={20} color="#fff" />
+                <Text style={styles.publishButtonText}>Publier la story</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        </Animated.View>
+      </Animated.View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -388,18 +584,18 @@ export default function CreateStoryScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.background,
   },
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: COLORS.backgroundLight,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: '#fff',
+    backgroundColor: 'transparent',
     paddingTop: 8,
   },
   content: {
@@ -409,15 +605,15 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
   },
   backButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#fff',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 3,
   },
@@ -425,18 +621,14 @@ const styles = StyleSheet.create({
     width: 56,
   },
   headerTitle: {
-    fontSize: 18,
+    flex: 1,
+    fontSize: 20,
     fontWeight: '700',
-    color: '#7D80F4',
-    paddingHorizontal: 24,
-    paddingVertical: 8,
-    borderRadius: 999,
-    backgroundColor: '#fff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
+    color: COLORS.text,
+    marginLeft: 12,
+  },
+  headerSpacer: {
+    width: 44,
   },
   content: {
     flex: 1,
@@ -445,10 +637,16 @@ const styles = StyleSheet.create({
     position: 'relative',
     marginHorizontal: 16,
     marginTop: 16,
-    height: 400,
-    borderRadius: 16,
+    height: width * 1.6, // Format story (9:16)
+    maxHeight: 600,
+    borderRadius: 20,
     overflow: 'hidden',
     backgroundColor: '#000',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
   },
   previewImage: {
     width: '100%',
@@ -474,16 +672,16 @@ const styles = StyleSheet.create({
     right: 12,
   },
   card: {
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.background,
     marginHorizontal: 16,
     marginTop: 16,
-    padding: 16,
+    padding: 20,
     borderRadius: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    shadowRadius: 3,
+    elevation: 2,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -491,28 +689,41 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     gap: 12,
   },
+  iconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: COLORS.primary + '15',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   cardTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#333',
+    color: COLORS.text,
   },
   galleryButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFF5F6',
-    paddingVertical: 16,
+    backgroundColor: COLORS.primary + '15',
+    paddingVertical: 18,
     paddingHorizontal: 20,
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 2,
-    borderColor: '#7D80F4',
+    borderColor: COLORS.primary,
     borderStyle: 'dashed',
-    gap: 10,
+    gap: 12,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   galleryButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#7D80F4',
+    color: COLORS.primary,
   },
   divider: {
     flexDirection: 'row',
@@ -531,17 +742,18 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   input: {
-    backgroundColor: '#f8f9fa',
+    backgroundColor: COLORS.backgroundLight,
     borderRadius: 12,
-    padding: 14,
+    padding: 16,
     fontSize: 15,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    color: '#333',
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+    color: COLORS.text,
   },
   captionInput: {
-    minHeight: 100,
-    paddingTop: 14,
+    minHeight: 120,
+    paddingTop: 16,
+    lineHeight: 22,
   },
   urlHints: {
     marginTop: 12,
@@ -578,18 +790,24 @@ const styles = StyleSheet.create({
   },
   charCount: {
     fontSize: 12,
-    color: '#999',
+    color: COLORS.textLight,
     textAlign: 'right',
-    marginTop: 8,
+    marginTop: 12,
+    fontWeight: '500',
   },
   infoCard: {
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.background,
     marginHorizontal: 16,
     marginTop: 16,
-    padding: 16,
+    padding: 20,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: COLORS.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
   },
   infoHeader: {
     flexDirection: 'row',
@@ -600,7 +818,7 @@ const styles = StyleSheet.create({
   infoTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#333',
+    color: COLORS.text,
   },
   infoItem: {
     flexDirection: 'row',
@@ -611,40 +829,8 @@ const styles = StyleSheet.create({
   infoText: {
     flex: 1,
     fontSize: 14,
-    color: '#666',
+    color: COLORS.textLight,
     lineHeight: 20,
-  },
-  tipsCard: {
-    backgroundColor: '#FFF8E1',
-    marginHorizontal: 16,
-    marginTop: 16,
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#FFE082',
-  },
-  tipsTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 16,
-    color: '#333',
-  },
-  tipRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 10,
-    gap: 12,
-  },
-  tipBullet: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#7D80F4',
-  },
-  tipText: {
-    flex: 1,
-    fontSize: 14,
-    color: '#666',
   },
   bottomSpace: {
     height: 100,
@@ -652,13 +838,13 @@ const styles = StyleSheet.create({
   footer: {
     flexDirection: 'row',
     padding: 16,
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.background,
     borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
+    borderTopColor: COLORS.border,
     gap: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 8,
   },
@@ -668,14 +854,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 16,
-    backgroundColor: '#f5f5f5',
-    borderRadius: 12,
+    backgroundColor: COLORS.backgroundLight,
+    borderRadius: 16,
     gap: 8,
   },
   cancelButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#666',
+    color: COLORS.textLight,
   },
   publishButton: {
     flex: 2,
@@ -683,17 +869,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 16,
-    backgroundColor: '#7D80F4',
-    borderRadius: 12,
+    backgroundColor: COLORS.primary,
+    borderRadius: 16,
     gap: 8,
-    shadowColor: '#7D80F4',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 4,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 6,
   },
   publishButtonDisabled: {
-    backgroundColor: '#ccc',
+    backgroundColor: COLORS.border,
     shadowOpacity: 0,
   },
   publishButtonText: {

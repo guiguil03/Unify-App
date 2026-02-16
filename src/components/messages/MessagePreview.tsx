@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, Image } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Message } from "../../types/message";
 
@@ -11,9 +11,13 @@ interface MessagePreviewProps {
 export function MessagePreview({ message, onPress }: MessagePreviewProps) {
   return (
     <TouchableOpacity style={styles.container} onPress={onPress}>
-      <View style={styles.avatar}>
-        <MaterialCommunityIcons name="account" size={32} color="#7D80F4" />
-      </View>
+      {message.contactAvatar ? (
+        <Image source={{ uri: message.contactAvatar }} style={styles.avatar} />
+      ) : (
+        <View style={styles.avatar}>
+          <MaterialCommunityIcons name="account" size={32} color="#7D80F4" />
+        </View>
+      )}
 
       <View style={styles.content}>
         <View style={styles.header}>

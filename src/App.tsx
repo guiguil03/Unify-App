@@ -3,7 +3,7 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { RootStackParamList } from "./types/navigation";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { StyleSheet, Text, View, ActivityIndicator, TouchableWithoutFeedback, Image } from "react-native";
+import { StyleSheet, Text, View, ActivityIndicator, TouchableWithoutFeedback, Image, Platform } from "react-native";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { SubscriptionProvider } from "./contexts/SubscriptionContext";
 import Toast, { BaseToast, ErrorToast } from "react-native-toast-message";
@@ -41,22 +41,47 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 // Composant pour les boutons du header (réglages et messages)
 const HeaderButtons = ({ navigation }: { navigation: any }) => (
-  <TouchableWithoutFeedback
+  <TouchableOpacity
     onPress={() => navigation.navigate("Messages")}
-    style={{  backgroundColor: 'blue' }}
+    style={headerStyles.iconButton}
+    activeOpacity={0.8}
   >
-    <MaterialCommunityIcons name="message-outline" size={24} color="white" />
-</TouchableWithoutFeedback>
+    <View style={headerStyles.iconContainer}>
+      <MaterialCommunityIcons name="message-text-outline" size={22} color="#7D80F4" />
+    </View>
+  </TouchableOpacity>
 );
 
 const HeaderLeft = ({ navigation }: { navigation: any }) => (
   <TouchableOpacity
     onPress={() => navigation.navigate("Settings")}
-    style={{ marginLeft: 6, backgroundColor: 'transparent' }}
+    style={headerStyles.iconButton}
+    activeOpacity={0.8}
   >
-    <MaterialCommunityIcons name="cog-outline" size={24} color="white" />
+    <View style={headerStyles.iconContainer}>
+      <MaterialCommunityIcons name="cog-outline" size={22} color="#7D80F4" />
+    </View>
   </TouchableOpacity>
 );
+
+const headerStyles = StyleSheet.create({
+  iconButton: {
+    marginHorizontal: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  iconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+});
 
 // Stack pour utilisateurs non authentifiés
 function AuthStack() {
@@ -80,6 +105,14 @@ function AppStack() {
             backgroundColor: "#7D80F4",
           },
           headerTintColor: "white",
+          headerTransparent: false,
+          gestureEnabled: false,
+          presentation: 'card',
+          freezeOnBlur: true,
+          contentStyle: {
+            backgroundColor: '#f5f5f5',
+          },
+          animation: 'none',
         }}
         initialRouteName="Home"
       >
@@ -95,6 +128,7 @@ function AppStack() {
             title: "Accueil",
             headerLeft: () => <HeaderLeft navigation={navigation} />,
             headerRight: () => <HeaderButtons navigation={navigation} />,
+            contentStyle: { backgroundColor: '#f5f5f5' },
           })}
         />
       <Stack.Screen
@@ -104,6 +138,7 @@ function AppStack() {
           title: "Carte",
           headerLeft: () => <HeaderLeft navigation={navigation} />,
           headerRight: () => <HeaderButtons navigation={navigation} />,
+          contentStyle: { backgroundColor: '#f5f5f5' },
         })}
       />
       <Stack.Screen
@@ -113,6 +148,7 @@ function AppStack() {
           title: "Mes Activités",
           headerLeft: () => <HeaderLeft navigation={navigation} />,
           headerRight: () => <HeaderButtons navigation={navigation} />,
+          contentStyle: { backgroundColor: '#f5f5f5' },
         })}
       />
       <Stack.Screen
@@ -127,6 +163,9 @@ function AppStack() {
           title: "Statistiques",
           headerLeft: () => <HeaderLeft navigation={navigation} />,
           headerRight: () => <HeaderButtons navigation={navigation} />,
+          contentStyle: { backgroundColor: '#f5f5f5' },
+          gestureEnabled: true,
+          gestureDirection: 'horizontal',
         })}
       />
       <Stack.Screen
@@ -136,6 +175,7 @@ function AppStack() {
           title: "Événements",
           headerLeft: () => <HeaderLeft navigation={navigation} />,
           headerRight: () => <HeaderButtons navigation={navigation} />,
+          contentStyle: { backgroundColor: '#f5f5f5' },
         })}
       />
       <Stack.Screen
@@ -145,15 +185,19 @@ function AppStack() {
           title: "Mon Profil",
           headerLeft: () => <HeaderLeft navigation={navigation} />,
           headerRight: () => <HeaderButtons navigation={navigation} />,
+          contentStyle: { backgroundColor: '#f5f5f5' },
         })}
       />
       <Stack.Screen
         name="EditProfile"
         component={EditProfileScreen}
-        options={{ 
+        options={({ navigation }) => ({
           title: "Modifier le profil",
-          headerShown: false,
-        }}
+          headerLeft: () => <HeaderLeft navigation={navigation} />,
+          contentStyle: { backgroundColor: '#f5f5f5' },
+          gestureEnabled: true,
+          gestureDirection: 'horizontal',
+        })}
       />
       <Stack.Screen
         name="Contacts"
@@ -162,6 +206,7 @@ function AppStack() {
           title: "Contacts",
           headerLeft: () => <HeaderLeft navigation={navigation} />,
           headerRight: () => <HeaderButtons navigation={navigation} />,
+          contentStyle: { backgroundColor: '#f5f5f5' },
         })}
       />
       <Stack.Screen
@@ -170,6 +215,7 @@ function AppStack() {
         options={({ navigation }) => ({
           title: "Messages",
           headerLeft: () => <HeaderLeft navigation={navigation} />,
+          contentStyle: { backgroundColor: '#f5f5f5' },
         })}
       />
       <Stack.Screen
@@ -177,12 +223,16 @@ function AppStack() {
         component={ChatScreen}
         options={({ route }) => ({
           title: route.params.contactName,
+          contentStyle: { backgroundColor: '#f5f5f5' },
         })}
       />
       <Stack.Screen
         name="Settings"
         component={SettingsScreen}
-        options={{ title: "Paramètres" }}
+        options={{ 
+          title: "Paramètres",
+          contentStyle: { backgroundColor: '#f5f5f5' },
+        }}
       />
       <Stack.Screen
         name="CreateStory"
@@ -216,6 +266,9 @@ function AppStack() {
           title: "Parcours",
           headerLeft: () => <HeaderLeft navigation={navigation} />,
           headerRight: () => <HeaderButtons navigation={navigation} />,
+          contentStyle: { backgroundColor: '#f5f5f5' },
+          gestureEnabled: true,
+          gestureDirection: 'horizontal',
         })}
       />
       <Stack.Screen

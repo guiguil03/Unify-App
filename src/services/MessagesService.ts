@@ -35,6 +35,7 @@ export class MessagesService {
           id: conv.id,
           contactId: otherUser.id,
           contactName: otherUser.name,
+          contactAvatar: otherUser.avatar,
           lastMessage: conv.last_message || '',
           time: conv.last_message_time
             ? formatTime(conv.last_message_time)

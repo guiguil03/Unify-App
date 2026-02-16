@@ -14,6 +14,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../types/navigation";
 import { showInfoToast } from "../utils/errorHandler";
+import * as AppleAuthentication from 'expo-apple-authentication';
 
 // Import du logo
 const logo = require("../assets/logo.png");
@@ -247,13 +248,15 @@ export default function LoginScreen({ route, navigation }: Props) {
               <Text style={styles.socialText}>G</Text>
             </TouchableOpacity>
             {Platform.OS === 'ios' && (
-              <TouchableOpacity
-                style={[styles.socialButton, (isSubmitting || authenticating) && styles.socialButtonDisabled]}
-                onPress={handleAppleSignIn}
-                disabled={isSubmitting || authenticating}
-              >
-                <Text style={styles.socialText}>🍎</Text>
-              </TouchableOpacity>
+              <View style={styles.appleButtonContainer}>
+                <AppleAuthentication.AppleAuthenticationButton
+                  buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+                  buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE}
+                  cornerRadius={28}
+                  style={styles.appleButton}
+                  onPress={handleAppleSignIn}
+                />
+              </View>
             )}
           </View>
         </View>
@@ -384,6 +387,21 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: "700",
     color: "#7D80F4",
+  },
+  appleButtonContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    overflow: 'hidden',
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  appleButton: {
+    width: 56,
+    height: 56,
   },
   bottomLink: {
     marginTop: 24,

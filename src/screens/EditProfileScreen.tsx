@@ -9,10 +9,14 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Image,
+  Alert,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import * as ImagePicker from 'expo-image-picker';
 import { ProfileService } from '../services/ProfileService';
+import { ProfilePhotoService } from '../services/ProfilePhotoService';
 import { useProfile } from '../hooks/useProfile';
 import { showSuccessToast, showErrorToast } from '../utils/errorHandler';
 import { COLORS } from '../constants/colors';
@@ -51,12 +55,14 @@ export default function EditProfileScreen() {
   const [name, setName] = useState('');
   const [bio, setBio] = useState('');
   const [avatar, setAvatar] = useState('');
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [level, setLevel] = useState('');
   const [goal, setGoal] = useState('');
   const [preferredTime, setPreferredTime] = useState('');
   const [preferredTerrain, setPreferredTerrain] = useState<string[]>([]);
   const [groupPreference, setGroupPreference] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 
   // Mettre à jour les champs quand le profil est chargé
   useEffect(() => {
@@ -65,6 +71,7 @@ export default function EditProfileScreen() {
       setName(profile.name || '');
       setBio(profile.bio || '');
       setAvatar(profile.avatar || '');
+      setAvatarPreview(profile.avatar || null);
       setLevel(profile.level || '');
       setGoal(profile.goal || '');
       setPreferredTime(profile.preferredTime || '');
@@ -72,6 +79,73 @@ export default function EditProfileScreen() {
       setGroupPreference(profile.groupPreference || '');
     }
   }, [profile]);
+
+  // Demander les permissions pour accéder à la galerie
+  useEffect(() => {
+    (async () => {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        console.warn('Permission pour accéder à la galerie refusée');
+      }
+    })();
+  }, []);
+
+  const pickImage = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        const imageUri = result.assets[0].uri;
+        setAvatarPreview(imageUri);
+        
+        // Upload immédiatement la photo
+        setIsUploadingPhoto(true);
+        try {
+          const publicUrl = await ProfilePhotoService.uploadProfilePhoto(imageUri);
+          setAvatar(publicUrl);
+          showSuccessToast('Photo de profil téléchargée !');
+        } catch (error: any) {
+          console.error('Erreur lors de l\'upload:', error);
+          showErrorToast(error.message || 'Impossible de télécharger la photo');
+          setAvatarPreview(null);
+        } finally {
+          setIsUploadingPhoto(false);
+        }
+      }
+    } catch (error: any) {
+      console.error('Erreur lors de la sélection de l\'image:', error);
+      showErrorToast('Impossible de sélectionner l\'image');
+    }
+  };
+
+  const removePhoto = async () => {
+    Alert.alert(
+      'Supprimer la photo',
+      'Êtes-vous sûr de vouloir supprimer votre photo de profil ?',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Supprimer',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await ProfilePhotoService.deleteProfilePhoto();
+              setAvatar('');
+              setAvatarPreview(null);
+              showSuccessToast('Photo de profil supprimée');
+            } catch (error: any) {
+              showErrorToast(error.message || 'Impossible de supprimer la photo');
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const handleSave = async () => {
     console.log('🔵 handleSave appelé');
@@ -139,15 +213,6 @@ export default function EditProfileScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      {/* Header fixe */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <MaterialCommunityIcons name="arrow-left" size={28} color={COLORS.primary} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Modifier le profil</Text>
-        <View style={styles.headerSpacer} />
-      </View>
-
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Informations de base */}
         <View style={styles.card}>
@@ -169,16 +234,46 @@ export default function EditProfileScreen() {
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Photo de profil</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="https://example.com/photo.jpg"
-              value={avatar}
-              onChangeText={setAvatar}
-              autoCapitalize="none"
-              keyboardType="url"
-              editable={!isSaving}
-            />
-            <Text style={styles.hint}>💡 URL de votre photo (Imgur, Gravatar...)</Text>
+            <View style={styles.avatarSection}>
+              <View style={styles.avatarPreviewContainer}>
+                {avatarPreview ? (
+                  <Image source={{ uri: avatarPreview }} style={styles.avatarPreview} />
+                ) : (
+                  <View style={[styles.avatarPreview, styles.avatarPlaceholder]}>
+                    <MaterialCommunityIcons name="account" size={40} color="#999" />
+                  </View>
+                )}
+                {isUploadingPhoto && (
+                  <View style={styles.uploadingOverlay}>
+                    <ActivityIndicator size="small" color="#fff" />
+                  </View>
+                )}
+              </View>
+              <View style={styles.avatarButtons}>
+                <TouchableOpacity
+                  style={styles.avatarButton}
+                  onPress={pickImage}
+                  disabled={isSaving || isUploadingPhoto}
+                >
+                  <MaterialCommunityIcons name="camera" size={20} color="#7D80F4" />
+                  <Text style={styles.avatarButtonText}>
+                    {avatarPreview ? 'Changer' : 'Ajouter'}
+                  </Text>
+                </TouchableOpacity>
+                {avatarPreview && (
+                  <TouchableOpacity
+                    style={[styles.avatarButton, styles.removeButton]}
+                    onPress={removePhoto}
+                    disabled={isSaving || isUploadingPhoto}
+                  >
+                    <MaterialCommunityIcons name="delete" size={20} color="#ff4444" />
+                    <Text style={[styles.avatarButtonText, styles.removeButtonText]}>
+                      Supprimer
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
           </View>
 
           <View style={styles.inputGroup}>
@@ -417,35 +512,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: COLORS.backgroundLight,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 18,
-    paddingTop: 50,
-    backgroundColor: COLORS.background,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  backButton: {
-    padding: 8,
-    borderRadius: 20,
-    backgroundColor: COLORS.backgroundLight,
-  },
-  headerSpacer: {
-    width: 44,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: COLORS.primary,
   },
   content: {
     flex: 1,
@@ -735,5 +801,63 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '700',
     color: '#fff',
+  },
+  avatarSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  avatarPreviewContainer: {
+    position: 'relative',
+  },
+  avatarPreview: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#f0f0f0',
+  },
+  avatarPlaceholder: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#e0e0e0',
+  },
+  uploadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderRadius: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarButtons: {
+    flex: 1,
+    gap: 10,
+  },
+  avatarButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: COLORS.backgroundLight,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: COLORS.primary,
+    gap: 8,
+  },
+  removeButton: {
+    borderColor: '#ff4444',
+    backgroundColor: '#fff5f5',
+  },
+  avatarButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: COLORS.primary,
+  },
+  removeButtonText: {
+    color: '#ff4444',
   },
 });

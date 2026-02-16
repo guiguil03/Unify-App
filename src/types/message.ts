@@ -2,6 +2,7 @@ export interface Message {
   id: string;
   contactId: string;
   contactName: string;
+  contactAvatar?: string;
   lastMessage: string;
   time: string;
 }
