@@ -105,27 +105,50 @@ export default function OnboardingScreen({ route }: Props) {
       return;
     }
 
-    if (!pseudo.trim()) {
+    // Validation de la date de naissance
+    const now = new Date();
+    const age = now.getFullYear() - birthDate.getFullYear();
+    const monthDiff = now.getMonth() - birthDate.getMonth();
+    const realAge = monthDiff < 0 || (monthDiff === 0 && now.getDate() < birthDate.getDate()) ? age - 1 : age;
+
+    if (realAge < 18) {
+      showErrorToast('Vous devez avoir au moins 18 ans pour utiliser Unify');
+      setCurrentStep(2);
+      return;
+    }
+
+    if (realAge > 120 || birthDate > now) {
+      showErrorToast('Veuillez entrer une date de naissance valide');
+      setCurrentStep(2);
+      return;
+    }
+
+    // Validation du pseudo
+    const trimmedPseudo = pseudo.trim();
+    if (!trimmedPseudo) {
       showErrorToast('Veuillez entrer un pseudo');
+      setCurrentStep(4);
+      return;
+    }
+
+    if (trimmedPseudo.length < 2) {
+      showErrorToast('Le pseudo doit contenir au moins 2 caractères');
       setCurrentStep(4);
       return;
     }
 
     setIsSaving(true);
     try {
-      // Mettre à jour le profil avec les données de l'onboarding
       await ProfileService.updateProfile({
-        name: pseudo.trim(),
+        name: trimmedPseudo,
         gender: gender,
         birthDate: birthDate.toISOString().split('T')[0],
         traits: selectedTraits.join(','),
       });
 
       showSuccessToast('Profil créé avec succès !');
-      // Naviguer vers l'écran principal
       navigation.navigate('Home' as never);
-    } catch (error) {
-      console.error('Erreur lors de la sauvegarde:', error);
+    } catch {
       showErrorToast('Erreur lors de la sauvegarde du profil');
     } finally {
       setIsSaving(false);
