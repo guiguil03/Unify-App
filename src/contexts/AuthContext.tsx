@@ -2,6 +2,7 @@ import React, { createContext, useState, useEffect, useContext } from "react";
 import { AuthService } from "../services/AuthService";
 import { User } from "../types/user";
 import { supabase } from "../config/supabase";
+import { showErrorToast } from "../utils/errorHandler";
 
 interface AuthContextData {
   user: User | null;
@@ -30,47 +31,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [authenticating, setAuthenticating] = useState(false);
 
   useEffect(() => {
-    // Vérifier l'état d'authentification au démarrage
     async function loadUserFromStorage() {
       try {
         const storedUser = await AuthService.getCurrentUser();
         if (storedUser) {
           setUser(storedUser);
         }
-      } catch (error) {
-        console.error("Erreur lors du chargement du profil:", error);
+      } catch {
+        // Session invalide ou expirée
       } finally {
         setIsLoading(false);
         setHasCompletedInitialCheck(true);
       }
     }
 
-    // Écouter les changements d'état d'authentification Supabase
-    // Vérifier que supabase est bien initialisé
-    if (!supabase || !supabase.auth) {
-      console.error('❌ Erreur: supabase ou supabase.auth est undefined dans AuthContext');
-      console.error('❌ Type de supabase:', typeof supabase);
+    if (!supabase?.auth) {
       setIsLoading(false);
       setHasCompletedInitialCheck(true);
       return;
     }
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      async (_event, session) => {
         setIsLoading(true);
         if (session?.user) {
           try {
-            // L'utilisateur est connecté, récupérer ou créer ses données
             const userData = await AuthService.getCurrentUser();
             if (userData) {
               setUser(userData);
             }
-          } catch (error) {
-            console.error("Erreur lors de la mise à jour du profil:", error);
+          } catch {
             setUser(null);
           }
         } else {
-          // L'utilisateur est déconnecté
           setUser(null);
         }
         setIsLoading(false);
@@ -78,10 +71,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       }
     );
 
-    // Vérification initiale
     loadUserFromStorage();
 
-    // Se désabonner quand le composant est démonté
     return () => {
       subscription.unsubscribe();
     };
@@ -94,8 +85,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       setUser(user);
       return true;
     } catch (error: any) {
-      console.error("Échec de la connexion:", error);
-      // Vous pouvez ajouter un toast d'erreur ici si nécessaire
+      showErrorToast(error.message || "Échec de la connexion");
       return false;
     } finally {
       setAuthenticating(false);
@@ -109,8 +99,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       setUser(user);
       return true;
     } catch (error: any) {
-      console.error("Échec de l'inscription:", error);
-      // Vous pouvez ajouter un toast d'erreur ici si nécessaire
+      showErrorToast(error.message || "Échec de l'inscription");
       return false;
     } finally {
       setAuthenticating(false);
@@ -123,8 +112,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       const user = await AuthService.signInWithGoogle();
       setUser(user);
       return true;
-    } catch (error: any) {
-      console.error("Échec de la connexion Google:", error);
+    } catch {
       return false;
     } finally {
       setAuthenticating(false);
@@ -137,8 +125,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       const user = await AuthService.signInWithApple();
       setUser(user);
       return true;
-    } catch (error: any) {
-      console.error("Échec de la connexion Apple:", error);
+    } catch {
       return false;
     } finally {
       setAuthenticating(false);
@@ -151,8 +138,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       await AuthService.logout();
       setUser(null);
       setIsSkipped(false);
-    } catch (error) {
-      console.error("Erreur lors de la déconnexion:", error);
+    } catch {
+      // Erreur de déconnexion silencieuse
     } finally {
       setIsLoading(false);
     }

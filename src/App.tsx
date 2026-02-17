@@ -35,7 +35,7 @@ import { OnboardingChecker } from "./components/OnboardingChecker";
 import { TouchableOpacity } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 
-console.log("=== DÉMARRAGE DE L'APPLICATION UNIFY ===");
+if (__DEV__) console.log("=== DÉMARRAGE DE L'APPLICATION UNIFY ===");
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 

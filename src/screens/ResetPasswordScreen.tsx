@@ -15,6 +15,7 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../types/navigation";
 import { AuthService } from "../services/AuthService";
 import { showErrorToast, showSuccessToast, showInfoToast } from "../utils/errorHandler";
+import { validatePassword, formatPasswordErrors } from "../utils/validation";
 
 const logo = require("../assets/logo.png");
 
@@ -52,7 +53,6 @@ export default function ResetPasswordScreen({ route, navigation }: Props) {
         showErrorToast("Code invalide ou expiré");
       }
     } catch (error: any) {
-      console.error("Erreur lors de la vérification du code:", error);
       showErrorToast(error.message || "Code invalide ou expiré");
     } finally {
       setIsVerifying(false);
@@ -76,8 +76,7 @@ export default function ResetPasswordScreen({ route, navigation }: Props) {
       await AuthService.sendPasswordResetEmail(emailInput);
       showSuccessToast("Code envoyé ! Vérifiez votre boîte de réception.");
       setStep("verify");
-    } catch (error: any) {
-      console.error("Erreur lors de l'envoi de l'email:", error);
+    } catch {
       // Le service gère déjà l'affichage des messages
     } finally {
       setIsSendingEmail(false);
@@ -90,8 +89,9 @@ export default function ResetPasswordScreen({ route, navigation }: Props) {
       return;
     }
 
-    if (newPassword.length < 6) {
-      showInfoToast("Le mot de passe doit contenir au moins 6 caractères", "Mot de passe trop court");
+    const passwordCheck = validatePassword(newPassword);
+    if (!passwordCheck.valid) {
+      showErrorToast(formatPasswordErrors(passwordCheck.errors));
       return;
     }
 
@@ -112,7 +112,6 @@ export default function ResetPasswordScreen({ route, navigation }: Props) {
       // Rediriger vers la page de connexion
       navigation.navigate("Login", { mode: "login" });
     } catch (error: any) {
-      console.error("Erreur lors de la réinitialisation:", error);
       showErrorToast(error.message || "Erreur lors de la réinitialisation");
     } finally {
       setIsResetting(false);

@@ -57,8 +57,8 @@ export class SubscriptionService {
         createdAt: user.subscription_created_at || new Date().toISOString(),
         updatedAt: user.subscription_updated_at || new Date().toISOString(),
       };
-    } catch (error) {
-      console.error('Erreur dans getSubscription:', error);
+    } catch {
+      // Pas connecté ou erreur réseau — retourne null silencieusement
       return null;
     }
   }

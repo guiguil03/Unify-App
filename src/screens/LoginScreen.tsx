@@ -13,7 +13,8 @@ import {
 import { useAuth } from "../contexts/AuthContext";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../types/navigation";
-import { showInfoToast } from "../utils/errorHandler";
+import { showInfoToast, showErrorToast } from "../utils/errorHandler";
+import { validatePassword, formatPasswordErrors, normalizeEmail, sanitizeName } from "../utils/validation";
 import * as AppleAuthentication from 'expo-apple-authentication';
 
 // Import du logo
@@ -47,9 +48,12 @@ export default function LoginScreen({ route, navigation }: Props) {
       return;
     }
 
+    // Normalisation de l'email
+    const normalizedEmail = normalizeEmail(email);
+
     // Validation du format de l'email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    if (!emailRegex.test(normalizedEmail)) {
       showInfoToast(
         "Veuillez entrer une adresse email valide",
         "Format invalide"
@@ -57,46 +61,32 @@ export default function LoginScreen({ route, navigation }: Props) {
       return;
     }
 
-    console.log(
-      `Tentative de ${isLoginMode ? "connexion" : "création de compte"} pour ${email}`
-    );
+    // Validation du mot de passe à l'inscription
+    if (!isLoginMode) {
+      const passwordCheck = validatePassword(password);
+      if (!passwordCheck.valid) {
+        showErrorToast(formatPasswordErrors(passwordCheck.errors));
+        return;
+      }
+    }
 
-    // Définir l'état local de soumission à true
     setIsSubmitting(true);
 
     let success = false;
 
     try {
       if (isLoginMode) {
-        console.log("Appel de signIn avec:", email);
-        // Attendre explicitement la fin de la connexion
-        success = await signIn(email, password);
-        if (success) {
-          console.log("Connexion réussie");
-        } else {
-          // Si la connexion a échoué, ne rien faire d'autre - reste sur la page de login
-          console.log("Échec de la connexion - reste sur la page de login");
-        }
+        success = await signIn(normalizedEmail, password);
       } else {
-        console.log("Appel de signUp avec:", name, email);
-        // Attendre explicitement la fin de l'inscription
-        success = await signUp(name, email, password);
+        const sanitizedName = sanitizeName(name);
+        success = await signUp(sanitizedName, normalizedEmail, password);
         if (success) {
-          console.log("Inscription réussie - redirection vers onboarding");
-          // Rediriger vers l'onboarding après l'inscription
           navigation.navigate("Onboarding");
-        } else {
-          // Si l'inscription a échoué, ne rien faire d'autre - reste sur la page de login
-          console.log("Échec de l'inscription - reste sur la page de login");
         }
       }
-    } catch (error) {
-      // En cas d'erreur inattendue qui n'est pas gérée par AuthContext
-      console.error("Erreur lors de la connexion/inscription:", error);
-      // S'assurer qu'en cas d'erreur, on reste sur la page de login
+    } catch {
       success = false;
     } finally {
-      // Mettre fin à l'état de soumission
       setIsSubmitting(false);
     }
   };
@@ -120,12 +110,9 @@ export default function LoginScreen({ route, navigation }: Props) {
     if (isSubmitting || authenticating) return;
     setIsSubmitting(true);
     try {
-      const success = await signInWithGoogle();
-      if (success) {
-        console.log("Connexion Google réussie");
-      }
-    } catch (error) {
-      console.error("Erreur lors de la connexion Google:", error);
+      await signInWithGoogle();
+    } catch {
+      // Erreur gérée dans AuthContext
     } finally {
       setIsSubmitting(false);
     }
@@ -135,12 +122,9 @@ export default function LoginScreen({ route, navigation }: Props) {
     if (isSubmitting || authenticating) return;
     setIsSubmitting(true);
     try {
-      const success = await signInWithApple();
-      if (success) {
-        console.log("Connexion Apple réussie");
-      }
-    } catch (error) {
-      console.error("Erreur lors de la connexion Apple:", error);
+      await signInWithApple();
+    } catch {
+      // Erreur gérée dans AuthContext
     } finally {
       setIsSubmitting(false);
     }

@@ -1,15 +1,37 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { getEnv } from '../utils/env';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
+import { Platform } from 'react-native';
 
-// Configuration Supabase depuis les variables d'environnement
-const supabaseUrl = getEnv('SUPABASE_URL', 'https://muhexuopzmqdxonurktn.supabase.co');
-const supabaseAnonKey = getEnv('SUPABASE_API_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im11aGV4dW9wem1xZHhvbnVya3RuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI0NTYyMzMsImV4cCI6MjA3ODAzMjIzM30.Q9c9BDzB1NeLOftXq4A9aqDM3bltWwcEL_LNJNxM3JI');
+// Storage adapter using expo-secure-store for native, localStorage for web
+const SecureStoreAdapter = {
+  getItem: async (key: string): Promise<string | null> => {
+    if (Platform.OS === 'web') {
+      return localStorage.getItem(key);
+    }
+    return SecureStore.getItemAsync(key);
+  },
+  setItem: async (key: string, value: string): Promise<void> => {
+    if (Platform.OS === 'web') {
+      localStorage.setItem(key, value);
+      return;
+    }
+    await SecureStore.setItemAsync(key, value);
+  },
+  removeItem: async (key: string): Promise<void> => {
+    if (Platform.OS === 'web') {
+      localStorage.removeItem(key);
+      return;
+    }
+    await SecureStore.deleteItemAsync(key);
+  },
+};
 
-console.log('🔧 Initialisation du client Supabase...');
-console.log('📍 URL:', supabaseUrl);
+// Configuration Supabase - les variables d'environnement sont obligatoires
+const supabaseUrl = getEnv('SUPABASE_URL');
+const supabaseAnonKey = getEnv('SUPABASE_API_KEY');
 
-// Créer le client Supabase avec AsyncStorage pour la persistance
+// Créer le client Supabase avec SecureStore pour la persistance sécurisée
 let supabaseClient: SupabaseClient | null = null;
 
 function initializeSupabase(): SupabaseClient {
@@ -17,33 +39,16 @@ function initializeSupabase(): SupabaseClient {
     return supabaseClient;
   }
 
-  try {
-    supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
-      auth: {
-        storage: AsyncStorage,
-        persistSession: true,
-        autoRefreshToken: true,
-        detectSessionInUrl: false,
-      },
-    });
+  supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      storage: SecureStoreAdapter,
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: false,
+    },
+  });
 
-    // Vérifier que le client est bien initialisé
-    if (!supabaseClient) {
-      throw new Error('Le client Supabase est null');
-    }
-
-    if (!supabaseClient.auth) {
-      throw new Error('La propriété auth du client Supabase n\'existe pas');
-    }
-
-    console.log('✅ Client Supabase initialisé avec succès!');
-    console.log('✅ Auth disponible:', !!supabaseClient.auth);
-    return supabaseClient;
-  } catch (error: any) {
-    console.error('❌ ERREUR lors de l\'initialisation de Supabase:', error);
-    console.error('❌ Détails:', error?.message || error);
-    throw new Error(`Erreur d'initialisation Supabase: ${error?.message || error}`);
-  }
+  return supabaseClient;
 }
 
 // Initialiser immédiatement
@@ -51,4 +56,3 @@ const supabase = initializeSupabase();
 
 export { supabase };
 export default supabase;
-
