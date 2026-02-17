@@ -19,6 +19,7 @@ import { ProfileService } from '../services/ProfileService';
 import { ProfilePhotoService } from '../services/ProfilePhotoService';
 import { useProfile } from '../hooks/useProfile';
 import { showSuccessToast, showErrorToast } from '../utils/errorHandler';
+import { isPseudoClean } from '../utils/profanityFilter';
 import { COLORS } from '../constants/colors';
 
 const LEVELS = [
@@ -148,21 +149,22 @@ export default function EditProfileScreen() {
   };
 
   const handleSave = async () => {
-    console.log('🔵 handleSave appelé');
-    console.log('🔵 Nom:', name);
-    console.log('🔵 isSaving:', isSaving);
-    
-    if (!name.trim()) {
-      console.log('❌ Nom vide, affichage du toast');
+    const trimmedName = name.trim();
+
+    if (!trimmedName) {
       showErrorToast('Le nom est obligatoire');
       return;
     }
 
-    console.log('✅ Nom valide, début de la sauvegarde');
+    if (!isPseudoClean(trimmedName)) {
+      showErrorToast('Ce nom contient des termes inappropriés');
+      return;
+    }
+
     setIsSaving(true);
     try {
       const updateData: any = {
-        name: name.trim(),
+        name: trimmedName,
         bio: bio.trim() || undefined,
         avatar: avatar.trim() || undefined,
         level: level || undefined,
@@ -172,19 +174,13 @@ export default function EditProfileScreen() {
         groupPreference: groupPreference || undefined,
       };
 
-      console.log('📤 Données à sauvegarder:', updateData);
-
       await ProfileService.updateProfile(updateData);
-      
-      console.log('✅ Sauvegarde réussie');
-      
-      // Rafraîchir le profil après la sauvegarde
+
       await refetch();
-      
+
       showSuccessToast('Profil mis à jour !');
       navigation.goBack();
     } catch (error: any) {
-      console.error('❌ Erreur lors de la sauvegarde:', error);
       const errorMessage = error?.message || error?.error?.message || 'Impossible de sauvegarder le profil';
       showErrorToast(errorMessage);
     } finally {

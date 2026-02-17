@@ -17,6 +17,7 @@ import { RootStackParamList } from '../types/navigation';
 import { COLORS } from '../constants/colors';
 import { ProfileService } from '../services/ProfileService';
 import { showSuccessToast, showErrorToast } from '../utils/errorHandler';
+import { isPseudoClean } from '../utils/profanityFilter';
 
 const drapeau = require('../assets/drapeau.png');
 
@@ -133,6 +134,12 @@ export default function OnboardingScreen({ route }: Props) {
 
     if (trimmedPseudo.length < 2) {
       showErrorToast('Le pseudo doit contenir au moins 2 caractères');
+      setCurrentStep(4);
+      return;
+    }
+
+    if (!isPseudoClean(trimmedPseudo)) {
+      showErrorToast('Ce pseudo contient des termes inappropriés');
       setCurrentStep(4);
       return;
     }
