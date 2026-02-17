@@ -12,7 +12,14 @@
       "mcp__plugin_supabase_supabase__search_docs",
       "mcp__plugin_supabase_supabase__get_logs",
       "Bash(npx expo install:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "mcp__plugin_supabase_supabase__list_migrations",
+      "Bash(for service in PostsService MessagesService LocationService GeocodingService RunnersService ActivitiesService ProfileService SettingsService EventsService StoriesService ContactsService SubscriptionService AuthService IdentityVerificationService LiveActivityService RoutesService StatsService ProfilePhotoService)",
+      "Bash(do)",
+      "Bash(echo:*)",
+      "Bash(done)",
+      "Bash(ls:*)",
+      "Bash(for const in assets colors mapDefaults)"
     ]
   }
 }

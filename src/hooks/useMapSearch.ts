@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { GeocodingService } from '../services/GeocodingService';
+import { GeocodingService } from '../services/map/GeocodingService';
 import { Location } from '../types/location';
 
 export function useMapSearch() {
