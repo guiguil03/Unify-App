@@ -178,7 +178,7 @@ export function SubscriptionCard() {
             <View style={styles.featureList}>
               <FeatureItem icon="check-circle" text="Accès à toutes les fonctionnalités premium" />
               <FeatureItem icon="check-circle" text="Créer et partager des parcours" />
-              <FeatureItem icon="check-circle" text="Recherche avancée de coureurs" />
+              <FeatureItem icon="check-circle" text="Recherche avancée de coureur(se)s" />
               <FeatureItem icon="check-circle" text="Statistiques détaillées" />
               <FeatureItem icon="check-circle" text="Support prioritaire" />
             </View>
@@ -246,7 +246,7 @@ export function SubscriptionCard() {
 
           <View style={styles.featureList}>
             <FeatureItem icon="map" text="Créer et partager des parcours personnalisés" />
-            <FeatureItem icon="star" text="Recherche avancée de coureurs" />
+            <FeatureItem icon="star" text="Recherche avancée de coureur(se)s" />
             <FeatureItem icon="chart-line" text="Statistiques détaillées" />
             <FeatureItem icon="headset" text="Support prioritaire" />
             <FeatureItem icon="shield-check" text="Vérification d'identité prioritaire" />

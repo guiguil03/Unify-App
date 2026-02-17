@@ -338,14 +338,14 @@ export default function SettingsScreen() {
           <SettingCard
             icon="speedometer"
             title="Allure similaire"
-            description="Afficher uniquement les coureurs avec une allure proche (±1 min/km)"
+            description="Afficher uniquement les coureur(se)s avec une allure proche (±1 min/km)"
             value={settings.similarPaceOnly}
             onValueChange={(value: boolean) => updateSetting("similarPaceOnly", value)}
           />
           <SettingCard
             icon="clock-outline"
             title="Horaires similaires"
-            description="Afficher les coureurs actifs aux mêmes horaires que moi"
+            description="Afficher les coureur(se)s actif(ve)s aux mêmes horaires que moi"
             value={settings.similarSchedule}
             onValueChange={(value: boolean) => updateSetting("similarSchedule", value)}
           />
@@ -364,8 +364,8 @@ export default function SettingsScreen() {
           <Text style={styles.sectionTitle}>Notifications</Text>
           <SettingCard
             icon="bell-outline"
-            title="Coureurs à proximité"
-            description="M'alerter quand des coureurs correspondant à mes critères sont proches"
+            title="Coureur(se)s à proximité"
+            description="M'alerter quand des coureur(se)s correspondant à mes critères sont proches"
             value={settings.nearbyRunnersNotifications}
             onValueChange={(value: boolean) =>
               updateSetting("nearbyRunnersNotifications", value)

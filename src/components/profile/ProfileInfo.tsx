@@ -20,10 +20,10 @@ export function ProfileInfo({ profile, editable = true }: ProfileInfoProps) {
   // Mapper les valeurs aux labels
   const getLevelLabel = (level?: string) => {
     const levels: Record<string, string> = {
-      beginner: '🐣 Débutant',
+      beginner: '🐣 Débutant(e)',
       intermediate: '🏃 Intermédiaire',
-      advanced: '💪 Avancé',
-      expert: '🏆 Expert',
+      advanced: '💪 Avancé(e)',
+      expert: '🏆 Expert(e)',
     };
     return levels[level || ''] || 'Non renseigné';
   };

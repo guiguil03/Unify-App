@@ -22,10 +22,16 @@ export function RunnerProfileModal({
   onConnect,
   relationshipStatus,
 }: RunnerProfileModalProps) {
-  if (!runner) return null;
+  // Ne pas rendre le modal si runner est null ou si visible est false
+  if (!visible || !runner) return null;
+
+  const handleClose = () => {
+    // S'assurer que runner existe avant de fermer
+    onClose();
+  };
 
   return (
-    <Modal visible={visible} onClose={onClose}>
+    <Modal visible={visible} onClose={handleClose}>
       <RunnerHeader name={runner.name} avatar={runner.avatar} />
       <RunnerStats pace={runner.pace} distance={runner.distance} />
       
@@ -36,7 +42,11 @@ export function RunnerProfileModal({
 
       <ConnectButton
         status={relationshipStatus}
-        onConnect={() => onConnect(runner.id)}
+        onConnect={() => {
+          if (runner) {
+            onConnect(runner.id);
+          }
+        }}
       />
     </Modal>
   );

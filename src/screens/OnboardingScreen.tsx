@@ -23,10 +23,10 @@ const drapeau = require('../assets/drapeau.png');
 type Props = NativeStackScreenProps<RootStackParamList, 'Onboarding'>;
 
 const TRAITS = [
-  { id: 'bavard', label: 'Bavard', icon: 'message-text' },
+  { id: 'bavard', label: 'Bavard(e)', icon: 'message-text' },
   { id: 'drole', label: 'Drôle', icon: 'emoticon-happy' },
-  { id: 'sportif', label: 'Sportif', icon: 'run' },
-  { id: 'silencieux', label: 'Silencieux', icon: 'message-text-outline' },
+  { id: 'sportif', label: 'Sportif(ve)', icon: 'run' },
+  { id: 'silencieux', label: 'Silencieux(se)', icon: 'message-text-outline' },
   { id: 'serieux', label: 'Sérieux', icon: 'target' },
   { id: 'bienveillant', label: 'Bienveillant', icon: 'flower' },
   { id: 'endurant', label: 'Endurant', icon: 'arm-flex' },
@@ -45,7 +45,7 @@ export default function OnboardingScreen({ route }: Props) {
   const [isSaving, setIsSaving] = useState(false);
 
   // Données du formulaire
-  const [gender, setGender] = useState<'male' | 'female' | null>(null);
+  const [gender, setGender] = useState<'male' | 'female' | 'other' | null>(null);
   const [birthDate, setBirthDate] = useState<Date>(new Date(2000, 0, 1));
   const [selectedTraits, setSelectedTraits] = useState<string[]>([]);
   const [pseudo, setPseudo] = useState('');
@@ -123,10 +123,7 @@ export default function OnboardingScreen({ route }: Props) {
 
       showSuccessToast('Profil créé avec succès !');
       // Naviguer vers l'écran principal
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'Home' }],
-      });
+      navigation.navigate('Home' as never);
     } catch (error) {
       console.error('Erreur lors de la sauvegarde:', error);
       showErrorToast('Erreur lors de la sauvegarde du profil');
@@ -179,6 +176,13 @@ export default function OnboardingScreen({ route }: Props) {
               >
                 <MaterialCommunityIcons name="gender-female" size={70} color={gender === 'female' ? COLORS.background : COLORS.primary} />
                 <Text style={[styles.genderLabel, gender === 'female' && styles.genderLabelSelected]}>Femme</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.genderButton, gender === 'other' && styles.genderButtonSelected]}
+                onPress={() => setGender('other')}
+              >
+                <MaterialCommunityIcons name="account" size={70} color={gender === 'other' ? COLORS.background : COLORS.primary} />
+                <Text style={[styles.genderLabel, gender === 'other' && styles.genderLabelSelected]}>Non-genré</Text>
               </TouchableOpacity>
             </View>
             <Text style={styles.warningText}>Vous ne pourrez pas revenir en arrière</Text>
@@ -457,14 +461,16 @@ const styles = StyleSheet.create({
   },
   genderContainer: {
     flexDirection: 'row',
-    gap: 24,
+    flexWrap: 'wrap',
+    gap: 16,
     marginBottom: 32,
     justifyContent: 'center',
+    alignItems: 'center',
   },
   genderButton: {
-    width: 160,
-    height: 160,
-    borderRadius: 80,
+    width: 140,
+    height: 140,
+    borderRadius: 70,
     backgroundColor: COLORS.background,
     borderWidth: 3,
     borderColor: COLORS.primary,

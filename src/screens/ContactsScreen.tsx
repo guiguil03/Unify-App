@@ -116,11 +116,22 @@ export default function ContactsScreen() {
     const result = await addContactAction(contactId);
 
     if (result.success) {
-      showSuccessToast('Demande d\'ami envoyée ! 🎉');
       setSearchResults(prev => prev.filter(c => c.id !== contactId));
-      loadPendingRequests();
-      // Mettre à jour le compteur immédiatement
-      setRequestsCount(prev => prev + 1);
+      
+      // Si la demande a été acceptée automatiquement, on est maintenant amis
+      if (result.autoAccepted) {
+        showSuccessToast('Vous êtes maintenant amis ! 🎉');
+        // Recharger les contacts et les demandes pour mettre à jour l'affichage
+        await Promise.all([
+          refetch(),
+          loadPendingRequests()
+        ]);
+      } else {
+        showSuccessToast('Demande d\'ami envoyée ! 🎉');
+        loadPendingRequests();
+        // Mettre à jour le compteur immédiatement
+        setRequestsCount(prev => prev + 1);
+      }
       return;
     }
 
@@ -130,10 +141,6 @@ export default function ContactsScreen() {
         break;
       case 'already_sent':
         showInfoToast('Vous avez déjà envoyé une demande à cet utilisateur.');
-        break;
-      case 'incoming_request':
-        showInfoToast('Cette personne vous a déjà envoyé une demande. Consultez vos demandes.');
-        setActiveTab('requests');
         break;
       case 'blocked':
         showErrorToast('Vous ne pouvez pas envoyer de demande à cet utilisateur.');
@@ -259,7 +266,7 @@ export default function ContactsScreen() {
                 <MaterialCommunityIcons name="account-group-outline" size={64} color="#ccc" />
                 <Text style={styles.emptyText}>Aucun ami pour le moment</Text>
                 <Text style={styles.emptySubtext}>
-                  Recherchez des coureurs pour commencer à échanger !
+                  Recherchez des coureur(se)s pour commencer à échanger !
                 </Text>
                 <TouchableOpacity
                   style={styles.addButton}
@@ -337,7 +344,7 @@ export default function ContactsScreen() {
               <MaterialCommunityIcons name="magnify" size={20} color="#666" style={styles.searchIcon} />
               <TextInput
                 style={styles.searchInput}
-                placeholder="Rechercher des coureurs..."
+                placeholder="Rechercher des coureur(se)s..."
                 value={searchQuery}
                 onChangeText={setSearchQuery}
                 autoFocus
@@ -354,7 +361,7 @@ export default function ContactsScreen() {
             ) : searchQuery.trim().length === 0 ? (
               <View style={styles.emptyState}>
                 <MaterialCommunityIcons name="account-search-outline" size={64} color="#ccc" />
-                <Text style={styles.emptyText}>Recherchez des coureurs</Text>
+                <Text style={styles.emptyText}>Recherchez des coureur(se)s</Text>
                 <Text style={styles.emptySubtext}>
                   Tapez un nom pour trouver de nouveaux amis
                 </Text>

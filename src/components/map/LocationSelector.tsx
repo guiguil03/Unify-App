@@ -47,7 +47,7 @@ export function LocationSelector({
 
       <View style={styles.radiusContainer}>
         <Text style={styles.label}>
-          Chercher des coureurs dans un rayon de :
+          Chercher des coureur(se)s dans un rayon de :
         </Text>
         <View style={styles.sliderContainer}>
           <Slider

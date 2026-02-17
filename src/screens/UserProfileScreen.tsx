@@ -112,8 +112,18 @@ export default function UserProfileScreen() {
     try {
       setLoadingContact(true);
       await ContactsService.addContact(userId);
-      setContactStatus('pending');
-      showSuccessToast('Demande d\'ami envoyée ! 🎉');
+      
+      // Vérifier le statut réel de la relation après l'ajout
+      const relationshipsMap = await ContactsService.getRelationshipsMap();
+      const relationshipStatus = relationshipsMap[userId] || 'pending';
+      
+      setContactStatus(relationshipStatus);
+      
+      if (relationshipStatus === 'friends') {
+        showSuccessToast('Vous êtes maintenant amis ! 🎉');
+      } else {
+        showSuccessToast('Demande d\'ami envoyée ! 🎉');
+      }
     } catch (err: any) {
       if (err.message === 'ALREADY_FRIENDS') {
         setContactStatus('friends');
@@ -121,9 +131,6 @@ export default function UserProfileScreen() {
       } else if (err.message === 'REQUEST_ALREADY_SENT') {
         setContactStatus('pending');
         showInfoToast('Vous avez déjà envoyé une demande.');
-      } else if (err.message === 'REQUEST_PENDING_FROM_CONTACT') {
-        setContactStatus('incoming');
-        showInfoToast('Cette personne vous a déjà envoyé une demande.');
       } else {
         showErrorToast('Impossible d\'envoyer la demande');
       }

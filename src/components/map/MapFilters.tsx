@@ -141,7 +141,7 @@ export function MapFilters({ settings, onSettingChange, style }: MapFiltersProps
                 <View style={styles.filterTextContainer}>
                   <Text style={styles.filterLabel}>Allure similaire</Text>
                   <Text style={styles.filterDescription}>
-                    Afficher uniquement les coureurs avec une allure proche (±1 min/km)
+                    Afficher uniquement les coureur(se)s avec une allure proche (±1 min/km)
                   </Text>
                 </View>
               </View>
@@ -163,7 +163,7 @@ export function MapFilters({ settings, onSettingChange, style }: MapFiltersProps
                 <View style={styles.filterTextContainer}>
                   <Text style={styles.filterLabel}>Horaires similaires</Text>
                   <Text style={styles.filterDescription}>
-                    Afficher les coureurs actifs aux mêmes horaires que moi
+                    Afficher les coureur(se)s actif(ve)s aux mêmes horaires que moi
                   </Text>
                 </View>
               </View>
@@ -188,9 +188,9 @@ export function MapFilters({ settings, onSettingChange, style }: MapFiltersProps
                   color={COLORS.textSecondary}
                 />
                 <View style={styles.filterTextContainer}>
-                  <Text style={styles.filterLabel}>Coureurs à proximité</Text>
+                  <Text style={styles.filterLabel}>Coureur(se)s à proximité</Text>
                   <Text style={styles.filterDescription}>
-                    M'alerter quand des coureurs correspondant à mes critères sont proches
+                    M'alerter quand des coureur(se)s correspondant à mes critères sont proches
                   </Text>
                 </View>
               </View>

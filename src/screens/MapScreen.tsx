@@ -121,7 +121,11 @@ export default function MapScreen() {
     const result = await addContact(runnerId);
 
     if (result.success) {
-      showSuccessToast('Demande envoyée !');
+      if (result.autoAccepted) {
+        showSuccessToast('Vous êtes maintenant amis ! 🎉');
+      } else {
+        showSuccessToast('Demande envoyée !');
+      }
       setShowProfileModal(false);
       navigation.navigate('Contacts');
       return;
@@ -134,9 +138,6 @@ export default function MapScreen() {
         break;
       case 'already_sent':
         showInfoToast('Vous avez déjà envoyé une demande à ce coureur.');
-        break;
-      case 'incoming_request':
-        showInfoToast('Ce coureur vous a déjà envoyé une demande. Consultez vos demandes.');
         break;
       case 'blocked':
         showErrorToast('Vous ne pouvez pas envoyer de demande à ce coureur.');
@@ -203,7 +204,13 @@ export default function MapScreen() {
       <RunnerProfileModal
         visible={showProfileModal}
         runner={selectedRunner}
-        onClose={() => setShowProfileModal(false)}
+        onClose={() => {
+          setShowProfileModal(false);
+          // Réinitialiser le runner sélectionné après un court délai pour éviter les problèmes de timing
+          setTimeout(() => {
+            setSelectedRunner(null);
+          }, 300);
+        }}
         onConnect={handleConnect}
         relationshipStatus={selectedRunner ? relationships[selectedRunner.id] ?? 'none' : 'none'}
       />

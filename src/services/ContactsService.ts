@@ -112,6 +112,8 @@ export class ContactsService {
         throw existingError;
       }
 
+      // Vérifier s'il y a une demande entrante (l'autre utilisateur nous a déjà envoyé une demande)
+      let hasIncomingRequest = false;
       if (existingRelationships && existingRelationships.length > 0) {
         for (const relation of existingRelationships) {
           const { user_id, contact_id, status } = relation as { user_id: string; contact_id: string; status: string };
@@ -133,10 +135,34 @@ export class ContactsService {
             }
 
             if (isCurrentUserRecipient) {
-              throw new Error('REQUEST_PENDING_FROM_CONTACT');
+              // Au lieu de lancer une erreur, on va accepter automatiquement la demande
+              hasIncomingRequest = true;
             }
           }
         }
+      }
+
+      // Si une demande entrante existe, l'accepter automatiquement
+      if (hasIncomingRequest) {
+        await this.acceptContactRequest(contactId);
+        
+        // Récupérer les informations du contact pour le retour
+        const { data: contactUser, error: userError } = await supabase
+          .from('users')
+          .select('id, name, avatar')
+          .eq('id', contactId)
+          .single();
+
+        if (userError || !contactUser) {
+          throw new Error('Contact non trouvé');
+        }
+
+        return {
+          id: contactUser.id,
+          name: contactUser.name,
+          lastActivity: 'À l\'instant',
+          avatar: contactUser.avatar,
+        };
       }
 
       // Récupérer les informations du contact

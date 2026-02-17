@@ -20,12 +20,15 @@ import * as ImagePicker from 'expo-image-picker';
 import { PostsService } from '../services/PostsService';
 import { COLORS } from '../constants/colors';
 import { showSuccessToast, showErrorToast } from '../utils/errorHandler';
+import { supabase } from '../config/supabase';
 
 export default function CreatePostScreen() {
   const navigation = useNavigation();
   const [content, setContent] = useState('');
   const [imageUri, setImageUri] = useState<string | null>(null);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -104,6 +107,57 @@ export default function CreatePostScreen() {
 
   const handleRemoveImage = () => {
     setImageUri(null);
+    setImageUrl(null);
+  };
+
+  const uploadImage = async (uri: string): Promise<string> => {
+    setIsUploading(true);
+    try {
+      // Obtenir l'utilisateur actuel
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Non authentifié');
+
+      // Lire le fichier comme ArrayBuffer
+      const response = await fetch(uri);
+      const arrayBuffer = await response.arrayBuffer();
+      const fileData = new Uint8Array(arrayBuffer);
+
+      // Déterminer le type MIME
+      const fileExt = uri.split('.').pop()?.toLowerCase() || 'jpg';
+      const mimeTypes: Record<string, string> = {
+        'jpg': 'image/jpeg',
+        'jpeg': 'image/jpeg',
+        'png': 'image/png',
+        'gif': 'image/gif',
+        'webp': 'image/webp',
+      };
+      const contentType = mimeTypes[fileExt] || 'image/jpeg';
+
+      // Créer un nom de fichier unique
+      const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+
+      // Upload vers Supabase Storage
+      const { data, error } = await supabase.storage
+        .from('posts')
+        .upload(fileName, fileData, {
+          contentType: contentType,
+          upsert: false,
+        });
+
+      if (error) throw error;
+
+      // Obtenir l'URL publique
+      const { data: { publicUrl } } = supabase.storage
+        .from('posts')
+        .getPublicUrl(fileName);
+
+      return publicUrl;
+    } catch (error: any) {
+      console.error('Erreur lors de l\'upload:', error);
+      throw new Error(error.message || 'Impossible de télécharger l\'image');
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const handleSubmit = async () => {
@@ -133,9 +187,24 @@ export default function CreatePostScreen() {
     animateButtonPress();
     setIsSubmitting(true);
     try {
+      let finalImageUrl = imageUrl;
+
+      // Si une image locale est sélectionnée mais pas encore uploadée, l'uploader
+      if (imageUri && !imageUrl) {
+        try {
+          finalImageUrl = await uploadImage(imageUri);
+          setImageUrl(finalImageUrl);
+        } catch (error: any) {
+          console.error('Erreur lors de l\'upload de l\'image:', error);
+          showErrorToast('Erreur lors du téléchargement de l\'image');
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
       await PostsService.createPost({
         content: content.trim(),
-        imageUrl: imageUri || undefined,
+        imageUrl: finalImageUrl || undefined,
       });
 
       showSuccessToast('Post publié !');
@@ -288,11 +357,16 @@ export default function CreatePostScreen() {
                 (!content.trim() || isSubmitting) && styles.submitButtonDisabled,
               ]}
               onPress={handleSubmit}
-              disabled={!content.trim() || isSubmitting}
+              disabled={!content.trim() || isSubmitting || isUploading}
               activeOpacity={0.8}
             >
-              {isSubmitting ? (
-                <ActivityIndicator size="small" color={COLORS.background} />
+              {isSubmitting || isUploading ? (
+                <>
+                  <ActivityIndicator size="small" color={COLORS.background} />
+                  <Text style={styles.submitButtonText}>
+                    {isUploading ? 'Téléchargement...' : 'Publication...'}
+                  </Text>
+                </>
               ) : (
                 <>
                   <MaterialCommunityIcons name="send" size={20} color={COLORS.background} />

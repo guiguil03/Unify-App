@@ -4,7 +4,7 @@ import { ContactsService } from '../services/ContactsService';
 import { useAuth } from '../contexts/AuthContext';
 
 type AddContactResult =
-  | { success: true }
+  | { success: true; autoAccepted?: boolean }
   | { success: false; reason: 'already_friends' | 'already_sent' | 'incoming_request' | 'blocked' | 'unknown' };
 
 export function useContacts() {
@@ -64,7 +64,19 @@ export function useContacts() {
   const addContact = async (runnerId: string): Promise<AddContactResult> => {
     try {
       await ContactsService.addContact(runnerId);
-      setRelationships(prev => ({ ...prev, [runnerId]: 'pending' }));
+      
+      // Vérifier le statut réel de la relation après l'ajout
+      // (peut être 'friends' si une demande entrante a été acceptée automatiquement)
+      const relationshipsMap = await ContactsService.getRelationshipsMap();
+      const relationshipStatus = relationshipsMap[runnerId] || 'pending';
+      
+      setRelationships(prev => ({ ...prev, [runnerId]: relationshipStatus }));
+      
+      // Si la relation est maintenant 'friends', c'est qu'une demande a été acceptée automatiquement
+      if (relationshipStatus === 'friends') {
+        return { success: true, autoAccepted: true };
+      }
+      
       return { success: true };
     } catch (err: any) {
       if (err instanceof Error) {
@@ -75,9 +87,6 @@ export function useContacts() {
           case 'REQUEST_ALREADY_SENT':
             setRelationships(prev => ({ ...prev, [runnerId]: 'pending' }));
             return { success: false, reason: 'already_sent' };
-          case 'REQUEST_PENDING_FROM_CONTACT':
-            setRelationships(prev => ({ ...prev, [runnerId]: 'incoming' }));
-            return { success: false, reason: 'incoming_request' };
           case 'CONTACT_BLOCKED':
             return { success: false, reason: 'blocked' };
           default:

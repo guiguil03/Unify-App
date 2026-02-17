@@ -22,10 +22,10 @@ import { showSuccessToast, showErrorToast } from '../utils/errorHandler';
 import { COLORS } from '../constants/colors';
 
 const LEVELS = [
-  { value: 'beginner', label: '🐣 Débutant', description: 'Je commence la course' },
+  { value: 'beginner', label: '🐣 Débutant(e)', description: 'Je commence la course' },
   { value: 'intermediate', label: '🏃 Intermédiaire', description: 'Je cours régulièrement' },
-  { value: 'advanced', label: '💪 Avancé', description: 'Je prépare des compétitions' },
-  { value: 'expert', label: '🏆 Expert', description: 'Je suis un coureur confirmé' },
+  { value: 'advanced', label: '💪 Avancé(e)', description: 'Je prépare des compétitions' },
+  { value: 'expert', label: '🏆 Expert(e)', description: 'Je suis un(e) coureur(se) confirmé(e)' },
 ];
 
 const TIMES = [

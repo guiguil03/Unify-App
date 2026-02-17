@@ -8,16 +8,25 @@ interface ModalProps {
 }
 
 export function Modal({ visible, onClose, children }: ModalProps) {
+  if (!visible) return null;
+
+  const handleClose = () => {
+    // Utiliser requestAnimationFrame pour s'assurer que la fermeture se fait après le rendu
+    requestAnimationFrame(() => {
+      onClose();
+    });
+  };
+
   return (
     <RNModal
       visible={visible}
       transparent
       animationType="fade"
-      onRequestClose={onClose}
+      onRequestClose={handleClose}
     >
-      <TouchableWithoutFeedback onPress={onClose}>
+      <TouchableWithoutFeedback onPress={handleClose}>
         <View style={styles.overlay}>
-          <TouchableWithoutFeedback onPress={e => e.stopPropagation()}>
+          <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
             <View style={styles.content}>
               {children}
             </View>

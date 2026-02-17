@@ -97,8 +97,8 @@ export function RunnersList({
         <View style={styles.handle} />
 
         <View style={styles.header}>
-          <Text style={styles.title}>Coureurs à proximité</Text>
-          <Text style={styles.count}>{runners.length} coureurs</Text>
+          <Text style={styles.title}>Coureur(se)s à proximité</Text>
+          <Text style={styles.count}>{runners.length} coureur(se)s</Text>
         </View>
 
         <View style={styles.emptySpace} />
