@@ -85,7 +85,6 @@ export function useActivitiesManager() {
 
       return newActivity;
     } catch (error: any) {
-      console.error('Erreur lors de l\'ajout de l\'activité:', error);
       throw error;
     } finally {
       setIsAdding(false);
@@ -105,7 +104,6 @@ export function useActivitiesManager() {
         await refetch();
       }
     } catch (error: any) {
-      console.error('Erreur lors de la suppression de l\'activité:', error);
       throw error;
     } finally {
       setIsDeleting(false);
@@ -133,8 +131,8 @@ export function useActivitiesManager() {
       // Mettre à jour dans Supabase
       await updateUserProfileStats(currentUser.id, newStats);
     } catch (error) {
+      if (__DEV__) console.error('Profile stats update failed:', error);
       // Ne pas bloquer l'ajout de l'activité si la mise à jour du profil échoue
-      console.error('Erreur lors de la mise à jour des statistiques:', error);
     }
   };
 

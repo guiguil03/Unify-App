@@ -14,8 +14,8 @@ export function usePosts() {
       const fetchedPosts = await PostsService.getPosts();
       setPosts(fetchedPosts);
     } catch (err: any) {
+      if (__DEV__) console.error('Posts load failed:', err);
       setError(err.message || 'Erreur lors du chargement des posts');
-      console.error('Erreur usePosts:', err);
     } finally {
       setLoading(false);
     }

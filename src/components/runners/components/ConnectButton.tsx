@@ -18,7 +18,7 @@ export function ConnectButton({ status = 'none', onConnect }: ConnectButtonProps
     try {
       await onConnect();
     } catch (error) {
-      console.error('Erreur lors de la connexion:', error);
+      if (__DEV__) console.error('Connect failed:', error);
     } finally {
       // Ne pas réinitialiser immédiatement pour éviter les clics multiples
       setTimeout(() => {

@@ -28,7 +28,7 @@ class AppAssetLoader implements AssetLoader {
       await Promise.all([...appAssetPromises, ...coreAssetPromises]);
       return true;
     } catch (error) {
-      console.error('Error loading assets:', error);
+      if (__DEV__) console.error('Asset loading failed:', error);
       return false;
     }
   }

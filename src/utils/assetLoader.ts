@@ -20,7 +20,7 @@ export class AssetLoader {
       await Promise.all(loadPromises);
       return true;
     } catch (error) {
-      console.error('Failed to load assets:', error);
+      if (__DEV__) console.error('Asset initialization failed:', error);
       return false;
     }
   }

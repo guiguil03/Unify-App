@@ -25,7 +25,7 @@ export function SubscriptionCard() {
       const sub = await SubscriptionService.getSubscription();
       setSubscription(sub);
     } catch (error) {
-      console.error('Erreur lors du chargement de l\'abonnement:', error);
+      if (__DEV__) console.error('Subscription load failed:', error);
     } finally {
       setLoading(false);
     }
@@ -52,7 +52,6 @@ export function SubscriptionCard() {
         Alert.alert('Erreur', 'Impossible d\'ouvrir le lien de paiement');
       }
     } catch (error: any) {
-      console.error('Erreur lors de l\'upgrade:', error);
       showErrorToast(error.message || 'Impossible de créer la session de paiement');
     } finally {
       setProcessing(false);

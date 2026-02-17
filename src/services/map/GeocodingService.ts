@@ -32,7 +32,7 @@ export class GeocodingService {
 
       return null;
     } catch (error) {
-      console.error('Error searching location:', error);
+      if (__DEV__) console.error('Geocoding search failed:', error);
       return null;
     }
   }

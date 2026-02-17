@@ -46,9 +46,6 @@ export class ProfileService {
       };
     } catch (error: any) {
       // Ne pas logger les erreurs d'authentification
-      if (!error?.message?.includes('Utilisateur non authentifié')) {
-        console.error('Erreur dans getProfile:', error);
-      }
       throw error;
     }
   }
@@ -116,9 +113,6 @@ export class ProfileService {
         updateData.bio = profileData.bio ? `${profileData.bio}\n${traitsText}` : traitsText;
       }
 
-      console.log('📤 Mise à jour du profil avec les données:', updateData);
-      console.log('👤 ID utilisateur:', currentUser.id);
-
       const { data, error } = await supabase
         .from('users')
         .update(updateData)
@@ -127,16 +121,12 @@ export class ProfileService {
         .single();
 
       if (error) {
-        console.error('❌ Erreur Supabase lors de la mise à jour:', error);
         throw error;
       }
 
       if (!data) {
-        console.error('❌ Aucune donnée retournée après la mise à jour');
         throw new Error('Aucune donnée retournée après la mise à jour');
       }
-
-      console.log('✅ Profil mis à jour avec succès:', data);
 
       return {
         id: data.id,
@@ -157,7 +147,6 @@ export class ProfileService {
         },
       };
     } catch (error) {
-      console.error('Erreur dans updateProfile:', error);
       throw error;
     }
   }
@@ -196,7 +185,6 @@ export class ProfileService {
         },
       };
     } catch (error) {
-      console.error('Erreur dans getProfileById:', error);
       throw error;
     }
   }

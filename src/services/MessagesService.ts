@@ -24,7 +24,6 @@ export class MessagesService {
         .order('last_message_time', { ascending: false });
 
       if (error) {
-        console.error('Erreur lors de la récupération des conversations:', error);
         throw error;
       }
 
@@ -44,9 +43,6 @@ export class MessagesService {
       });
     } catch (error: any) {
       // Ne pas logger les erreurs d'authentification
-      if (!error?.message?.includes('Utilisateur non authentifié')) {
-        console.error('Erreur dans getMessages:', error);
-      }
       throw error;
     }
   }
@@ -72,7 +68,6 @@ export class MessagesService {
         .order('created_at', { ascending: true });
 
       if (error) {
-        console.error('Erreur lors de la récupération des messages:', error);
         throw error;
       }
 
@@ -83,7 +78,6 @@ export class MessagesService {
         time: formatTime(msg.created_at),
       }));
     } catch (error) {
-      console.error('Erreur dans getChatMessages:', error);
       throw error;
     }
   }
@@ -120,7 +114,6 @@ export class MessagesService {
         time: formatTime(data.created_at),
       };
     } catch (error) {
-      console.error('Erreur dans sendMessage:', error);
       throw error;
     }
   }

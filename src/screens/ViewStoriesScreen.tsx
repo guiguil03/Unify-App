@@ -56,7 +56,7 @@ export default function ViewStoriesScreen() {
       // Initialiser les animations de progression
       progressAnims.current = userStories.map(() => new Animated.Value(0));
     } catch (error) {
-      console.error('Erreur lors du chargement des stories:', error);
+      if (__DEV__) console.error('Story loading failed:', error);
       navigation.goBack();
     } finally {
       setLoading(false);

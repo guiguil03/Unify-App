@@ -156,7 +156,6 @@ export default function CreateStoryScreen() {
         await uploadImage(asset.uri);
       }
     } catch (error) {
-      console.error('Erreur lors de la sélection de l\'image:', error);
       showErrorToast('Impossible de sélectionner l\'image');
     }
   };
@@ -224,7 +223,6 @@ export default function CreateStoryScreen() {
       setShowPreview(true);
       showSuccessToast('Image téléchargée ! 📸');
     } catch (error: any) {
-      console.error('Erreur lors de l\'upload:', error);
       showErrorToast(error.message || 'Impossible de télécharger l\'image');
     } finally {
       setIsUploading(false);
@@ -273,7 +271,6 @@ export default function CreateStoryScreen() {
       // Retour à l'écran précédent
       navigation.goBack();
     } catch (error: any) {
-      console.error('Erreur lors de la création de la story:', error);
       showErrorToast(error?.message || 'Impossible de créer la story');
     } finally {
       setIsCreating(false);

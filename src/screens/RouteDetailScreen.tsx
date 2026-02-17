@@ -63,7 +63,6 @@ export default function RouteDetailScreen() {
         });
       }
     } catch (error: any) {
-      console.error('Erreur chargement parcours:', error);
       showErrorToast(error.message || 'Impossible de charger le parcours');
       navigation.goBack();
     } finally {

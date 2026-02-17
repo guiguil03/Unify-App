@@ -152,7 +152,6 @@ export default function MapScreen() {
           break;
       }
     } catch (error) {
-      console.error('Erreur lors de la connexion:', error);
       showErrorToast('Erreur lors de la connexion. Veuillez réessayer.');
     }
   };

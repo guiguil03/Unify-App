@@ -96,7 +96,6 @@ export class RoutesService {
       // Récupérer le parcours complet avec les points
       return await this.getRouteById(route.id);
     } catch (error: any) {
-      console.error('Erreur dans createRoute:', error);
       throw error;
     }
   }

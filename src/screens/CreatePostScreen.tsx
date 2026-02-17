@@ -100,7 +100,6 @@ export default function CreatePostScreen() {
         setImageUri(result.assets[0].uri);
       }
     } catch (error) {
-      console.error('Erreur lors de la sélection de l\'image:', error);
       showErrorToast('Erreur lors de la sélection de l\'image');
     }
   };
@@ -153,7 +152,6 @@ export default function CreatePostScreen() {
 
       return publicUrl;
     } catch (error: any) {
-      console.error('Erreur lors de l\'upload:', error);
       throw new Error(error.message || 'Impossible de télécharger l\'image');
     } finally {
       setIsUploading(false);
@@ -195,7 +193,6 @@ export default function CreatePostScreen() {
           finalImageUrl = await uploadImage(imageUri);
           setImageUrl(finalImageUrl);
         } catch (error: any) {
-          console.error('Erreur lors de l\'upload de l\'image:', error);
           showErrorToast('Erreur lors du téléchargement de l\'image');
           setIsSubmitting(false);
           return;
@@ -210,7 +207,6 @@ export default function CreatePostScreen() {
       showSuccessToast('Post publié !');
       navigation.goBack();
     } catch (error: any) {
-      console.error('Erreur lors de la création du post:', error);
       showErrorToast('Erreur lors de la publication');
     } finally {
       setIsSubmitting(false);

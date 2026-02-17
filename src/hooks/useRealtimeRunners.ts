@@ -32,7 +32,6 @@ export const useRealtimeRunners = ({
     
     // S'abonner aux changements
     channelRef.current = RunnersService.subscribeToRunners(() => {
-      console.log('🔔 [useRealtimeRunners] Changement détecté, rechargement des coureurs');
       onRunnersUpdate();
     });
 

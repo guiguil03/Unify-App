@@ -24,15 +24,13 @@ export const useActivities = () => {
       const fetchedActivities = await ActivitiesService.getActivities();
       setActivities(fetchedActivities);
     } catch (err: any) {
+      if (__DEV__) console.error('Activities load failed:', err);
       // Gérer silencieusement les erreurs d'authentification
       if (err?.message?.includes('Utilisateur non authentifié')) {
         setActivities([]);
         setError(null);
       } else {
         setError('Unable to fetch activities');
-        if (!err?.message?.includes('Utilisateur non authentifié')) {
-          console.error('Error fetching activities:', err);
-        }
       }
     } finally {
       setLoading(false);

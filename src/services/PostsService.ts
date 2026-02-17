@@ -70,7 +70,6 @@ export class PostsService {
         };
       });
     } catch (error: any) {
-      console.error('Erreur lors de la récupération des posts:', error);
       throw error;
     }
   }
@@ -135,7 +134,6 @@ export class PostsService {
         isLiked: false,
       };
     } catch (error: any) {
-      console.error('Erreur lors de la création du post:', error);
       throw error;
     }
   }
@@ -181,7 +179,6 @@ export class PostsService {
         return true;
       }
     } catch (error: any) {
-      console.error('Erreur lors du like/unlike:', error);
       throw error;
     }
   }
@@ -250,7 +247,6 @@ export class PostsService {
         };
       });
     } catch (error: any) {
-      console.error('Erreur lors de la récupération des posts utilisateur:', error);
       throw error;
     }
   }
@@ -283,7 +279,6 @@ export class PostsService {
 
       if (error) throw error;
     } catch (error: any) {
-      console.error('Erreur lors de la suppression du post:', error);
       throw error;
     }
   }
@@ -328,7 +323,6 @@ export class PostsService {
         };
       });
     } catch (error: any) {
-      console.error('Erreur lors de la récupération des commentaires:', error);
       throw error;
     }
   }
@@ -383,7 +377,6 @@ export class PostsService {
         createdAt: comment.created_at,
       };
     } catch (error: any) {
-      console.error('Erreur lors de l\'ajout du commentaire:', error);
       throw error;
     }
   }

@@ -9,7 +9,7 @@ export async function requestLocationPermissions(): Promise<boolean> {
     }
     return false;
   } catch (error) {
-    console.error('Error requesting permissions:', error);
+    if (__DEV__) console.error('Location permission request failed:', error);
     return false;
   }
 }
@@ -37,7 +37,7 @@ async function requestAndroidPermissions(): Promise<boolean> {
     ]);
     return hasPermission;
   } catch (error) {
-    console.error('Error requesting Android permissions:', error);
+    if (__DEV__) console.error('Android permission request failed:', error);
     return false;
   }
 }

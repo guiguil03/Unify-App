@@ -27,15 +27,13 @@ export function useMessages() {
       setMessages(data);
       setError(null);
     } catch (err: any) {
+      if (__DEV__) console.error('Messages load failed:', err);
       // Gérer silencieusement les erreurs d'authentification
       if (err?.message?.includes('Utilisateur non authentifié')) {
         setMessages([]);
         setError(null);
       } else {
         setError('Erreur lors du chargement des messages');
-        if (!err?.message?.includes('Utilisateur non authentifié')) {
-          console.error('Error loading messages:', err);
-        }
       }
     } finally {
       setLoading(false);

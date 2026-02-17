@@ -30,7 +30,7 @@ export default function StatsScreen() {
       const data = await StatsService.getAdvancedStats();
       setStats(data);
     } catch (error) {
-      console.error('Erreur lors du chargement des stats:', error);
+      if (__DEV__) console.error('Stats load failed:', error);
     } finally {
       setLoading(false);
     }

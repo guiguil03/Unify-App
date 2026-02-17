@@ -72,7 +72,6 @@ export function IdentityVerificationModal({
         await uploadImage(asset.uri, type);
       }
     } catch (error) {
-      console.error('Erreur lors de la sélection de l\'image:', error);
       showErrorToast('Impossible de sélectionner l\'image');
     }
   };
@@ -102,7 +101,6 @@ export function IdentityVerificationModal({
         await uploadImage(asset.uri, 'selfie');
       }
     } catch (error) {
-      console.error('Erreur lors de la prise de photo:', error);
       showErrorToast('Impossible de prendre la photo');
     }
   };
@@ -126,7 +124,6 @@ export function IdentityVerificationModal({
 
       showSuccessToast('Document téléchargé avec succès');
     } catch (error: any) {
-      console.error('Erreur lors de l\'upload:', error);
       showErrorToast(error.message || 'Impossible de télécharger le document');
     } finally {
       setUploadingImage(null);
@@ -166,7 +163,6 @@ export function IdentityVerificationModal({
       setIdDocumentBackUri(null);
       setSelfieUri(null);
     } catch (error: any) {
-      console.error('Erreur lors de la soumission:', error);
       showErrorToast(error.message || 'Erreur lors de la soumission');
     } finally {
       setIsSubmitting(false);

@@ -51,7 +51,6 @@ export class ProfilePhotoService {
 
       return publicUrl;
     } catch (error: any) {
-      console.error('Erreur lors de l\'upload de la photo de profil:', error);
       throw new Error(error.message || 'Impossible de télécharger la photo de profil');
     }
   }
@@ -80,7 +79,6 @@ export class ProfilePhotoService {
         if (error) throw error;
       }
     } catch (error: any) {
-      console.error('Erreur lors de la suppression de la photo de profil:', error);
       throw new Error(error.message || 'Impossible de supprimer la photo de profil');
     }
   }

@@ -34,7 +34,7 @@ export function OnboardingGuard({ children }: OnboardingGuardProps) {
                   hasNavigated.current = true;
                 }
               } catch (error) {
-                console.error('Erreur lors de la navigation vers Onboarding:', error);
+                if (__DEV__) console.error('Onboarding navigation failed:', error);
               }
             }, 100);
           } else {
@@ -42,7 +42,7 @@ export function OnboardingGuard({ children }: OnboardingGuardProps) {
           }
         }
       } catch (error) {
-        console.error('Erreur lors de la vérification de l\'onboarding:', error);
+        if (__DEV__) console.error('Onboarding check failed:', error);
       } finally {
         setIsChecking(false);
       }

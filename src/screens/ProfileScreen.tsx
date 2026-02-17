@@ -48,7 +48,7 @@ export default function ProfileScreen() {
       setUserPosts(posts);
       setUserStories(stories);
     } catch (err) {
-      console.error('Erreur lors du chargement du contenu:', err);
+      if (__DEV__) console.error('Profile content load failed:', err);
     } finally {
       setLoadingPosts(false);
       setLoadingStories(false);

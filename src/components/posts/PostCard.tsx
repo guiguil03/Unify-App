@@ -154,9 +154,7 @@ export function PostCard({ post, onLike, onDelete, isOwnPost }: PostCardProps) {
             <Image 
               source={{ uri: post.userAvatar }} 
               style={styles.avatar}
-              onError={(e) => {
-                console.log('Erreur chargement avatar:', post.userAvatar, e.nativeEvent.error);
-              }}
+              onError={() => {}}
             />
           ) : (
             <View style={styles.avatarPlaceholder}>
@@ -184,10 +182,7 @@ export function PostCard({ post, onLike, onDelete, isOwnPost }: PostCardProps) {
           source={{ uri: post.imageUrl }} 
           style={styles.postImage} 
           resizeMode="cover"
-          onError={() => {
-            // Erreur silencieuse - l'image ne s'affichera simplement pas
-            console.warn('Impossible de charger l\'image du post:', post.imageUrl);
-          }}
+          onError={() => {}}
         />
       ) : null}
 
@@ -242,9 +237,7 @@ export function PostCard({ post, onLike, onDelete, isOwnPost }: PostCardProps) {
                     <Image 
                       source={{ uri: comment.userAvatar }} 
                       style={styles.commentAvatar}
-                      onError={(e) => {
-                        console.log('Erreur chargement avatar commentaire:', comment.userAvatar);
-                      }}
+                      onError={() => {}}
                     />
                   ) : (
                     <View style={[styles.commentAvatar, styles.commentAvatarPlaceholder]}>

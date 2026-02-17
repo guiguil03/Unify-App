@@ -25,7 +25,6 @@ export async function updateUserProfileStats(userId: string, stats: {
     .eq('id', userId);
 
   if (error) {
-    console.error('Erreur lors de la mise à jour des statistiques:', error);
     throw error;
   }
 }

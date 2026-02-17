@@ -20,8 +20,8 @@ export function useMapSearch() {
 
       return result.location;
     } catch (err) {
+      if (__DEV__) console.error('Map search failed:', err);
       setError('Erreur lors de la recherche');
-      console.error('Search error:', err);
       return null;
     } finally {
       setSearching(false);

@@ -21,7 +21,6 @@ export class ActivitiesService {
         .order('date', { ascending: false });
 
       if (error) {
-        console.error('Erreur lors de la récupération des activités:', error);
         throw error;
       }
 
@@ -35,9 +34,6 @@ export class ActivitiesService {
       }));
     } catch (error: any) {
       // Ne pas logger les erreurs d'authentification
-      if (!error?.message?.includes('Utilisateur non authentifié')) {
-        console.error('Erreur dans getActivities:', error);
-      }
       throw error;
     }
   }
@@ -98,7 +94,6 @@ export class ActivitiesService {
         route,
       };
     } catch (error) {
-      console.error('Erreur dans getActivityById:', error);
       throw error;
     }
   }
@@ -148,7 +143,6 @@ export class ActivitiesService {
         pace: data.pace,
       };
     } catch (error) {
-      console.error('Erreur dans createActivity:', error);
       throw error;
     }
   }
@@ -184,7 +178,6 @@ export class ActivitiesService {
 
       if (error) throw error;
     } catch (error) {
-      console.error('Erreur dans addRoutePoints:', error);
       throw error;
     }
   }
@@ -218,7 +211,6 @@ export class ActivitiesService {
 
       if (error) throw error;
     } catch (error) {
-      console.error('Erreur dans addPauses:', error);
       throw error;
     }
   }
@@ -241,7 +233,6 @@ export class ActivitiesService {
 
       if (error) throw error;
     } catch (error) {
-      console.error('Erreur dans deleteActivity:', error);
       throw error;
     }
   }

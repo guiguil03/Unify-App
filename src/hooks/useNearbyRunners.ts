@@ -26,7 +26,7 @@ export const useNearbyRunners = (location: Location | null, radiusKm: number = M
           setRunners(nearbyRunners);
         }
       } catch (error) {
-        console.error('Erreur lors du chargement des coureurs à proximité:', error);
+        if (__DEV__) console.error('Nearby runners load failed:', error);
         if (isMounted) {
           setRunners([]);
         }

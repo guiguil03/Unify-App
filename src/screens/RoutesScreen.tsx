@@ -37,7 +37,7 @@ export default function RoutesScreen() {
       const premium = await SubscriptionService.isPremium();
       setIsPremium(premium);
     } catch (error) {
-      console.error('Erreur vérification premium:', error);
+      if (__DEV__) console.error('Premium check failed:', error);
     }
   };
 
@@ -62,7 +62,6 @@ export default function RoutesScreen() {
 
       setRoutes(data);
     } catch (error: any) {
-      console.error('Erreur chargement parcours:', error);
       if (error.message?.includes('premium')) {
         // Ne pas afficher d'erreur si c'est juste une question de premium
       } else {

@@ -119,7 +119,7 @@ export class StatsService {
         lastMonthDistance: Math.round(lastMonth),
       };
     } catch (error) {
-      console.error('Erreur lors de la récupération des stats:', error);
+      if (__DEV__) console.error('Stats load failed:', error);
       return null;
     }
   }

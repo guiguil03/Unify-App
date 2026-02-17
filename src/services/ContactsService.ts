@@ -33,12 +33,10 @@ export class ContactsService {
       ]);
 
       if (sentResult.error) {
-        console.error('Erreur lors de la récupération des contacts envoyés:', sentResult.error);
         throw sentResult.error;
       }
 
       if (receivedResult.error) {
-        console.error('Erreur lors de la récupération des contacts reçus:', receivedResult.error);
         throw receivedResult.error;
       }
 
@@ -85,9 +83,6 @@ export class ContactsService {
       return contactsList;
     } catch (error: any) {
       // Ne pas logger les erreurs d'authentification
-      if (!error?.message?.includes('Utilisateur non authentifié')) {
-        console.error('Erreur dans getContacts:', error);
-      }
       throw error;
     }
   }
@@ -201,7 +196,6 @@ export class ContactsService {
         avatar: contactUser.avatar,
       };
     } catch (error) {
-      console.error('Erreur dans addContact:', error);
       throw error;
     }
   }
@@ -277,7 +271,6 @@ export class ContactsService {
 
       return relationships;
     } catch (error) {
-      console.error('Erreur dans getRelationshipsMap:', error);
       throw error;
     }
   }
@@ -316,7 +309,6 @@ export class ContactsService {
 
       if (insertError) throw insertError;
     } catch (error) {
-      console.error('Erreur dans acceptContact:', error);
       throw error;
     }
   }
@@ -352,7 +344,6 @@ export class ContactsService {
         lastActivity: 'Nouveau',
       }));
     } catch (error) {
-      console.error('Erreur dans searchUsers:', error);
       throw error;
     }
   }
@@ -418,9 +409,6 @@ export class ContactsService {
 
       return { incoming, outgoing };
     } catch (error: any) {
-      if (!error?.message?.includes('Utilisateur non authentifié')) {
-        console.error('Erreur dans getPendingRequests:', error);
-      }
       throw error;
     }
   }
@@ -449,7 +437,6 @@ export class ContactsService {
         .select();
 
       if (updateError) {
-        console.error('Erreur lors de la mise à jour de la demande reçue:', updateError);
         throw updateError;
       }
 
@@ -463,7 +450,6 @@ export class ContactsService {
 
       if (checkError && checkError.code !== 'PGRST116') {
         // PGRST116 = aucune ligne trouvée, ce qui est OK
-        console.error('Erreur lors de la vérification de la relation inverse:', checkError);
         throw checkError;
       }
 
@@ -479,7 +465,6 @@ export class ContactsService {
           .eq('contact_id', senderId);
 
         if (updateInverseError) {
-          console.error('Erreur lors de la mise à jour de la relation inverse:', updateInverseError);
           throw updateInverseError;
         }
       } else {
@@ -494,7 +479,6 @@ export class ContactsService {
           });
 
         if (insertError) {
-          console.error('Erreur lors de l\'insertion de la relation inverse:', insertError);
           throw insertError;
         }
       }
@@ -506,13 +490,8 @@ export class ContactsService {
         .or(`and(user_id.eq.${currentUser.id},contact_id.eq.${senderId}),and(user_id.eq.${senderId},contact_id.eq.${currentUser.id})`)
         .eq('status', 'accepted');
 
-      if (verifyError) {
-        console.error('Erreur lors de la vérification finale:', verifyError);
-      } else if (!verifyData || verifyData.length < 2) {
-        console.warn('Les deux relations ne sont pas toutes acceptées après acceptation:', verifyData);
-      }
+      // Verification silenced
     } catch (error) {
-      console.error('Erreur dans acceptContactRequest:', error);
       throw error;
     }
   }
@@ -535,7 +514,6 @@ export class ContactsService {
 
       if (error) throw error;
     } catch (error) {
-      console.error('Erreur dans rejectContactRequest:', error);
       throw error;
     }
   }
@@ -565,6 +543,7 @@ export class ContactsService {
           user_b_id: contactId,
         });
       } catch (rpcError) {
+        if (__DEV__) console.error('RPC delete_contact_pair failed:', rpcError);
         // Ignorer si la fonction n'existe pas, on passe à la suppression standard
       }
 
@@ -612,7 +591,6 @@ export class ContactsService {
           .eq('id', existingConv.id);
       }
     } catch (error) {
-      console.error('Erreur dans removeContact:', error);
       throw error;
     }
   }

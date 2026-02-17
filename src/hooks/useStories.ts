@@ -31,6 +31,7 @@ export function useStories() {
       setStories(fetchedStories);
       hasInitialLoad.current = true;
     } catch (err: any) {
+      if (__DEV__) console.error('Stories load failed:', err);
       if (err?.message?.includes('Utilisateur non authentifié')) {
         // Seulement vider si on n'a pas encore chargé, sinon garder les stories existantes
         if (isInitialLoad) {
@@ -40,7 +41,6 @@ export function useStories() {
         hasInitialLoad.current = false;
       } else {
         setError('Impossible de charger les stories');
-        console.error('Erreur lors du chargement des stories:', err);
         // En cas d'erreur, garder les stories existantes si on en a
       }
     } finally {

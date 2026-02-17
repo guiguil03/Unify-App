@@ -25,10 +25,7 @@ export function useChat(contactId: string) {
       const data = await MessagesService.getChatMessages(contactId);
       setMessages(data);
     } catch (err: any) {
-      // Gérer silencieusement les erreurs d'authentification
-      if (!err?.message?.includes('Utilisateur non authentifié')) {
-        console.error('Error loading chat messages:', err);
-      }
+      if (__DEV__) console.error('Chat messages load failed:', err);
       setMessages([]);
     } finally {
       setLoading(false);
@@ -44,10 +41,7 @@ export function useChat(contactId: string) {
       const newMessage = await MessagesService.sendMessage(contactId, content);
       setMessages(prev => [newMessage, ...prev]);
     } catch (err: any) {
-      // Gérer silencieusement les erreurs d'authentification
-      if (!err?.message?.includes('Utilisateur non authentifié')) {
-        console.error('Error sending message:', err);
-      }
+      if (__DEV__) console.error('Send message failed:', err);
     }
   };
 

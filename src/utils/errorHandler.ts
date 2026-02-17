@@ -6,12 +6,6 @@ import { FirebaseError } from 'firebase/app';
  * et affiche un toast avec le message approprié
  */
 export const handleFirebaseError = (error: any, customMessage?: string): string => {
-  // Limiter les logs pour réduire le bruit dans la console
-  if (process.env.NODE_ENV === 'development') {
-    // En développement uniquement, logger le code d'erreur mais pas tout le message 
-    console.log('Code d\'erreur Firebase:', error?.code || 'Erreur sans code');
-  }
-  
   let message = customMessage || 'Une erreur s\'est produite';
   let type: 'success' | 'error' | 'info' = 'error';
   

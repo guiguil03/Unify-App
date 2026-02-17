@@ -136,6 +136,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       updateLastActive();
       return true;
     } catch (error: any) {
+      if (__DEV__) console.error('Sign in failed:', error);
       showErrorToast(error.message || "Échec de la connexion");
       return false;
     } finally {
@@ -152,6 +153,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       updateLastActive();
       return true;
     } catch (error: any) {
+      if (__DEV__) console.error('Sign up failed:', error);
       showErrorToast(error.message || "Échec de l'inscription");
       return false;
     } finally {
@@ -165,7 +167,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       const user = await AuthService.signInWithGoogle();
       setUser(user);
       return true;
-    } catch {
+    } catch (error) {
+      if (__DEV__) console.error('Google sign in failed:', error);
       return false;
     } finally {
       setAuthenticating(false);
@@ -178,7 +181,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       const user = await AuthService.signInWithApple();
       setUser(user);
       return true;
-    } catch {
+    } catch (error) {
+      if (__DEV__) console.error('Apple sign in failed:', error);
       return false;
     } finally {
       setAuthenticating(false);
@@ -191,8 +195,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       await AuthService.logout();
       setUser(null);
       setIsSkipped(false);
-    } catch {
-      // Erreur de déconnexion silencieuse
+    } catch (error) {
+      if (__DEV__) console.error('Sign out failed:', error);
     } finally {
       setIsLoading(false);
     }

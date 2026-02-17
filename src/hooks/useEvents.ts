@@ -17,10 +17,10 @@ export const useEvents = () => {
         const fetchedEvents = await EventsService.getEvents();
         setEvents(fetchedEvents);
       } catch (err: any) {
+        if (__DEV__) console.error('Events load failed:', err);
         // Gérer silencieusement les erreurs
         if (!err?.message?.includes('Utilisateur non authentifié')) {
           setError('Unable to fetch events');
-          console.error('Error fetching events:', err);
         } else {
           setEvents([]);
         }

@@ -93,7 +93,7 @@ export default function CreateRouteScreen() {
         setLastPoint(newPoint);
       }
     } catch (error) {
-      console.error('Erreur dans addPointFromCoordinate:', error);
+      if (__DEV__) console.error('Point addition failed:', error);
     }
   }, []);
 
@@ -133,7 +133,7 @@ export default function CreateRouteScreen() {
         );
       }
     } catch (error) {
-      console.error('Erreur vérification premium:', error);
+      if (__DEV__) console.error('Premium check failed:', error);
     } finally {
       setLoading(false);
     }
@@ -299,7 +299,6 @@ export default function CreateRouteScreen() {
         navigation.goBack();
       }
     } catch (error: any) {
-      console.error('Erreur création parcours:', error);
       showErrorToast(error.message || 'Erreur lors de la création du parcours');
     } finally {
       setSaving(false);

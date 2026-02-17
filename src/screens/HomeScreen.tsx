@@ -37,7 +37,7 @@ export default function HomeScreen() {
         const premium = await SubscriptionService.isPremium();
         setIsPremium(premium);
       } catch (error) {
-        console.error('Erreur vérification premium:', error);
+        if (__DEV__) console.error('Premium check failed:', error);
         setIsPremium(false);
       }
     }

@@ -124,7 +124,6 @@ export class StoriesService {
 
       return stories;
     } catch (error) {
-      console.error('Erreur dans getActiveStories:', error);
       throw error;
     }
   }
@@ -193,7 +192,6 @@ export class StoriesService {
         hasViewed: viewedStoryIds.has(story.id),
       })) || [];
     } catch (error) {
-      console.error('Erreur dans getUserStories:', error);
       throw error;
     }
   }
@@ -255,7 +253,6 @@ export class StoriesService {
         hasViewed: false,
       };
     } catch (error) {
-      console.error('Erreur dans createStory:', error);
       throw error;
     }
   }
@@ -282,7 +279,7 @@ export class StoriesService {
         throw error;
       }
     } catch (error) {
-      console.error('Erreur dans markStoryAsViewed:', error);
+      if (__DEV__) console.error('Story view failed:', error);
       // Ne pas bloquer si la vue échoue
     }
   }
@@ -305,7 +302,6 @@ export class StoriesService {
 
       if (error) throw error;
     } catch (error) {
-      console.error('Erreur dans deleteStory:', error);
       throw error;
     }
   }
@@ -376,7 +372,6 @@ export class StoriesService {
         hasViewed: viewedStoryIds.has(story.id),
       })) || [];
     } catch (error) {
-      console.error('Erreur dans getUserStoriesHistory:', error);
       throw error;
     }
   }
@@ -419,7 +414,6 @@ export class StoriesService {
         viewedAt: view.viewed_at,
       })) || [];
     } catch (error) {
-      console.error('Erreur dans getStoryViewers:', error);
       throw error;
     }
   }

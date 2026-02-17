@@ -81,7 +81,7 @@ export function useMapScreen() {
         loadingRunners: false,
       }));
     } catch (error) {
-      console.error('Erreur lors du chargement des coureurs:', error);
+      if (__DEV__) console.error('Nearby runners load failed:', error);
       setState(prev => ({
         ...prev,
         filteredRunners: [],
@@ -97,8 +97,8 @@ export function useMapScreen() {
       RunnersService.updateUserLocation({
         latitude: location.latitude,
         longitude: location.longitude,
-      }).catch(err => {
-        console.error('Erreur lors de la mise à jour de la position:', err);
+      }).catch((error: unknown) => {
+        if (__DEV__) console.error('Location update failed:', error);
       });
       
       // Charger les utilisateurs à proximité
@@ -320,7 +320,7 @@ export function useMapScreen() {
             loadingRunners: false,
           }));
         } catch (error) {
-          console.error('Erreur lors du rechargement des coureurs:', error);
+          if (__DEV__) console.error('Filter change runners reload failed:', error);
           setState(prev => ({
             ...prev,
             loadingRunners: false,

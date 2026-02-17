@@ -9,7 +9,7 @@ export class LocationService {
       const { status } = await ExpoLocation.requestForegroundPermissionsAsync();
       return status === 'granted';
     } catch (error) {
-      console.error('Error requesting location permissions:', error);
+      if (__DEV__) console.error('Location permission failed:', error);
       return false;
     }
   }
@@ -32,7 +32,6 @@ export class LocationService {
         longitude: location.coords.longitude,
       };
     } catch (error) {
-      console.error('Error getting location:', error);
       throw error;
     }
   }

@@ -45,7 +45,7 @@ export function SearchBar({ onLocationSelect, onFocus }: SearchBarProps) {
         setShowResults(true);
       }
     } catch (error) {
-      console.error("Search error:", error);
+      if (__DEV__) console.error('Map search failed:', error);
     }
   };
 

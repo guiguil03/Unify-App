@@ -45,8 +45,8 @@ export function LiveActivity({ onFinish, onCancel, route }: LiveActivityProps) {
     return () => {
       LiveActivityService.stopActivity();
       // Désactiver le coureur quand le composant se démonte
-      RunnersService.deactivateRunner().catch(error => {
-        console.error('Erreur lors de la désactivation du coureur:', error);
+      RunnersService.deactivateRunner().catch((error: unknown) => {
+        if (__DEV__) console.error('Runner deactivation failed:', error);
       });
     };
   }, []);
@@ -58,13 +58,11 @@ export function LiveActivity({ onFinish, onCancel, route }: LiveActivityProps) {
         // Essayer d'obtenir la location si elle n'est pas encore disponible
         let currentLocation = location;
         if (!currentLocation) {
-          console.log('Location non disponible, tentative de refresh...');
           currentLocation = await refreshLocation();
         }
         
         if (currentLocation) {
           try {
-            console.log('Activation du coureur avec position:', currentLocation);
             await RunnersService.updateRunnerPosition({
               latitude: currentLocation.latitude,
               longitude: currentLocation.longitude,
@@ -81,15 +79,11 @@ export function LiveActivity({ onFinish, onCancel, route }: LiveActivityProps) {
               timestamp: Math.floor((Date.now() - startTime.getTime()) / 1000)
             }]);
             
-            console.log('✅ Coureur activé avec succès dans la table runners');
           } catch (error) {
-            console.error('❌ Erreur lors de l\'activation du coureur:', error);
-            if (error instanceof Error) {
-              console.error('Détails de l\'erreur:', error.message, error.stack);
-            }
+            if (__DEV__) console.error('Runner activation failed:', error);
           }
         } else {
-          console.warn('⚠️ Impossible d\'obtenir la location pour activer le coureur');
+          // Unable to get location for runner activation
         }
       }
     };
@@ -128,7 +122,6 @@ export function LiveActivity({ onFinish, onCancel, route }: LiveActivityProps) {
     let locationUpdateInterval: NodeJS.Timeout;
     
     if (isRunning && location) {
-      console.log('Démarrage de la mise à jour périodique de la position');
       // Mettre à jour la position toutes les 10 secondes
       locationUpdateInterval = setInterval(async () => {
         try {
@@ -162,13 +155,6 @@ export function LiveActivity({ onFinish, onCancel, route }: LiveActivityProps) {
             const paceMinutes = Math.floor(paceSeconds / 60);
             const paceSecs = paceSeconds % 60;
             const paceFormatted = `${paceMinutes}:${paceSecs.toString().padStart(2, '0')} min/km`;
-
-            console.log('Mise à jour position coureur:', {
-              lat: currentLocation.latitude,
-              lon: currentLocation.longitude,
-              distance: currentDistance,
-              pace: paceFormatted
-            });
 
             // Mettre à jour la position dans la table runners
             await RunnersService.updateRunnerPosition({
@@ -221,7 +207,7 @@ export function LiveActivity({ onFinish, onCancel, route }: LiveActivityProps) {
             previousLocationRef.current = { ...currentLocation };
           }
         } catch (error) {
-          console.error('Erreur lors de la mise à jour de la position:', error);
+          if (__DEV__) console.error('Position update failed:', error);
         }
       }, 10000); // Toutes les 10 secondes
     }
@@ -257,7 +243,7 @@ export function LiveActivity({ onFinish, onCancel, route }: LiveActivityProps) {
     try {
       await RunnersService.deactivateRunner();
     } catch (error) {
-      console.error('Erreur lors de la désactivation du coureur:', error);
+      if (__DEV__) console.error('Runner deactivation failed:', error);
     }
 
     const activity = {
@@ -283,9 +269,9 @@ export function LiveActivity({ onFinish, onCancel, route }: LiveActivityProps) {
     try {
       await RunnersService.deactivateRunner();
     } catch (error) {
-      console.error('Erreur lors de la désactivation du coureur:', error);
+      if (__DEV__) console.error('Runner deactivation failed:', error);
     }
-    
+
     onCancel();
   };
 

@@ -43,7 +43,7 @@ export class IdentityVerificationService {
         diditCompletedAt: data.didit_completed_at,
       };
     } catch (error) {
-      console.error('Erreur dans getVerification:', error);
+      if (__DEV__) console.error('Verification load failed:', error);
       return null;
     }
   }
@@ -91,7 +91,6 @@ export class IdentityVerificationService {
       // Retourner le chemin du fichier pour stockage en base
       return storageFileName;
     } catch (error: any) {
-      console.error('Erreur lors de l\'upload du document:', error);
       throw new Error(error.message || 'Impossible de télécharger le document');
     }
   }
@@ -158,7 +157,6 @@ export class IdentityVerificationService {
         diditCompletedAt: result.didit_completed_at,
       };
     } catch (error: any) {
-      console.error('Erreur dans submitVerification:', error);
       throw error;
     }
   }
@@ -175,7 +173,7 @@ export class IdentityVerificationService {
       if (error) throw error;
       return data.signedUrl;
     } catch (error) {
-      console.error('Erreur lors de la récupération de l\'URL signée:', error);
+      if (__DEV__) console.error('Signed URL failed:', error);
       return null;
     }
   }
@@ -185,28 +183,20 @@ export class IdentityVerificationService {
    */
   static async submitToDidit(verificationId: string): Promise<void> {
     try {
-      console.log('🚀 Appel didit-create-session avec verification_id:', verificationId);
-
       const { data, error } = await supabase.functions.invoke(
         'didit-create-session',
         { body: { verification_id: verificationId } }
       );
 
-      console.log('📥 Réponse Edge Function:', { data, error });
-
       if (error) {
-        console.error('❌ Erreur Edge Function:', error);
         throw error;
       }
 
       if (data?.error) {
-        console.error('❌ Erreur dans data:', data.error);
         throw new Error(data.error);
       }
 
-      console.log('✅ Session didit créée:', data?.session_id);
     } catch (error: any) {
-      console.error('❌ Exception submitToDidit:', error);
       throw new Error(error.message || 'Impossible de soumettre la vérification à didit');
     }
   }

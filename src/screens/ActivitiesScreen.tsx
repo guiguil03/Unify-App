@@ -36,7 +36,7 @@ export default function ActivitiesScreen() {
         const premium = await SubscriptionService.isPremium();
         setIsPremium(premium);
       } catch (error) {
-        console.error('Erreur vérification premium:', error);
+        if (__DEV__) console.error('Premium check failed:', error);
         setIsPremium(false);
       }
     }
@@ -61,7 +61,7 @@ export default function ActivitiesScreen() {
       });
       setIsModalVisible(false);
     } catch (error) {
-      console.error('Erreur lors de l\'ajout de l\'activité:', error);
+      if (__DEV__) console.error('Activity addition failed:', error);
     }
   };
 
@@ -98,7 +98,7 @@ export default function ActivitiesScreen() {
       });
       setIsLiveActivityActive(false);
     } catch (error) {
-      console.error('Erreur lors de l\'enregistrement de l\'activité:', error);
+      if (__DEV__) console.error('Activity save failed:', error);
     }
   };
 

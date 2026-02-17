@@ -33,8 +33,7 @@ export function useFirestoreWithOffline<T>(
       setData(result);
       setIsOffline(false);
     } catch (err: any) {
-      console.error('Erreur lors de la récupération des données Firestore:', err);
-      
+      if (__DEV__) console.error('Firestore fetch failed:', err);
       // Vérifier si c'est une erreur de connectivité
       if (FirestoreOfflineHandler.isOfflineError(err)) {
         setIsOffline(true);

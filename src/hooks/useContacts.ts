@@ -44,6 +44,7 @@ export function useContacts() {
       setRelationships(relationshipsMap);
       setError(null);
     } catch (err: any) {
+      if (__DEV__) console.error('Contacts load failed:', err);
       // Gérer silencieusement les erreurs d'authentification
       if (err?.message?.includes('Utilisateur non authentifié')) {
         setContacts([]);
@@ -51,10 +52,6 @@ export function useContacts() {
         setError(null);
       } else {
         setError('Erreur lors du chargement des contacts');
-        // Ne pas logger les erreurs d'authentification
-        if (!err?.message?.includes('Utilisateur non authentifié')) {
-          console.error('Error loading contacts:', err);
-        }
       }
     } finally {
       setLoading(false);
@@ -105,7 +102,6 @@ export function useContacts() {
         }
       }
 
-      console.error('Error adding contact:', err);
       return { success: false, reason: 'unknown' };
     }
   };
@@ -121,7 +117,7 @@ export function useContacts() {
       });
       return true;
     } catch (error) {
-      console.error('Error removing contact:', error);
+      if (__DEV__) console.error('Contact remove failed:', error);
       return false;
     }
   };

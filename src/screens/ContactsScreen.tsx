@@ -39,6 +39,7 @@ export default function ContactsScreen() {
       const { incoming, outgoing } = await ContactsService.getPendingRequests();
       setRequestsCount((incoming?.length || 0) + (outgoing?.length || 0));
     } catch (e) {
+      if (__DEV__) console.error('Load counts failed:', e);
       setRequestsCount(0);
     }
   }, []);
@@ -63,7 +64,7 @@ export default function ContactsScreen() {
       setOutgoingRequests(filteredOutgoing);
       setRequestsCount((filteredIncoming?.length || 0) + (filteredOutgoing?.length || 0));
     } catch (error) {
-      console.error('Erreur lors du chargement des demandes:', error);
+      if (__DEV__) console.error('Pending requests load failed:', error);
     } finally {
       setIsLoadingRequests(false);
     }
@@ -102,7 +103,7 @@ export default function ContactsScreen() {
       const results = await ContactsService.searchUsers(searchQuery);
       setSearchResults(results);
     } catch (error) {
-      console.error('Erreur lors de la recherche:', error);
+      if (__DEV__) console.error('User search failed:', error);
     } finally {
       setIsSearching(false);
     }
@@ -186,7 +187,6 @@ export default function ContactsScreen() {
       // Mettre à jour le compteur
       setRequestsCount(prev => Math.max(0, prev - 1));
     } catch (error) {
-      console.error('Erreur lors de l\'acceptation de la demande:', error);
       showErrorToast('Impossible d\'accepter la demande');
     }
   };

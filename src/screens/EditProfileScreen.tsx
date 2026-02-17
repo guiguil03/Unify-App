@@ -68,7 +68,6 @@ export default function EditProfileScreen() {
   // Mettre à jour les champs quand le profil est chargé
   useEffect(() => {
     if (profile) {
-      console.log('📥 Chargement des données du profil:', profile);
       setName(profile.name || '');
       setBio(profile.bio || '');
       setAvatar(profile.avatar || '');
@@ -86,7 +85,7 @@ export default function EditProfileScreen() {
     (async () => {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
-        console.warn('Permission pour accéder à la galerie refusée');
+        // Gallery permission denied
       }
     })();
   }, []);
@@ -111,7 +110,6 @@ export default function EditProfileScreen() {
           setAvatar(publicUrl);
           showSuccessToast('Photo de profil téléchargée !');
         } catch (error: any) {
-          console.error('Erreur lors de l\'upload:', error);
           showErrorToast(error.message || 'Impossible de télécharger la photo');
           setAvatarPreview(null);
         } finally {
@@ -119,7 +117,6 @@ export default function EditProfileScreen() {
         }
       }
     } catch (error: any) {
-      console.error('Erreur lors de la sélection de l\'image:', error);
       showErrorToast('Impossible de sélectionner l\'image');
     }
   };
@@ -467,16 +464,9 @@ export default function EditProfileScreen() {
             (isSaving || !name.trim()) && styles.saveButtonDisabled
           ]}
           onPress={() => {
-            console.log('🔵 Bouton Enregistrer pressé');
-            console.log('🔵 name:', name);
-            console.log('🔵 name.trim():', name.trim());
-            console.log('🔵 name.trim().length:', name.trim().length);
-            console.log('🔵 isSaving:', isSaving);
-            console.log('🔵 disabled:', isSaving || !name.trim());
             if (!isSaving && name.trim()) {
               handleSave();
             } else {
-              console.log('⚠️ Bouton désactivé - nom vide ou en cours de sauvegarde');
               if (!name.trim()) {
                 showErrorToast('Le nom est obligatoire');
               }

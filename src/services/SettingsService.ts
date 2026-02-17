@@ -35,7 +35,7 @@ export class SettingsService {
         nearbyRunnersNotifications: data.nearby_runners_notifications ?? true,
       };
     } catch (error) {
-      console.error('Erreur dans getSettings:', error);
+      if (__DEV__) console.error('Settings load failed:', error);
       return null;
     }
   }
@@ -68,13 +68,12 @@ export class SettingsService {
         );
 
       if (error) {
-        console.error('Erreur lors de la sauvegarde des paramètres:', error);
         return false;
       }
 
       return true;
     } catch (error) {
-      console.error('Erreur dans saveSettings:', error);
+      if (__DEV__) console.error('Settings save failed:', error);
       return false;
     }
   }
@@ -97,7 +96,7 @@ export class SettingsService {
     });
 
     if (error) {
-      console.error('Erreur lors de la création des paramètres par défaut:', error);
+      // Silently ignore default settings creation error
     }
 
     return defaultSettings;

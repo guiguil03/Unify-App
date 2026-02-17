@@ -19,7 +19,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       const premium = await SubscriptionService.isPremium();
       setIsPremium(premium);
     } catch (error) {
-      console.error('Erreur lors du chargement de l\'abonnement:', error);
+      if (__DEV__) console.error('Subscription load failed:', error);
       setIsPremium(false);
     } finally {
       setIsLoading(false);

@@ -15,8 +15,8 @@ export const useLocation = () => {
         const currentLocation = await LocationService.getCurrentLocation();
         setLocation(currentLocation);
       } catch (err) {
+        if (__DEV__) console.error('Location error:', err);
         setError('Impossible d\'obtenir votre position');
-        console.error('Error getting location:', err);
       } finally {
         setLoading(false);
       }
@@ -31,7 +31,7 @@ export const useLocation = () => {
       setLocation(currentLocation);
       return currentLocation;
     } catch (err) {
-      console.error('Error refreshing location:', err);
+      if (__DEV__) console.error('Location refresh failed:', err);
       return null;
     }
   };

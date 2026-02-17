@@ -57,7 +57,7 @@ export default function SettingsScreen() {
       const verif = await IdentityVerificationService.getVerification();
       setVerification(verif);
     } catch (error) {
-      console.error('Erreur lors du chargement de la vérification:', error);
+      if (__DEV__) console.error('Verification load failed:', error);
     } finally {
       setLoadingVerification(false);
     }

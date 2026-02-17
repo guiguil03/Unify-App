@@ -21,7 +21,7 @@ export function useSettings() {
         setSettings(savedSettings);
       }
     } catch (error) {
-      console.error('Error loading settings:', error);
+      if (__DEV__) console.error('Settings load failed:', error);
     } finally {
       setLoading(false);
     }

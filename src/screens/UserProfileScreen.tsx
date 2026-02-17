@@ -54,7 +54,6 @@ export default function UserProfileScreen() {
       const userProfile = await ProfileService.getProfileById(userId);
       setProfile(userProfile);
     } catch (err: any) {
-      console.error('Erreur chargement profil:', err);
       setError(err.message || 'Impossible de charger le profil');
       showErrorToast(err.message || 'Impossible de charger le profil');
     } finally {
@@ -77,7 +76,7 @@ export default function UserProfileScreen() {
       setUserPosts(posts);
       setUserStories(stories);
     } catch (err) {
-      console.error('Erreur lors du chargement du contenu:', err);
+      if (__DEV__) console.error('User content load failed:', err);
     } finally {
       setLoadingPosts(false);
       setLoadingStories(false);
@@ -101,7 +100,7 @@ export default function UserProfileScreen() {
         setContactStatus('none');
       }
     } catch (err) {
-      console.error('Erreur lors de la vérification du statut de contact:', err);
+      if (__DEV__) console.error('Contact status check failed:', err);
       setContactStatus('none');
     }
   };

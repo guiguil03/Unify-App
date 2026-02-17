@@ -39,11 +39,11 @@ export function OnboardingChecker() {
                 try {
                   navigation.navigate('Onboarding');
                 } catch (error) {
-                  console.error('Erreur lors de la navigation vers Onboarding:', error);
+                  if (__DEV__) console.error('Onboarding navigation failed:', error);
                 }
               }
-            }).catch((error) => {
-              console.error('Erreur lors de la vérification de l\'onboarding:', error);
+            }).catch((error: unknown) => {
+              if (__DEV__) console.error('Onboarding user check failed:', error);
             });
           } else {
             attempts++;
@@ -53,7 +53,7 @@ export function OnboardingChecker() {
 
         waitForReady();
       } catch (error) {
-        console.error('Erreur lors de la vérification de l\'onboarding:', error);
+        if (__DEV__) console.error('Onboarding check failed:', error);
       }
     }
 

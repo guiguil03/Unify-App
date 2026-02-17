@@ -24,7 +24,7 @@ export class LocationService {
         longitude: location.coords.longitude,
       };
     } catch (error) {
-      console.error('Error getting location:', error);
+      if (__DEV__) console.error('Location fetch failed:', error);
       return DEFAULT_LOCATION;
     }
   }

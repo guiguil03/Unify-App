@@ -24,15 +24,13 @@ export const useProfile = () => {
       const fetchedProfile = await ProfileService.getProfile();
       setProfile(fetchedProfile);
     } catch (err: any) {
+      if (__DEV__) console.error('Profile load failed:', err);
       // Gérer silencieusement les erreurs d'authentification
       if (err?.message?.includes('Utilisateur non authentifié')) {
         setProfile(null);
         setError(null);
       } else {
         setError('Unable to fetch profile');
-        if (!err?.message?.includes('Utilisateur non authentifié')) {
-          console.error('Error fetching profile:', err);
-        }
       }
     } finally {
       setLoading(false);

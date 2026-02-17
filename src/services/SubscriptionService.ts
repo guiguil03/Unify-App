@@ -98,7 +98,6 @@ export class SubscriptionService {
 
       return { url: responseData.url };
     } catch (error: any) {
-      console.error('Erreur dans createCheckoutSession:', error);
       throw new Error(error.message || 'Impossible de créer la session de checkout');
     }
   }
@@ -146,7 +145,6 @@ export class SubscriptionService {
 
       return true;
     } catch (error: any) {
-      console.error('Erreur dans cancelSubscription:', error);
       throw new Error(error.message || 'Impossible d\'annuler l\'abonnement');
     }
   }
@@ -194,7 +192,6 @@ export class SubscriptionService {
 
       return true;
     } catch (error: any) {
-      console.error('Erreur dans reactivateSubscription:', error);
       throw new Error(error.message || 'Impossible de réactiver l\'abonnement');
     }
   }

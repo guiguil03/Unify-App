@@ -16,7 +16,6 @@ export class EventsService {
         .order('date', { ascending: true });
 
       if (error) {
-        console.error('Erreur lors de la récupération des événements:', error);
         throw error;
       }
 
@@ -33,7 +32,6 @@ export class EventsService {
         };
       });
     } catch (error) {
-      console.error('Erreur dans getEvents:', error);
       throw error;
     }
   }
@@ -94,7 +92,6 @@ export class EventsService {
         description: data.description || '',
       };
     } catch (error) {
-      console.error('Erreur dans createEvent:', error);
       throw error;
     }
   }
@@ -135,7 +132,6 @@ export class EventsService {
         }
       }
     } catch (error) {
-      console.error('Erreur dans joinEvent:', error);
       throw error;
     }
   }
@@ -169,7 +165,6 @@ export class EventsService {
 
       if (error) throw error;
     } catch (error) {
-      console.error('Erreur dans leaveEvent:', error);
       throw error;
     }
   }

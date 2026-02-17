@@ -57,7 +57,6 @@ export class RunnersService {
         .not('last_longitude', 'is', null);
 
       if (error) {
-        console.error('Erreur lors de la récupération des utilisateurs:', error);
         throw error;
       }
 
@@ -128,7 +127,6 @@ export class RunnersService {
         return dateB - dateA;
       });
     } catch (error) {
-      console.error('Erreur dans getNearbyRunners:', error);
       throw error;
     }
   }
@@ -143,7 +141,6 @@ export class RunnersService {
     try {
       const currentUser = await getCurrentUserFromDB();
       if (!currentUser) {
-        console.error('❌ Utilisateur non authentifié');
         throw new Error('Utilisateur non authentifié');
       }
 
@@ -158,13 +155,9 @@ export class RunnersService {
         .eq('id', currentUser.id);
 
       if (error) {
-        console.error('❌ Erreur lors de la mise à jour de la position:', error);
         throw error;
       }
-
-      console.log('✅ Position utilisateur mise à jour:', position);
     } catch (error) {
-      console.error('❌ Erreur dans updateUserLocation:', error);
       throw error;
     }
   }
@@ -182,14 +175,10 @@ export class RunnersService {
     activityId?: string;
   }): Promise<void> {
     try {
-      console.log('🔄 updateRunnerPosition appelé avec:', position);
       const currentUser = await getCurrentUserFromDB();
       if (!currentUser) {
-        console.error('❌ Utilisateur non authentifié');
         throw new Error('Utilisateur non authentifié');
       }
-
-      console.log('✅ Utilisateur trouvé:', currentUser.id);
 
       // Mettre à jour la table runners (pour l'activité en cours)
       const dataToUpsert = {
@@ -204,8 +193,6 @@ export class RunnersService {
         updated_at: new Date().toISOString(),
       };
 
-      console.log('📤 Données à insérer/mettre à jour:', dataToUpsert);
-
       const { data, error } = await supabase
         .from('runners')
         .upsert(
@@ -217,7 +204,6 @@ export class RunnersService {
         .select();
 
       if (error) {
-        console.error('❌ Erreur Supabase:', error);
         throw error;
       }
 
@@ -227,9 +213,7 @@ export class RunnersService {
         longitude: position.longitude,
       });
 
-      console.log('✅ Position du coureur mise à jour avec succès:', data);
     } catch (error) {
-      console.error('❌ Erreur dans updateRunnerPosition:', error);
       throw error;
     }
   }
@@ -254,7 +238,6 @@ export class RunnersService {
 
       if (error) throw error;
     } catch (error) {
-      console.error('Erreur dans deactivateRunner:', error);
       throw error;
     }
   }
