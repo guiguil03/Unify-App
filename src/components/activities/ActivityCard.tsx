@@ -4,12 +4,13 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Activity } from "../../types/activity";
 import { ActivityStats } from "./ActivityStats";
 
-interface ActivityCardProps {
+export interface ActivityCardProps {
   activity: Activity;
   onPress: (activity: Activity) => void;
+  onDelete?: (activityId: string) => Promise<void>;
 }
 
-export function ActivityCard({ activity, onPress }: ActivityCardProps) {
+export function ActivityCard({ activity, onPress, onDelete }: ActivityCardProps) {
   return (
     <TouchableOpacity
       style={styles.container}

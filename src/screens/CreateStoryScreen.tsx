@@ -624,12 +624,6 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     marginLeft: 12,
   },
-  headerSpacer: {
-    width: 44,
-  },
-  content: {
-    flex: 1,
-  },
   previewContainer: {
     position: 'relative',
     marginHorizontal: 16,

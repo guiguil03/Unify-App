@@ -13,6 +13,7 @@ interface SearchResult {
   id: string;
   name: string;
   address: string;
+  location: { latitude: number; longitude: number };
 }
 
 interface SearchResultsProps {

@@ -1,1 +1,1 @@
-export { createRegionFromLocation, calculateInitialRegion } from './region';
+export { createRegionFromLocation, createRegionFromRadius } from './region';

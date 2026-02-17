@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { NavigationProp } from '../types/navigation';
 import { RoutesService } from '../services/RoutesService';
 import { SubscriptionService } from '../services/SubscriptionService';
 import { Route } from '../types/route';
@@ -20,7 +21,7 @@ import { showErrorToast, showSuccessToast } from '../utils/errorHandler';
 type Tab = 'public' | 'my' | 'saved';
 
 export default function RoutesScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<NavigationProp>();
   const [activeTab, setActiveTab] = useState<Tab>('public');
   const [routes, setRoutes] = useState<Route[]>([]);
   const [loading, setLoading] = useState(true);
@@ -116,7 +117,7 @@ export default function RoutesScreen() {
   };
 
   const handleRoutePress = (route: Route) => {
-    navigation.navigate('RouteDetail' as never, { routeId: route.id } as never);
+    navigation.navigate('RouteDetail', { routeId: route.id });
   };
 
   const renderRoute = ({ item }: { item: Route }) => (

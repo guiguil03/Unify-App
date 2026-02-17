@@ -373,7 +373,7 @@ export class AuthService {
     const { data, error } = await supabase.auth.signInWithIdToken({
       provider: 'apple',
       token: credential.identityToken,
-      nonce: credential.nonce || undefined,
+      nonce: (credential as any).nonce || undefined,
     });
 
     if (error) {

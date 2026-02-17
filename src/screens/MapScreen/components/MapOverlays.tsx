@@ -7,7 +7,7 @@ import { MapFilters } from "../../../components/map/MapFilters";
 import { RunnersList } from "../../../components/map/RunnersList";
 import { RunnerProfileModal } from "../../../components/runners/RunnerProfileModal";
 
-export function MapOverlays({ state, handlers }) {
+export function MapOverlays({ state, handlers }: { state: any; handlers: any }) {
   return (
     <>
       <SearchBar

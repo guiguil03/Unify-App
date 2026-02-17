@@ -5,7 +5,7 @@ import Icon from "@expo/vector-icons/MaterialCommunityIcons";
 interface NavigationButtonProps {
   title: string;
   onPress: () => void;
-  icon: string;
+  icon: React.ComponentProps<typeof Icon>['name'];
 }
 
 export const NavigationButton: React.FC<NavigationButtonProps> = ({

@@ -1,4 +1,4 @@
-import { Location } from './location/LocationService';
+import { Location } from '../types/location';
 import { Runner } from '../types/runner';
 import { supabase } from '../config/supabase';
 import { getCurrentUserFromDB } from '../utils/supabaseHelpers';

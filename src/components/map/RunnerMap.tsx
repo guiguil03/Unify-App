@@ -12,6 +12,7 @@ interface RunnerMapProps {
   selectedRunner: Runner | null;
   onRunnerPress: (runner: Runner) => void;
   onMarkerPress: (runner: Runner) => void;
+  onMapPress?: () => void;
   children?: React.ReactNode;
 }
 

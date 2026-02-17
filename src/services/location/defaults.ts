@@ -1,4 +1,4 @@
-import { Location } from '../types/location';
+import { Location } from '../../types/location';
 
 // Paris coordinates as default location
 export const DEFAULT_LOCATION: Location = {

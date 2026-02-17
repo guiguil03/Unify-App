@@ -49,7 +49,7 @@ export class LiveActivityService {
   }
 }
 
-TaskManager.defineTask(LIVE_ACTIVITY_TASK, ({ data, error }) => {
+TaskManager.defineTask(LIVE_ACTIVITY_TASK, async ({ data, error }) => {
   if (error) {
     return;
   }

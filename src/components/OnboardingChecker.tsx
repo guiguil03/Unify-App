@@ -17,7 +17,7 @@ export function OnboardingChecker() {
         // Vérifier plusieurs fois si la navigation est prête
         const checkReady = () => {
           try {
-            return navigation.isReady();
+            return (navigation as any).isReady?.() ?? true;
           } catch {
             return false;
           }

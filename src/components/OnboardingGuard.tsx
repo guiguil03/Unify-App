@@ -29,7 +29,7 @@ export function OnboardingGuard({ children }: OnboardingGuardProps) {
             // Attendre que la navigation soit prête
             setTimeout(() => {
               try {
-                if (navigation.isReady()) {
+                if ((navigation as any).isReady?.() ?? true) {
                   navigation.navigate('Onboarding');
                   hasNavigated.current = true;
                 }

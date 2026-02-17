@@ -1,9 +1,10 @@
 import React from "react";
+import MapView from "react-native-maps";
 import { RunnerMap } from "../../../components/map/RunnerMap";
 import { SearchZone } from "../../../components/map/SearchZone";
 import { createRegionFromLocation } from "../../../utils/map/region";
 
-export function MapContent({ mapRef, state, handlers }) {
+export function MapContent({ mapRef, state, handlers }: { mapRef: React.RefObject<MapView | null>; state: any; handlers: any }) {
   return (
     <RunnerMap
       ref={mapRef}

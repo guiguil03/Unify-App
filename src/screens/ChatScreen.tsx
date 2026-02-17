@@ -15,7 +15,7 @@ import { ChatMessage } from "../components/messages/ChatMessage";
 import { LoadingSpinner } from "../components/common/LoadingSpinner";
 import { COLORS } from "../constants/colors";
 
-export default function ChatScreen({ route }) {
+export default function ChatScreen({ route }: { route: { params: { contactId: string; contactName: string } } }) {
   const { contactId, contactName } = route.params;
   const { messages, loading, sendMessage } = useChat(contactId);
   const [newMessage, setNewMessage] = React.useState("");

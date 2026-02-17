@@ -29,7 +29,7 @@ export function useMapScreen() {
   const [state, setState] = useState({
     selectedLocation: null as Location | null,
     selectedAddress: "",
-    searchRadius: MAP_DEFAULTS.SEARCH.DEFAULT_RADIUS,
+    searchRadius: MAP_DEFAULTS.SEARCH.DEFAULT_RADIUS as number,
     selectedRunner: null as Runner | null,
     showLocationSelector: false,
     activeSearchZone: false,
