@@ -16,7 +16,8 @@
     "preview": {
       "distribution": "internal",
       "ios": {
-        "simulator": false
+        "simulator": true,
+        "buildConfiguration": "Release"
       },
       "android": {
         "buildType": "apk"

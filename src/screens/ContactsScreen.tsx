@@ -47,15 +47,27 @@ export default function ContactsScreen() {
     setIsLoadingRequests(true);
     try {
       const { incoming, outgoing } = await ContactsService.getPendingRequests();
-      setIncomingRequests(incoming);
-      setOutgoingRequests(outgoing);
-      setRequestsCount((incoming?.length || 0) + (outgoing?.length || 0));
+      
+      // Filtrer à nouveau avec les relationships actuelles pour exclure les amis
+      const filteredIncoming = incoming.filter(req => {
+        const status = relationships[req.id];
+        return status !== 'friends';
+      });
+      
+      const filteredOutgoing = outgoing.filter(req => {
+        const status = relationships[req.id];
+        return status !== 'friends';
+      });
+      
+      setIncomingRequests(filteredIncoming);
+      setOutgoingRequests(filteredOutgoing);
+      setRequestsCount((filteredIncoming?.length || 0) + (filteredOutgoing?.length || 0));
     } catch (error) {
       console.error('Erreur lors du chargement des demandes:', error);
     } finally {
       setIsLoadingRequests(false);
     }
-  }, []);
+  }, [relationships]);
 
   useEffect(() => {
     if (activeTab === 'requests') {
@@ -97,14 +109,17 @@ export default function ContactsScreen() {
   };
 
   useEffect(() => {
+    // Filtrer les demandes pour exclure ceux qui sont maintenant amis
     setIncomingRequests(prev => prev.filter(req => {
       const status = relationships[req.id];
-      return !status || status === 'incoming';
+      // Exclure si c'est un ami, garder seulement si c'est 'incoming' ou pas de statut
+      return status !== 'friends' && (status === 'incoming' || !status);
     }));
 
     setOutgoingRequests(prev => prev.filter(req => {
       const status = relationships[req.id];
-      return !status || status === 'pending';
+      // Exclure si c'est un ami, garder seulement si c'est 'pending' ou pas de statut
+      return status !== 'friends' && (status === 'pending' || !status);
     }));
   }, [relationships]);
 
@@ -155,17 +170,20 @@ export default function ContactsScreen() {
     try {
       await ContactsService.acceptContactRequest(senderId);
       showSuccessToast('Demande acceptée ! 🎉');
+      
+      // Retirer immédiatement de la liste des demandes entrantes
       setIncomingRequests(prev => prev.filter(c => c.id !== senderId));
       
       // Attendre un peu pour que la base de données soit synchronisée
-      await new Promise(resolve => setTimeout(resolve, 300));
+      await new Promise(resolve => setTimeout(resolve, 500));
       
-      // Recharger les contacts et les demandes
-      await Promise.all([
-        refetch(),
-        loadPendingRequests()
-      ]);
+      // Recharger les contacts (qui mettra à jour les relationships)
+      await refetch();
       
+      // Recharger les demandes avec les nouvelles relationships
+      await loadPendingRequests();
+      
+      // Mettre à jour le compteur
       setRequestsCount(prev => Math.max(0, prev - 1));
     } catch (error) {
       console.error('Erreur lors de l\'acceptation de la demande:', error);
@@ -373,7 +391,7 @@ export default function ContactsScreen() {
               </View>
             ) : (
               searchResults.map((user) => {
-                const relationshipStatus = relationships[user.id] ?? 'none';
+                const relationshipStatus = relationships[user.id];
 
                 return (
                   <View key={user.id} style={styles.searchResultCard}>
@@ -388,7 +406,7 @@ export default function ContactsScreen() {
                       <Text style={styles.resultName}>{user.name}</Text>
                     </View>
 
-                    {relationshipStatus === 'none' ? (
+                    {!relationshipStatus || relationshipStatus === undefined ? (
                       <TouchableOpacity
                         style={styles.addContactButton}
                         onPress={() => handleAddContact(user.id)}

@@ -212,11 +212,10 @@ function AppStack() {
       <Stack.Screen
         name="Messages"
         component={MessagesScreen}
-        options={({ navigation }) => ({
-          title: "Messages",
-          headerLeft: () => <HeaderLeft navigation={navigation} />,
+        options={{
+          headerShown: false,
           contentStyle: { backgroundColor: '#f5f5f5' },
-        })}
+        }}
       />
       <Stack.Screen
         name="Chat"

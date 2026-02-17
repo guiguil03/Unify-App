@@ -1,14 +1,32 @@
-import React from "react";
-import { TouchableOpacity, View, Text, StyleSheet } from "react-native";
+import React, { useState } from "react";
+import { TouchableOpacity, View, Text, StyleSheet, ActivityIndicator } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { ContactRelationshipStatus } from "../../../types/contact";
 
 interface ConnectButtonProps {
   status?: ContactRelationshipStatus | 'none';
-  onConnect: () => void;
+  onConnect: () => void | Promise<void>;
 }
 
 export function ConnectButton({ status = 'none', onConnect }: ConnectButtonProps) {
+  const [isConnecting, setIsConnecting] = useState(false);
+
+  const handlePress = async () => {
+    if (isConnecting) return;
+    
+    setIsConnecting(true);
+    try {
+      await onConnect();
+    } catch (error) {
+      console.error('Erreur lors de la connexion:', error);
+    } finally {
+      // Ne pas réinitialiser immédiatement pour éviter les clics multiples
+      setTimeout(() => {
+        setIsConnecting(false);
+      }, 1000);
+    }
+  };
+
   if (status === 'friends') {
     return (
       <View style={[styles.statusContainer, styles.friendsContainer]}>
@@ -37,9 +55,23 @@ export function ConnectButton({ status = 'none', onConnect }: ConnectButtonProps
   }
 
   return (
-    <TouchableOpacity style={styles.connectButton} onPress={onConnect}>
-      <MaterialCommunityIcons name="account-plus" size={24} color="white" />
-      <Text style={styles.connectButtonText}>Se connecter</Text>
+    <TouchableOpacity 
+      style={[styles.connectButton, isConnecting && styles.connectButtonDisabled]} 
+      onPress={handlePress}
+      disabled={isConnecting}
+      activeOpacity={0.8}
+    >
+      {isConnecting ? (
+        <>
+          <ActivityIndicator size="small" color="white" />
+          <Text style={styles.connectButtonText}>Connexion...</Text>
+        </>
+      ) : (
+        <>
+          <MaterialCommunityIcons name="account-plus" size={24} color="white" />
+          <Text style={styles.connectButtonText}>Se connecter</Text>
+        </>
+      )}
     </TouchableOpacity>
   );
 }
@@ -53,6 +85,10 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 8,
     gap: 8,
+    minHeight: 56,
+  },
+  connectButtonDisabled: {
+    opacity: 0.7,
   },
   connectButtonText: {
     color: "white",

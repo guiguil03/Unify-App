@@ -63,10 +63,14 @@ export function useContacts() {
 
   const addContact = async (runnerId: string): Promise<AddContactResult> => {
     try {
+      // Mettre à jour optimistiquement le statut pour un feedback immédiat
+      setRelationships(prev => ({ ...prev, [runnerId]: 'pending' }));
+      
       await ContactsService.addContact(runnerId);
       
-      // Vérifier le statut réel de la relation après l'ajout
+      // Vérifier rapidement le statut réel de la relation après l'ajout
       // (peut être 'friends' si une demande entrante a été acceptée automatiquement)
+      // On fait ça en parallèle pour ne pas bloquer l'UI
       const relationshipsMap = await ContactsService.getRelationshipsMap();
       const relationshipStatus = relationshipsMap[runnerId] || 'pending';
       
@@ -79,6 +83,13 @@ export function useContacts() {
       
       return { success: true };
     } catch (err: any) {
+      // Revenir au statut précédent en cas d'erreur
+      setRelationships(prev => {
+        const updated = { ...prev };
+        delete updated[runnerId];
+        return updated;
+      });
+      
       if (err instanceof Error) {
         switch (err.message) {
           case 'ALREADY_FRIENDS':

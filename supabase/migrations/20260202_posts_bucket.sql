@@ -4,8 +4,8 @@
 
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 VALUES (
-  'posts',
-  'posts',
+  'photo_post',
+  'photo_post',
   true, -- Public bucket (images de posts accessibles publiquement)
   10485760, -- 10MB limit
   ARRAY['image/jpeg', 'image/png', 'image/jpg', 'image/webp', 'image/gif']

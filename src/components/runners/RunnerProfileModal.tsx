@@ -30,20 +30,26 @@ export function RunnerProfileModal({
     onClose();
   };
 
+  // Vérifications de sécurité pour éviter les crashes
+  const safePace = runner.pace || 'N/A';
+  const safeDistance = runner.distance ?? 0;
+  const safeName = runner.name || 'Utilisateur';
+  const safeBio = runner.bio || "Pas de description";
+
   return (
     <Modal visible={visible} onClose={handleClose}>
-      <RunnerHeader name={runner.name} avatar={runner.avatar} />
-      <RunnerStats pace={runner.pace} distance={runner.distance} />
+      <RunnerHeader name={safeName} avatar={runner.avatar} />
+      <RunnerStats pace={safePace} distance={safeDistance} />
       
       <View style={styles.bio}>
         <Text style={styles.bioTitle}>À propos</Text>
-        <Text style={styles.bioText}>{runner.bio || "Pas de description"}</Text>
+        <Text style={styles.bioText}>{safeBio}</Text>
       </View>
 
       <ConnectButton
         status={relationshipStatus}
         onConnect={() => {
-          if (runner) {
+          if (runner?.id) {
             onConnect(runner.id);
           }
         }}

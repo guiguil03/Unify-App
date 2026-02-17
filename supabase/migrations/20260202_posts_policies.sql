@@ -1,5 +1,5 @@
 -- ============================================================================
--- Storage Policies Setup for posts bucket
+-- Storage Policies Setup for photo_post bucket
 -- ============================================================================
 -- This file should be run directly in Supabase SQL Editor (not via migrations)
 -- It requires elevated permissions to create policies on storage.objects
@@ -19,7 +19,7 @@ ON storage.objects
 FOR INSERT
 TO authenticated
 WITH CHECK (
-  bucket_id = 'posts' AND
+  bucket_id = 'photo_post' AND
   (name ~ ('^' || auth.uid()::text || '/'))
 );
 
@@ -29,7 +29,7 @@ ON storage.objects
 FOR SELECT
 TO public
 USING (
-  bucket_id = 'posts'
+  bucket_id = 'photo_post'
 );
 
 -- Policy 3: Allow authenticated users to delete files in their own folder
@@ -38,7 +38,7 @@ ON storage.objects
 FOR DELETE
 TO authenticated
 USING (
-  bucket_id = 'posts' AND
+  bucket_id = 'photo_post' AND
   (name ~ ('^' || auth.uid()::text || '/'))
 );
 

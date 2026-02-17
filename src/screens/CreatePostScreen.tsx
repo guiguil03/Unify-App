@@ -138,7 +138,7 @@ export default function CreatePostScreen() {
 
       // Upload vers Supabase Storage
       const { data, error } = await supabase.storage
-        .from('posts')
+        .from('photo_post')
         .upload(fileName, fileData, {
           contentType: contentType,
           upsert: false,
@@ -148,7 +148,7 @@ export default function CreatePostScreen() {
 
       // Obtenir l'URL publique
       const { data: { publicUrl } } = supabase.storage
-        .from('posts')
+        .from('photo_post')
         .getPublicUrl(fileName);
 
       return publicUrl;

@@ -78,7 +78,6 @@ export class RunnersService {
           return { ...user, calculatedDistance: distance };
         })
         .filter((user: any) => user.calculatedDistance <= radiusKm)
-        .sort((a: any, b: any) => a.calculatedDistance - b.calculatedDistance)
         .slice(0, 50); // Limiter à 50 résultats
 
       // Récupérer les infos d'activité pour savoir qui court actuellement
@@ -92,8 +91,10 @@ export class RunnersService {
         (runnersData || []).map((r: any) => [r.user_id, r])
       );
 
-      return nearbyUsers.map((user: any) => {
+      // Mapper les utilisateurs en runners avec leurs infos d'activité
+      const runners = nearbyUsers.map((user: any) => {
         const runnerInfo = runnersMap.get(user.id);
+        const lastSeen = runnerInfo?.updated_at || user.updated_at;
         return {
           id: user.id,
           name: user.name || 'Utilisateur inconnu',
@@ -106,11 +107,25 @@ export class RunnersService {
           avatar: user.avatar,
           bio: user.bio,
           isActive: runnerInfo?.is_active || false,
-          lastSeen: runnerInfo?.updated_at || user.updated_at,
+          lastSeen: lastSeen,
           gender: user.gender,
           averagePace: user.average_pace,
           preferredTime: user.preferred_time,
         };
+      });
+
+      // Trier par dernière connexion : actifs d'abord, puis par date de dernière activité (plus récent en premier)
+      return runners.sort((a, b) => {
+        // Les coureurs actifs en premier
+        if (a.isActive && !b.isActive) return -1;
+        if (!a.isActive && b.isActive) return 1;
+        
+        // Si les deux sont actifs ou inactifs, trier par dernière activité
+        const dateA = a.lastSeen ? new Date(a.lastSeen).getTime() : 0;
+        const dateB = b.lastSeen ? new Date(b.lastSeen).getTime() : 0;
+        
+        // Plus récent en premier (dateB - dateA pour ordre décroissant)
+        return dateB - dateA;
       });
     } catch (error) {
       console.error('Erreur dans getNearbyRunners:', error);

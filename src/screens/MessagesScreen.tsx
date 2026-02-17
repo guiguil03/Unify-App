@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, FlatList, Text } from 'react-native';
+import { View, StyleSheet, FlatList, Text, TouchableOpacity, SafeAreaView } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useMessages } from '../hooks/useMessages';
 import { MessagePreview } from '../components/messages/MessagePreview';
@@ -14,11 +14,21 @@ export default function MessagesScreen() {
   const navigation = useNavigation<NavigationProp>();
 
   if (loading) {
-    return <LoadingSpinner message="Chargement des messages..." />;
+    return (
+      <>
+        <Header navigation={navigation} />
+        <LoadingSpinner message="Chargement des messages..." />
+      </>
+    );
   }
 
   if (error) {
-    return <ErrorMessage message={error} />;
+    return (
+      <>
+        <Header navigation={navigation} />
+        <ErrorMessage message={error} />
+      </>
+    );
   }
 
   const handleMessagePress = (contactId: string, contactName: string) => {
@@ -27,7 +37,8 @@ export default function MessagesScreen() {
 
   if (!messages || messages.length === 0) {
     return (
-      <View style={styles.container}>
+      <SafeAreaView style={styles.container}>
+        <Header navigation={navigation} />
         <View style={styles.emptyContainer}>
           <View style={styles.emptyIconContainer}>
             <MaterialCommunityIcons name="message-outline" size={64} color={COLORS.textLight} />
@@ -38,12 +49,13 @@ export default function MessagesScreen() {
             Commencez une nouvelle conversation avec vos contacts !
           </Text>
         </View>
-      </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
+      <Header navigation={navigation} />
       <FlatList
         data={messages}
         keyExtractor={(item) => item.id}
@@ -54,7 +66,22 @@ export default function MessagesScreen() {
           />
         )}
         contentContainerStyle={styles.list}
+        showsVerticalScrollIndicator={false}
       />
+    </SafeAreaView>
+  );
+}
+
+function Header({ navigation }: { navigation: NavigationProp }) {
+  return (
+    <View style={styles.header}>
+      <TouchableOpacity
+        style={styles.backButton}
+        onPress={() => navigation.goBack()}
+        activeOpacity={0.7}
+      >
+        <MaterialCommunityIcons name="arrow-left" size={24} color={COLORS.text} />
+      </TouchableOpacity>
     </View>
   );
 }
@@ -62,7 +89,25 @@ export default function MessagesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'white',
+    backgroundColor: COLORS.background,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    paddingTop: 16,
+    backgroundColor: COLORS.background,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.backgroundLight,
   },
   list: {
     padding: 16,

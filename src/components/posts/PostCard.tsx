@@ -150,8 +150,14 @@ export function PostCard({ post, onLike, onDelete, isOwnPost }: PostCardProps) {
           }}
           activeOpacity={0.7}
         >
-          {post.userAvatar ? (
-            <Image source={{ uri: post.userAvatar }} style={styles.avatar} />
+          {post.userAvatar && post.userAvatar.trim() !== '' ? (
+            <Image 
+              source={{ uri: post.userAvatar }} 
+              style={styles.avatar}
+              onError={(e) => {
+                console.log('Erreur chargement avatar:', post.userAvatar, e.nativeEvent.error);
+              }}
+            />
           ) : (
             <View style={styles.avatarPlaceholder}>
               <MaterialCommunityIcons name="account" size={24} color={COLORS.textLight} />
@@ -173,9 +179,17 @@ export function PostCard({ post, onLike, onDelete, isOwnPost }: PostCardProps) {
       <Text style={styles.content}>{post.content}</Text>
 
       {/* Image si présente */}
-      {post.imageUrl && (
-        <Image source={{ uri: post.imageUrl }} style={styles.postImage} resizeMode="cover" />
-      )}
+      {post.imageUrl && post.imageUrl.trim() !== '' && !post.imageUrl.startsWith('file://') ? (
+        <Image 
+          source={{ uri: post.imageUrl }} 
+          style={styles.postImage} 
+          resizeMode="cover"
+          onError={() => {
+            // Erreur silencieuse - l'image ne s'affichera simplement pas
+            console.warn('Impossible de charger l\'image du post:', post.imageUrl);
+          }}
+        />
+      ) : null}
 
       {/* Actions */}
       <View style={styles.actions}>
@@ -224,8 +238,14 @@ export function PostCard({ post, onLike, onDelete, isOwnPost }: PostCardProps) {
             ) : (
               comments.map((comment) => (
                 <View key={comment.id} style={styles.commentItem}>
-                  {comment.userAvatar ? (
-                    <Image source={{ uri: comment.userAvatar }} style={styles.commentAvatar} />
+                  {comment.userAvatar && comment.userAvatar.trim() !== '' ? (
+                    <Image 
+                      source={{ uri: comment.userAvatar }} 
+                      style={styles.commentAvatar}
+                      onError={(e) => {
+                        console.log('Erreur chargement avatar commentaire:', comment.userAvatar);
+                      }}
+                    />
                   ) : (
                     <View style={[styles.commentAvatar, styles.commentAvatarPlaceholder]}>
                       <MaterialCommunityIcons name="account" size={16} color={COLORS.textLight} />

@@ -118,33 +118,42 @@ export default function MapScreen() {
   };
 
   const handleConnect = async (runnerId: string) => {
-    const result = await addContact(runnerId);
+    try {
+      const result = await addContact(runnerId);
 
-    if (result.success) {
-      if (result.autoAccepted) {
-        showSuccessToast('Vous êtes maintenant amis ! 🎉');
-      } else {
-        showSuccessToast('Demande envoyée !');
-      }
-      setShowProfileModal(false);
-      navigation.navigate('Contacts');
-      return;
-    }
-
-    switch (result.reason) {
-      case 'already_friends':
-        showInfoToast('Vous êtes déjà amis.');
+      if (result.success) {
+        if (result.autoAccepted) {
+          showSuccessToast('Vous êtes maintenant amis ! 🎉');
+        } else {
+          showSuccessToast('Demande envoyée !');
+        }
+        // Fermer le modal avant de naviguer
         setShowProfileModal(false);
-        break;
-      case 'already_sent':
-        showInfoToast('Vous avez déjà envoyé une demande à ce coureur.');
-        break;
-      case 'blocked':
-        showErrorToast('Vous ne pouvez pas envoyer de demande à ce coureur.');
-        break;
-      default:
-        showErrorToast('Impossible d\'envoyer la demande.');
-        break;
+        // Petit délai pour que le modal se ferme proprement
+        setTimeout(() => {
+          navigation.navigate('Contacts');
+        }, 300);
+        return;
+      }
+
+      switch (result.reason) {
+        case 'already_friends':
+          showInfoToast('Vous êtes déjà amis.');
+          setShowProfileModal(false);
+          break;
+        case 'already_sent':
+          showInfoToast('Vous avez déjà envoyé une demande à ce coureur.');
+          break;
+        case 'blocked':
+          showErrorToast('Vous ne pouvez pas envoyer de demande à ce coureur.');
+          break;
+        default:
+          showErrorToast('Impossible d\'envoyer la demande.');
+          break;
+      }
+    } catch (error) {
+      console.error('Erreur lors de la connexion:', error);
+      showErrorToast('Erreur lors de la connexion. Veuillez réessayer.');
     }
   };
 
@@ -206,10 +215,11 @@ export default function MapScreen() {
         runner={selectedRunner}
         onClose={() => {
           setShowProfileModal(false);
-          // Réinitialiser le runner sélectionné après un court délai pour éviter les problèmes de timing
+          // Réinitialiser le runner sélectionné après la fermeture complète du modal
+          // Utiliser un délai plus long pour s'assurer que l'animation de fermeture est terminée
           setTimeout(() => {
             setSelectedRunner(null);
-          }, 300);
+          }, 500);
         }}
         onConnect={handleConnect}
         relationshipStatus={selectedRunner ? relationships[selectedRunner.id] ?? 'none' : 'none'}

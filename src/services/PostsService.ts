@@ -42,13 +42,27 @@ export class PostsService {
 
       return (posts || []).map((post: any) => {
         const user = usersMap.get(post.user_id);
+        // S'assurer que l'avatar est une chaîne valide ou undefined
+        const avatar = user?.avatar && typeof user.avatar === 'string' && user.avatar.trim() !== '' 
+          ? user.avatar.trim() 
+          : undefined;
+        // S'assurer que l'imageUrl est une chaîne valide, n'est pas une URL locale (file://), et est une URL Supabase
+        let imageUrl: string | undefined = undefined;
+        if (post.image_url && typeof post.image_url === 'string') {
+          const trimmedUrl = post.image_url.trim();
+          // Ignorer les URLs locales (file://) et ne garder que les URLs HTTP/HTTPS valides
+          if (trimmedUrl !== '' && !trimmedUrl.startsWith('file://') && (trimmedUrl.startsWith('http://') || trimmedUrl.startsWith('https://'))) {
+            imageUrl = trimmedUrl;
+          }
+        }
+        
         return {
           id: post.id,
           userId: post.user_id,
           userName: user?.name || 'Utilisateur inconnu',
-          userAvatar: user?.avatar,
+          userAvatar: avatar,
           content: post.content,
-          imageUrl: post.image_url,
+          imageUrl: imageUrl,
           createdAt: post.created_at,
           likesCount: post.likes_count || 0,
           commentsCount: post.comments_count || 0,
@@ -94,13 +108,27 @@ export class PostsService {
         .eq('id', currentUser.id)
         .single();
 
+      // S'assurer que l'avatar est une chaîne valide ou undefined
+      const avatar = (user?.avatar || currentUser.avatar) && typeof (user?.avatar || currentUser.avatar) === 'string' && (user?.avatar || currentUser.avatar).trim() !== '' 
+        ? (user?.avatar || currentUser.avatar).trim() 
+        : undefined;
+      // S'assurer que l'imageUrl est une chaîne valide, n'est pas une URL locale (file://), et est une URL Supabase
+      let imageUrl: string | undefined = undefined;
+      if (post.image_url && typeof post.image_url === 'string') {
+        const trimmedUrl = post.image_url.trim();
+        // Ignorer les URLs locales (file://) et ne garder que les URLs HTTP/HTTPS valides
+        if (trimmedUrl !== '' && !trimmedUrl.startsWith('file://') && (trimmedUrl.startsWith('http://') || trimmedUrl.startsWith('https://'))) {
+          imageUrl = trimmedUrl;
+        }
+      }
+      
       return {
         id: post.id,
         userId: post.user_id,
         userName: user?.name || currentUser.name || 'Utilisateur inconnu',
-        userAvatar: user?.avatar || currentUser.avatar,
+        userAvatar: avatar,
         content: post.content,
-        imageUrl: post.image_url,
+        imageUrl: imageUrl,
         createdAt: post.created_at,
         likesCount: post.likes_count || 0,
         commentsCount: post.comments_count || 0,
@@ -193,18 +221,34 @@ export class PostsService {
         .eq('id', userId)
         .single();
 
-      return (posts || []).map((post: any) => ({
-        id: post.id,
-        userId: post.user_id,
-        userName: user?.name || 'Utilisateur inconnu',
-        userAvatar: user?.avatar,
-        content: post.content,
-        imageUrl: post.image_url,
-        createdAt: post.created_at,
-        likesCount: post.likes_count || 0,
-        commentsCount: post.comments_count || 0,
-        isLiked: likedPostIds.has(post.id),
-      }));
+      return (posts || []).map((post: any) => {
+        // S'assurer que l'avatar est une chaîne valide ou undefined
+        const avatar = user?.avatar && typeof user.avatar === 'string' && user.avatar.trim() !== '' 
+          ? user.avatar.trim() 
+          : undefined;
+        // S'assurer que l'imageUrl est une chaîne valide, n'est pas une URL locale (file://), et est une URL Supabase
+        let imageUrl: string | undefined = undefined;
+        if (post.image_url && typeof post.image_url === 'string') {
+          const trimmedUrl = post.image_url.trim();
+          // Ignorer les URLs locales (file://) et ne garder que les URLs HTTP/HTTPS valides
+          if (trimmedUrl !== '' && !trimmedUrl.startsWith('file://') && (trimmedUrl.startsWith('http://') || trimmedUrl.startsWith('https://'))) {
+            imageUrl = trimmedUrl;
+          }
+        }
+        
+        return {
+          id: post.id,
+          userId: post.user_id,
+          userName: user?.name || 'Utilisateur inconnu',
+          userAvatar: avatar,
+          content: post.content,
+          imageUrl: imageUrl,
+          createdAt: post.created_at,
+          likesCount: post.likes_count || 0,
+          commentsCount: post.comments_count || 0,
+          isLiked: likedPostIds.has(post.id),
+        };
+      });
     } catch (error: any) {
       console.error('Erreur lors de la récupération des posts utilisateur:', error);
       throw error;
