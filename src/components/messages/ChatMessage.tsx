@@ -6,37 +6,59 @@ import { useAuth } from "../../contexts/AuthContext";
 
 interface ChatMessageProps {
   message: ChatMessageType;
+  senderName?: string;
 }
 
-export function ChatMessage({ message }: ChatMessageProps) {
+export function ChatMessage({ message, senderName }: ChatMessageProps) {
   const { user } = useAuth();
   // Vérifier si c'est le message de l'utilisateur actuel
   const isOwnMessage = message.senderId === user?.id || message.senderId === "currentUser";
 
   return (
-    <View
-      style={[
-        styles.container,
-        isOwnMessage ? styles.ownMessage : styles.otherMessage,
-      ]}
-    >
-      <Text
-        style={[styles.text, isOwnMessage ? styles.ownText : styles.otherText]}
-        selectable
+    <View style={[styles.wrapper, isOwnMessage ? styles.wrapperOwn : styles.wrapperOther]}>
+      {senderName && !isOwnMessage && (
+        <Text style={styles.senderName}>{senderName}</Text>
+      )}
+      <View
+        style={[
+          styles.container,
+          isOwnMessage ? styles.ownMessage : styles.otherMessage,
+        ]}
       >
-        {message.content}
-      </Text>
-      <Text style={[styles.time, isOwnMessage ? styles.ownTime : styles.otherTime]}>
-        {message.time}
-      </Text>
+        <Text
+          style={[styles.text, isOwnMessage ? styles.ownText : styles.otherText]}
+          selectable
+        >
+          {message.content}
+        </Text>
+        <Text style={[styles.time, isOwnMessage ? styles.ownTime : styles.otherTime]}>
+          {message.time}
+        </Text>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    maxWidth: "75%",
+  wrapper: {
     marginBottom: 8,
+    maxWidth: "75%",
+  },
+  wrapperOwn: {
+    alignSelf: "flex-end",
+  },
+  wrapperOther: {
+    alignSelf: "flex-start",
+  },
+  senderName: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: COLORS.primary,
+    marginBottom: 3,
+    marginLeft: 4,
+  },
+  container: {
+    marginBottom: 0,
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 20,
@@ -47,12 +69,10 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   ownMessage: {
-    alignSelf: "flex-end",
     backgroundColor: COLORS.primary,
     borderBottomRightRadius: 4,
   },
   otherMessage: {
-    alignSelf: "flex-start",
     backgroundColor: COLORS.backgroundLight,
     borderBottomLeftRadius: 4,
     borderWidth: 1,

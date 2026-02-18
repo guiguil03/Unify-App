@@ -349,6 +349,33 @@ export class ContactsService {
   }
 
   /**
+   * Compte les demandes de contact envoyées ce mois-ci par l'utilisateur actuel
+   * (utilisé pour la limite de 2 rencontres/mois en version gratuite)
+   */
+  static async getMonthlyContactRequestCount(): Promise<number> {
+    try {
+      const currentUser = await getCurrentUserFromDB();
+      if (!currentUser) return 0;
+
+      const startOfMonth = new Date();
+      startOfMonth.setDate(1);
+      startOfMonth.setHours(0, 0, 0, 0);
+
+      const { count, error } = await supabase
+        .from('contacts')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', currentUser.id)
+        .gte('created_at', startOfMonth.toISOString());
+
+      if (error) throw error;
+      return count ?? 0;
+    } catch (error) {
+      if (__DEV__) console.error('Monthly contact count failed:', error);
+      return 0;
+    }
+  }
+
+  /**
    * Récupère les demandes de contact en attente
    */
   static async getPendingRequests(): Promise<{ incoming: ContactRequest[]; outgoing: ContactRequest[] }> {

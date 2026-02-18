@@ -1,16 +1,14 @@
 import React from 'react';
-import { SafeAreaView, StyleSheet } from 'react-native';
-import { Header } from './components/Header';
+import { View, StyleSheet } from 'react-native';
 import { Content } from './components/Content';
 import { BottomNavigation } from './components/BottomNavigation';
 
 export default function HomeScreen() {
   return (
-    <SafeAreaView style={styles.container}>
-      <Header />
+    <View style={styles.container}>
       <Content />
       <BottomNavigation />
-    </SafeAreaView>
+    </View>
   );
 }
 

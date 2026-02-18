@@ -32,6 +32,13 @@ export type RootStackParamList = {
   RouteDetail: { routeId: string };
   UserProfile: { userId: string };
   ResetPassword: { token?: string; email?: string } | undefined;
+  GroupChat: { groupChatId: string; groupName: string };
+  CreateGroup: undefined;
+  Coaching: undefined;
+  About: undefined;
+  Help: undefined;
+  Terms: undefined;
+  Privacy: undefined;
 };
 
 export type NavigationProp = NativeStackNavigationProp<RootStackParamList>;

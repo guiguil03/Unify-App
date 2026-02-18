@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 
 type AddContactResult =
   | { success: true; autoAccepted?: boolean }
-  | { success: false; reason: 'already_friends' | 'already_sent' | 'incoming_request' | 'blocked' | 'unknown' };
+  | { success: false; reason: 'already_friends' | 'already_sent' | 'incoming_request' | 'blocked' | 'monthly_limit_reached' | 'unknown' };
 
 export function useContacts() {
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -58,11 +58,19 @@ export function useContacts() {
     }
   };
 
-  const addContact = async (runnerId: string): Promise<AddContactResult> => {
+  const addContact = async (runnerId: string, isPremium = false): Promise<AddContactResult> => {
     try {
+      // Vérifier la limite mensuelle pour les utilisateurs gratuits
+      if (!isPremium) {
+        const monthlyCount = await ContactsService.getMonthlyContactRequestCount();
+        if (monthlyCount >= 2) {
+          return { success: false, reason: 'monthly_limit_reached' };
+        }
+      }
+
       // Mettre à jour optimistiquement le statut pour un feedback immédiat
       setRelationships(prev => ({ ...prev, [runnerId]: 'pending' }));
-      
+
       await ContactsService.addContact(runnerId);
       
       // Vérifier rapidement le statut réel de la relation après l'ajout

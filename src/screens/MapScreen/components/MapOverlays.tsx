@@ -6,8 +6,15 @@ import { MapControls } from "../../../components/map/MapControls";
 import { MapFilters } from "../../../components/map/MapFilters";
 import { RunnersList } from "../../../components/map/RunnersList";
 import { RunnerProfileModal } from "../../../components/runners/RunnerProfileModal";
+import { PremiumModal } from "../../../components/common/PremiumModal";
+import { useSubscription } from "../../../contexts/SubscriptionContext";
+import { useNavigation } from "@react-navigation/native";
+import { NavigationProp } from "../../../types/navigation";
 
 export function MapOverlays({ state, handlers }: { state: any; handlers: any }) {
+  const { isPremium } = useSubscription();
+  const navigation = useNavigation<NavigationProp>();
+
   return (
     <>
       <SearchBar
@@ -46,14 +53,25 @@ export function MapOverlays({ state, handlers }: { state: any; handlers: any }) 
         selectedRunner={state.selectedRunner}
         isExpanded={state.isRunnersListExpanded}
         onCollapse={() => handlers.setIsRunnersListExpanded(false)}
+        isModalVisible={state.showProfileModal}
       />
 
       <RunnerProfileModal
         visible={state.showProfileModal}
         runner={state.selectedRunner}
         onClose={() => handlers.setShowProfileModal(false)}
-        onConnect={handlers.handleConnect}
+        onConnect={(runnerId) => handlers.handleConnect(runnerId, isPremium)}
         relationshipStatus={state.selectedRunner ? state.relationships?.[state.selectedRunner.id] ?? 'none' : 'none'}
+      />
+
+      <PremiumModal
+        visible={state.showPremiumModal}
+        feature="Les rencontres illimitées"
+        onClose={() => handlers.setShowPremiumModal(false)}
+        onUpgrade={() => {
+          handlers.setShowPremiumModal(false);
+          navigation.navigate('Settings');
+        }}
       />
     </>
   );

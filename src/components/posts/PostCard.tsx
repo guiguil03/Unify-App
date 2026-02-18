@@ -7,6 +7,8 @@ import {
   Image,
   TextInput,
   ScrollView,
+  Animated,
+  Dimensions,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -16,6 +18,8 @@ import { PostsService } from '../../services/PostsService';
 import { showErrorToast, showSuccessToast } from '../../utils/errorHandler';
 import { useAuth } from '../../contexts/AuthContext';
 import { NavigationProp } from '../../types/navigation';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 interface PostCardProps {
   post: Post;
@@ -36,30 +40,34 @@ export function PostCard({ post, onLike, onDelete, isOwnPost }: PostCardProps) {
   const [isLoadingComments, setIsLoadingComments] = React.useState(false);
   const [isSubmittingComment, setIsSubmittingComment] = React.useState(false);
   const [commentsCount, setCommentsCount] = React.useState(post.commentsCount);
-  
-  // Vérifier si c'est le post de l'utilisateur actuel
+  const [captionExpanded, setCaptionExpanded] = React.useState(false);
+
+  const heartScale = React.useRef(new Animated.Value(1)).current;
   const isUserPost = isOwnPost !== undefined ? isOwnPost : post.userId === user?.id;
+
+  const animateHeart = () => {
+    Animated.sequence([
+      Animated.spring(heartScale, { toValue: 1.5, useNativeDriver: true, tension: 200, friction: 4 }),
+      Animated.spring(heartScale, { toValue: 1, useNativeDriver: true, tension: 200, friction: 6 }),
+    ]).start();
+  };
 
   const handleLike = async () => {
     if (isToggling) return;
-    
     setIsToggling(true);
     const previousLiked = isLiked;
     const previousCount = likesCount;
-    
-    // Optimistic update
+
     setIsLiked(!isLiked);
     setLikesCount(previousLiked ? likesCount - 1 : likesCount + 1);
+    if (!isLiked) animateHeart();
 
     try {
       const newLikedState = await PostsService.toggleLike(post.id);
       setIsLiked(newLikedState);
-      setLikesCount(newLikedState ? likesCount + 1 : likesCount - 1);
-      if (onLike) {
-        onLike(post.id, newLikedState);
-      }
-    } catch (error) {
-      // Revert on error
+      setLikesCount(newLikedState ? previousCount + 1 : previousCount - 1);
+      if (onLike) onLike(post.id, newLikedState);
+    } catch {
       setIsLiked(previousLiked);
       setLikesCount(previousCount);
       showErrorToast('Erreur lors du like');
@@ -70,402 +78,389 @@ export function PostCard({ post, onLike, onDelete, isOwnPost }: PostCardProps) {
 
   const handleDelete = async () => {
     if (!onDelete) return;
-    
     try {
       await PostsService.deletePost(post.id);
       onDelete(post.id);
-    } catch (error) {
+    } catch {
       showErrorToast('Erreur lors de la suppression');
     }
   };
 
-  const loadComments = async () => {
+  React.useEffect(() => {
     if (showComments && comments.length === 0 && !isLoadingComments) {
       setIsLoadingComments(true);
-      try {
-        const postComments = await PostsService.getPostComments(post.id);
-        setComments(postComments);
-      } catch (error) {
-        showErrorToast('Erreur lors du chargement des commentaires');
-      } finally {
-        setIsLoadingComments(false);
-      }
-    }
-  };
-
-  React.useEffect(() => {
-    if (showComments) {
-      loadComments();
+      PostsService.getPostComments(post.id)
+        .then(setComments)
+        .catch(() => showErrorToast('Erreur chargement commentaires'))
+        .finally(() => setIsLoadingComments(false));
     }
   }, [showComments]);
 
-  const handleToggleComments = () => {
-    setShowComments(!showComments);
-  };
-
   const handleAddComment = async () => {
     if (!commentText.trim() || isSubmittingComment) return;
-
     setIsSubmittingComment(true);
     try {
       const newComment = await PostsService.addComment(post.id, { content: commentText });
       setComments([...comments, newComment]);
       setCommentsCount(commentsCount + 1);
       setCommentText('');
-      showSuccessToast('Commentaire ajouté');
-    } catch (error) {
-      showErrorToast('Erreur lors de l\'ajout du commentaire');
+    } catch {
+      showErrorToast("Erreur lors de l'ajout du commentaire");
     } finally {
       setIsSubmittingComment(false);
     }
   };
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
-    const minutes = Math.floor(diff / 60000);
-    const hours = Math.floor(diff / 3600000);
-    const days = Math.floor(diff / 86400000);
-
-    if (minutes < 1) return 'À l\'instant';
-    if (minutes < 60) return `Il y a ${minutes} min`;
-    if (hours < 24) return `Il y a ${hours}h`;
-    if (days < 7) return `Il y a ${days}j`;
-    return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+    const diff = Date.now() - new Date(dateString).getTime();
+    const m = Math.floor(diff / 60000);
+    const h = Math.floor(diff / 3600000);
+    const d = Math.floor(diff / 86400000);
+    if (m < 1) return "À l'instant";
+    if (m < 60) return `Il y a ${m} min`;
+    if (h < 24) return `Il y a ${h}h`;
+    if (d < 7) return `Il y a ${d}j`;
+    return new Date(dateString).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
   };
 
   return (
     <View style={styles.container}>
-      {/* Header du post */}
+      {/* ── Header ── */}
       <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.userInfo}
+        <TouchableOpacity
+          style={styles.userRow}
           onPress={() => {
-            if (post.userId && post.userId !== user?.id) {
-              navigation.navigate('UserProfile', { userId: post.userId });
-            } else if (post.userId === user?.id) {
-              navigation.navigate('Profile');
-            }
+            if (post.userId === user?.id) navigation.navigate('Profile');
+            else if (post.userId) navigation.navigate('UserProfile', { userId: post.userId });
           }}
           activeOpacity={0.7}
         >
-          {post.userAvatar && post.userAvatar.trim() !== '' ? (
-            <Image 
-              source={{ uri: post.userAvatar }} 
-              style={styles.avatar}
-              onError={() => {}}
-            />
+          {post.userAvatar?.trim() ? (
+            <Image source={{ uri: post.userAvatar }} style={styles.avatar} onError={() => {}} />
           ) : (
             <View style={styles.avatarPlaceholder}>
-              <MaterialCommunityIcons name="account" size={24} color={COLORS.textLight} />
+              <MaterialCommunityIcons name="account" size={20} color={COLORS.textLight} />
             </View>
           )}
-          <View style={styles.userDetails}>
+          <View>
             <Text style={styles.userName}>{post.userName}</Text>
-            <Text style={styles.timestamp}>{formatDate(post.createdAt)}</Text>
           </View>
         </TouchableOpacity>
-        {isUserPost && (
-          <TouchableOpacity onPress={handleDelete} style={styles.deleteButton}>
+
+        {isUserPost ? (
+          <TouchableOpacity onPress={handleDelete} hitSlop={8}>
             <MaterialCommunityIcons name="delete-outline" size={20} color={COLORS.textLight} />
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity hitSlop={8}>
+            <MaterialCommunityIcons name="dots-horizontal" size={22} color="#1a1a1a" />
           </TouchableOpacity>
         )}
       </View>
 
-      {/* Contenu du post */}
-      <Text style={styles.content}>{post.content}</Text>
-
-      {/* Image si présente */}
-      {post.imageUrl && post.imageUrl.trim() !== '' && !post.imageUrl.startsWith('file://') ? (
-        <Image 
-          source={{ uri: post.imageUrl }} 
-          style={styles.postImage} 
+      {/* ── Image ── */}
+      {post.imageUrl?.trim() && !post.imageUrl.startsWith('file://') && (
+        <Image
+          source={{ uri: post.imageUrl }}
+          style={styles.image}
           resizeMode="cover"
           onError={() => {}}
         />
-      ) : null}
+      )}
 
-      {/* Actions */}
+      {/* ── Actions ── */}
       <View style={styles.actions}>
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={handleLike}
-          disabled={isToggling}
-        >
-          <MaterialCommunityIcons
-            name={isLiked ? 'heart' : 'heart-outline'}
-            size={24}
-            color={isLiked ? COLORS.primary : COLORS.textLight}
-          />
-          <Text style={[styles.actionText, isLiked && styles.actionTextLiked]}>
-            {likesCount}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={styles.actionButton}
-          onPress={handleToggleComments}
-        >
-          <MaterialCommunityIcons 
-            name={showComments ? "comment" : "comment-outline"} 
-            size={24} 
-            color={showComments ? COLORS.primary : COLORS.textLight} 
-          />
-          <Text style={[styles.actionText, showComments && styles.actionTextLiked]}>
-            {commentsCount}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.actionButton}>
-          <MaterialCommunityIcons name="share-outline" size={24} color={COLORS.textLight} />
+        <View style={styles.actionsLeft}>
+          <TouchableOpacity onPress={handleLike} disabled={isToggling} style={styles.actionBtn} activeOpacity={0.7}>
+            <Animated.View style={{ transform: [{ scale: heartScale }] }}>
+              <MaterialCommunityIcons
+                name={isLiked ? 'heart' : 'heart-outline'}
+                size={28}
+                color={isLiked ? '#ED4956' : '#1a1a1a'}
+              />
+            </Animated.View>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setShowComments(!showComments)} style={styles.actionBtn} activeOpacity={0.7}>
+            <MaterialCommunityIcons name="comment-outline" size={26} color="#1a1a1a" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7}>
+            <MaterialCommunityIcons name="send-outline" size={26} color="#1a1a1a" />
+          </TouchableOpacity>
+        </View>
+        <TouchableOpacity activeOpacity={0.7}>
+          <MaterialCommunityIcons name="bookmark-outline" size={26} color="#1a1a1a" />
         </TouchableOpacity>
       </View>
 
-      {/* Section des commentaires */}
+      {/* ── Likes ── */}
+      {likesCount > 0 && (
+        <Text style={styles.likesCount}>{likesCount.toLocaleString('fr-FR')} j'aime</Text>
+      )}
+
+      {/* ── Caption ── */}
+      {post.content ? (
+        <View style={styles.captionRow}>
+          <Text style={styles.caption} numberOfLines={captionExpanded ? undefined : 2}>
+            <Text style={styles.captionUser}>{post.userName} </Text>
+            {post.content}
+          </Text>
+          {post.content.length > 100 && !captionExpanded && (
+            <TouchableOpacity onPress={() => setCaptionExpanded(true)}>
+              <Text style={styles.moreText}>plus</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      ) : null}
+
+      {/* ── Voir commentaires ── */}
+      {commentsCount > 0 && (
+        <TouchableOpacity onPress={() => setShowComments(!showComments)} style={styles.commentsLink}>
+          <Text style={styles.commentsLinkText}>
+            Voir les {commentsCount} commentaire{commentsCount > 1 ? 's' : ''}
+          </Text>
+        </TouchableOpacity>
+      )}
+
+      {/* ── Section commentaires ── */}
       {showComments && (
         <View style={styles.commentsSection}>
-          <ScrollView style={styles.commentsList} nestedScrollEnabled>
-            {isLoadingComments ? (
-              <Text style={styles.commentPlaceholder}>Chargement des commentaires...</Text>
-            ) : comments.length === 0 ? (
-              <Text style={styles.commentPlaceholder}>Aucun commentaire</Text>
-            ) : (
-              comments.map((comment) => (
-                <View key={comment.id} style={styles.commentItem}>
-                  {comment.userAvatar && comment.userAvatar.trim() !== '' ? (
-                    <Image 
-                      source={{ uri: comment.userAvatar }} 
-                      style={styles.commentAvatar}
-                      onError={() => {}}
-                    />
+          {isLoadingComments ? (
+            <Text style={styles.commentMeta}>Chargement…</Text>
+          ) : comments.length === 0 ? (
+            <Text style={styles.commentMeta}>Aucun commentaire</Text>
+          ) : (
+            <ScrollView style={styles.commentsList} nestedScrollEnabled>
+              {comments.map((c) => (
+                <View key={c.id} style={styles.commentItem}>
+                  {c.userAvatar?.trim() ? (
+                    <Image source={{ uri: c.userAvatar }} style={styles.commentAvatar} onError={() => {}} />
                   ) : (
                     <View style={[styles.commentAvatar, styles.commentAvatarPlaceholder]}>
-                      <MaterialCommunityIcons name="account" size={16} color={COLORS.textLight} />
+                      <MaterialCommunityIcons name="account" size={13} color={COLORS.textLight} />
                     </View>
                   )}
-                  <View style={styles.commentContent}>
-                    <Text style={styles.commentUserName}>{comment.userName}</Text>
-                    <Text style={styles.commentText}>{comment.content}</Text>
-                    <Text style={styles.commentTime}>{formatDate(comment.createdAt)}</Text>
+                  <View style={styles.commentBubble}>
+                    <Text style={styles.commentText}>
+                      <Text style={styles.commentUser}>{c.userName} </Text>
+                      {c.content}
+                    </Text>
+                    <Text style={styles.commentMeta}>{formatDate(c.createdAt)}</Text>
                   </View>
                 </View>
-              ))
-            )}
-          </ScrollView>
+              ))}
+            </ScrollView>
+          )}
 
-          {/* Input pour ajouter un commentaire */}
-          <View style={styles.commentInputContainer}>
-            {user?.avatar ? (
-              <Image source={{ uri: user.avatar }} style={styles.commentInputAvatar} />
+          <View style={styles.commentInput}>
+            {user?.avatar?.trim() ? (
+              <Image source={{ uri: user.avatar }} style={styles.commentAvatar} />
             ) : (
-              <View style={[styles.commentInputAvatar, styles.commentInputAvatarPlaceholder]}>
-                <MaterialCommunityIcons name="account" size={16} color={COLORS.textLight} />
+              <View style={[styles.commentAvatar, styles.commentAvatarPlaceholder]}>
+                <MaterialCommunityIcons name="account" size={13} color={COLORS.textLight} />
               </View>
             )}
             <TextInput
-              style={styles.commentInput}
-              placeholder="Ajouter un commentaire..."
+              style={styles.commentField}
+              placeholder="Ajouter un commentaire…"
               placeholderTextColor={COLORS.textLight}
               value={commentText}
               onChangeText={setCommentText}
               multiline
               editable={!isSubmittingComment}
             />
-            <TouchableOpacity
-              onPress={handleAddComment}
-              disabled={!commentText.trim() || isSubmittingComment}
-              style={[
-                styles.commentSendButton,
-                (!commentText.trim() || isSubmittingComment) && styles.commentSendButtonDisabled
-              ]}
-            >
-              <MaterialCommunityIcons
-                name="send"
-                size={20}
-                color={commentText.trim() && !isSubmittingComment ? COLORS.primary : COLORS.textLight}
-              />
-            </TouchableOpacity>
+            {commentText.trim() ? (
+              <TouchableOpacity onPress={handleAddComment} disabled={isSubmittingComment}>
+                <Text style={styles.postBtn}>Publier</Text>
+              </TouchableOpacity>
+            ) : null}
           </View>
         </View>
       )}
+
+      {/* ── Timestamp ── */}
+      <Text style={styles.timestamp}>{formatDate(post.createdAt)}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: COLORS.background,
-    marginHorizontal: 16,
-    marginVertical: 8,
-    borderRadius: 16,
-    padding: 16,
-    shadowColor: '#000',
+    backgroundColor: 'white',
+    marginBottom: 10,
+    borderRadius: 12,
+    shadowColor: '#7D80F4',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.15,
     shadowRadius: 8,
-    elevation: 3,
+    elevation: 4,
   },
+
+  // Header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
   },
-  userInfo: {
+  userRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 10,
     flex: 1,
   },
   avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    marginRight: 12,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 1.5,
+    borderColor: '#EBEBEB',
   },
   avatarPlaceholder: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: COLORS.backgroundLight,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#F0F0F0',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
-  },
-  userDetails: {
-    flex: 1,
   },
   userName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: COLORS.text,
-    marginBottom: 2,
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1a1a1a',
   },
-  timestamp: {
-    fontSize: 13,
-    color: COLORS.textLight,
+
+  // Image
+  image: {
+    width: SCREEN_WIDTH,
+    height: SCREEN_WIDTH,
   },
-  deleteButton: {
-    padding: 4,
-  },
-  content: {
-    fontSize: 15,
-    color: COLORS.text,
-    lineHeight: 22,
-    marginBottom: 12,
-  },
-  postImage: {
-    width: '100%',
-    height: 300,
-    borderRadius: 12,
-    marginBottom: 12,
-  },
+
+  // Actions
   actions: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
-  actionButton: {
+  actionsLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 24,
-    gap: 6,
+    gap: 4,
   },
-  actionText: {
+  actionBtn: {
+    padding: 4,
+  },
+
+  // Likes & caption
+  likesCount: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1a1a1a',
+    paddingHorizontal: 14,
+    marginBottom: 4,
+  },
+  captionRow: {
+    paddingHorizontal: 14,
+    marginBottom: 4,
+  },
+  caption: {
+    fontSize: 14,
+    color: '#1a1a1a',
+    lineHeight: 20,
+  },
+  captionUser: {
+    fontWeight: '700',
+  },
+  moreText: {
+    fontSize: 13,
+    color: COLORS.textLight,
+    marginTop: 2,
+  },
+
+  // Comments link
+  commentsLink: {
+    paddingHorizontal: 14,
+    marginBottom: 4,
+  },
+  commentsLinkText: {
     fontSize: 14,
     color: COLORS.textLight,
-    fontWeight: '500',
   },
-  actionTextLiked: {
-    color: COLORS.primary,
-    fontWeight: '600',
-  },
+
+  // Comments section
   commentsSection: {
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
-    maxHeight: 300,
+    paddingHorizontal: 14,
+    paddingBottom: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#EBEBEB',
+    marginTop: 4,
   },
   commentsList: {
-    maxHeight: 200,
-    marginBottom: 12,
-  },
-  commentPlaceholder: {
-    color: COLORS.textLight,
-    fontSize: 14,
-    textAlign: 'center',
-    paddingVertical: 12,
+    maxHeight: 180,
+    marginVertical: 8,
   },
   commentItem: {
     flexDirection: 'row',
-    marginBottom: 12,
+    marginBottom: 10,
+    gap: 8,
   },
   commentAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    marginRight: 10,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    flexShrink: 0,
   },
   commentAvatarPlaceholder: {
-    backgroundColor: COLORS.backgroundLight,
+    backgroundColor: '#F0F0F0',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  commentContent: {
+  commentBubble: {
     flex: 1,
-  },
-  commentUserName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.text,
-    marginBottom: 4,
   },
   commentText: {
-    fontSize: 14,
-    color: COLORS.text,
-    lineHeight: 20,
-    marginBottom: 4,
+    fontSize: 13,
+    color: '#1a1a1a',
+    lineHeight: 18,
   },
-  commentTime: {
-    fontSize: 12,
+  commentUser: {
+    fontWeight: '700',
+  },
+  commentMeta: {
+    fontSize: 11,
     color: COLORS.textLight,
-  },
-  commentInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
-  },
-  commentInputAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    marginRight: 10,
-  },
-  commentInputAvatarPlaceholder: {
-    backgroundColor: COLORS.backgroundLight,
-    justifyContent: 'center',
-    alignItems: 'center',
+    marginTop: 2,
   },
   commentInput: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingTop: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#EBEBEB',
+  },
+  commentField: {
     flex: 1,
-    backgroundColor: COLORS.backgroundLight,
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
     fontSize: 14,
-    color: COLORS.text,
-    maxHeight: 100,
+    color: '#1a1a1a',
+    paddingVertical: 4,
+    maxHeight: 80,
   },
-  commentSendButton: {
-    marginLeft: 8,
-    padding: 8,
+  postBtn: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.primary,
   },
-  commentSendButtonDisabled: {
-    opacity: 0.5,
+
+  // Timestamp
+  timestamp: {
+    fontSize: 11,
+    color: COLORS.textLight,
+    paddingHorizontal: 14,
+    paddingBottom: 10,
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
   },
 });

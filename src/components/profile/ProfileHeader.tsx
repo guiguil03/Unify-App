@@ -15,6 +15,7 @@ import { useNavigation } from '@react-navigation/native';
 import { Profile } from '../../types/profile';
 import { NavigationProp } from '../../types/navigation';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSubscription } from '../../contexts/SubscriptionContext';
 
 interface ProfileHeaderProps {
   profile: Profile;
@@ -22,6 +23,7 @@ interface ProfileHeaderProps {
 
 export function ProfileHeader({ profile }: ProfileHeaderProps) {
   const navigation = useNavigation<NavigationProp>();
+  const { isPremium } = useSubscription();
   const [photoVisible, setPhotoVisible] = useState(false);
   const scaleAnim = useRef(new Animated.Value(0.85)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
@@ -67,7 +69,15 @@ export function ProfileHeader({ profile }: ProfileHeaderProps) {
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.name}>{profile.name}</Text>
+      <View style={styles.nameRow}>
+        <Text style={styles.name}>{profile.name}</Text>
+        {isPremium && (
+          <View style={styles.premiumBadge}>
+            <MaterialCommunityIcons name="crown" size={13} color="#FFD700" />
+            <Text style={styles.premiumBadgeText}>Premium</Text>
+          </View>
+        )}
+      </View>
 
       {profile.bio ? (
         <Text style={styles.bio}>{profile.bio}</Text>
@@ -134,10 +144,31 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: '#fff',
   },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
   name: {
     fontSize: 24,
     fontWeight: '600',
-    marginBottom: 8,
+  },
+  premiumBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FFF8E1',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#FFD700',
+  },
+  premiumBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#B8860B',
   },
   bio: {
     fontSize: 16,

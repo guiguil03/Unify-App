@@ -19,12 +19,16 @@ import { Contact, ContactRequest, ContactRelationshipStatus } from '../types/con
 import { showSuccessToast, showErrorToast, showInfoToast } from '../utils/errorHandler';
 import { NavigationProp } from '../types/navigation';
 import { BottomNav } from '../components/common/BottomNav';
+import { useSubscription } from '../contexts/SubscriptionContext';
+import { PremiumModal } from '../components/common/PremiumModal';
 
 type Tab = 'friends' | 'requests' | 'search';
 
 export default function ContactsScreen() {
   const { contacts, loading, error, refetch, addContact: addContactAction, removeContact, relationships } = useContacts();
   const navigation = useNavigation<NavigationProp>();
+  const { isPremium } = useSubscription();
+  const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>('friends');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Contact[]>([]);
@@ -129,7 +133,7 @@ export default function ContactsScreen() {
   }, [incomingRequests, outgoingRequests]);
 
   const handleAddContact = async (contactId: string) => {
-    const result = await addContactAction(contactId);
+    const result = await addContactAction(contactId, isPremium);
 
     if (result.success) {
       setSearchResults(prev => prev.filter(c => c.id !== contactId));
@@ -152,6 +156,9 @@ export default function ContactsScreen() {
     }
 
     switch (result.reason) {
+      case 'monthly_limit_reached':
+        setShowPremiumModal(true);
+        break;
       case 'already_friends':
         showInfoToast('Vous êtes déjà amis.');
         break;
@@ -441,6 +448,16 @@ export default function ContactsScreen() {
         )}
       </ScrollView>
       <BottomNav />
+
+      <PremiumModal
+        visible={showPremiumModal}
+        feature="Les rencontres illimitées"
+        onClose={() => setShowPremiumModal(false)}
+        onUpgrade={() => {
+          setShowPremiumModal(false);
+          navigation.navigate('Settings');
+        }}
+      />
     </View>
   );
 }

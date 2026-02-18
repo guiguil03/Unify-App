@@ -175,11 +175,16 @@ export function SubscriptionCard() {
         <>
           <View style={styles.premiumContent}>
             <View style={styles.featureList}>
-              <FeatureItem icon="check-circle" text="Accès à toutes les fonctionnalités premium" />
-              <FeatureItem icon="check-circle" text="Créer et partager des parcours" />
-              <FeatureItem icon="check-circle" text="Recherche avancée de coureur(se)s" />
-              <FeatureItem icon="check-circle" text="Statistiques détaillées" />
-              <FeatureItem icon="check-circle" text="Support prioritaire" />
+              <FeatureItem icon="lightning-bolt" text="Matching instantané" />
+              <FeatureItem icon="gender-male-female" text="Modes de connexion (F/H/Mixte)" />
+              <FeatureItem icon="account-heart" text="Rencontres illimitées" />
+              <FeatureItem icon="map-marker" text="Partage de position" />
+              <FeatureItem icon="shield-check" text="Vérification d'identité avancée + badge exclusif" />
+              <FeatureItem icon="headset" text="Assistance prioritaire" />
+              <FeatureItem icon="chart-line" text="Statistiques avancées" />
+              <FeatureItem icon="whistle" text="Coaching personnalisé" />
+              <FeatureItem icon="calendar-star" text="Accès aux évènements" />
+              <FeatureItem icon="account-group" text="Accès aux groupes privés" />
             </View>
 
             {subscription?.currentPeriodEnd && (
@@ -244,11 +249,12 @@ export function SubscriptionCard() {
           </Text>
 
           <View style={styles.featureList}>
-            <FeatureItem icon="map" text="Créer et partager des parcours personnalisés" />
-            <FeatureItem icon="star" text="Recherche avancée de coureur(se)s" />
-            <FeatureItem icon="chart-line" text="Statistiques détaillées" />
-            <FeatureItem icon="headset" text="Support prioritaire" />
-            <FeatureItem icon="shield-check" text="Vérification d'identité prioritaire" />
+            <FeatureItem icon="lightning-bolt" text="Matching instantané" />
+            <FeatureItem icon="gender-male-female" text="Modes de connexion (F/H/Mixte)" />
+            <FeatureItem icon="account-heart-outline" text="Rencontres limitées (2 par mois)" />
+            <FeatureItem icon="map-marker-outline" text="Partage de position" />
+            <FeatureItem icon="shield-check-outline" text="Vérification d'identité (basique)" />
+            <FeatureItem icon="lifebuoy" text="Assistance" />
           </View>
 
           <TouchableOpacity

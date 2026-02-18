@@ -81,14 +81,6 @@ export function StoriesRow() {
                 )}
               </View>
             </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.addBadgeButton}
-              onPress={() => navigation.navigate('CreateStory')}
-            >
-              <View style={styles.addBadge}>
-                <MaterialCommunityIcons name="plus" size={14} color="#fff" />
-              </View>
-            </TouchableOpacity>
           </View>
           <Text style={styles.name}>Ma story</Text>
         </View>
@@ -98,7 +90,7 @@ export function StoriesRow() {
           onPress={() => navigation.navigate('CreateStory')}
         >
           <View style={[styles.avatar, styles.addStoryAvatar]}>
-            <MaterialCommunityIcons name="plus" size={24} color="#fff" />
+            <MaterialCommunityIcons name="plus" size={24} color="#ffffff" />
           </View>
           <Text style={styles.name}>Votre story</Text>
         </TouchableOpacity>
@@ -134,11 +126,14 @@ export function StoriesRow() {
 
 const styles = StyleSheet.create({
   container: {
-    marginVertical: 12,
+    paddingTop: 12,
+    paddingBottom: 12,
+    backgroundColor: '#ffffff',
   },
   content: {
     paddingHorizontal: 8,
     gap: 12,
+    backgroundColor: '#ffffff',
   },
   storyItem: {
     alignItems: 'center',
@@ -173,34 +168,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#7D80F4',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#fff',
-  },
-  addBadgeButton: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    zIndex: 10,
-  },
-  addBadge: {
-    backgroundColor: '#4CAF50',
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 3,
-    borderColor: '#fff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 6,
+    shadowColor: '#7D80F4',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.7,
+    shadowRadius: 16,
+    elevation: 12,
   },
   avatarPlaceholder: {
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#e0e0e0',
+    backgroundColor: '#f5f5f5',
   },
   name: {
     fontSize: 11,

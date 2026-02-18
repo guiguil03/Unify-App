@@ -234,7 +234,7 @@ export default function CreatePostScreen() {
             style={styles.backButton}
             activeOpacity={0.7}
           >
-            <MaterialCommunityIcons name="arrow-left" size={24} color={COLORS.text} />
+            <MaterialCommunityIcons name="arrow-left" size={22} color={COLORS.primary} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Créer un post</Text>
           <View style={styles.headerSpacer} />
@@ -390,33 +390,29 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: 'transparent',
+    paddingHorizontal: 16,
     paddingTop: 8,
+    paddingBottom: 12,
+    backgroundColor: COLORS.background,
+    borderBottomWidth: 3,
+    borderBottomColor: COLORS.primary,
   },
   backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    justifyContent: 'center',
+    padding: 8,
+    width: 38,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
   },
   headerSpacer: {
-    width: 44,
+    width: 38,
   },
   headerTitle: {
     flex: 1,
-    fontSize: 20,
-    fontWeight: '700',
-    color: COLORS.text,
-    marginLeft: 12,
+    fontSize: 22,
+    fontWeight: '800',
+    color: COLORS.primary,
+    letterSpacing: -0.3,
+    fontStyle: 'italic',
+    textAlign: 'center',
   },
   content: {
     flex: 1,

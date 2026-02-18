@@ -10,10 +10,12 @@ import {
   Alert,
   Animated,
   Linking,
+  Image,
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useSettings } from "../hooks/useSettings";
 import { useAuth } from "../contexts/AuthContext";
+import { useProfile } from "../hooks/useProfile";
 import { useNavigation } from "@react-navigation/native";
 import { NavigationProp } from "../types/navigation";
 import { IdentityVerificationModal } from "../components/identity/IdentityVerificationModal";
@@ -24,6 +26,7 @@ import { COLORS } from "../constants/colors";
 export default function SettingsScreen() {
   const { settings, loading, updateSetting } = useSettings();
   const { signOut, user } = useAuth();
+  const { profile } = useProfile();
   const navigation = useNavigation<NavigationProp>();
   const [verification, setVerification] = useState<IdentityVerification | null>(null);
   const [loadingVerification, setLoadingVerification] = useState(true);
@@ -212,11 +215,9 @@ export default function SettingsScreen() {
             },
           ]}
         >
-          {user?.avatar ? (
+          {profile?.avatar ? (
             <View style={styles.avatarContainer}>
-              <View style={styles.avatar}>
-                <MaterialCommunityIcons name="account" size={40} color={COLORS.primary} />
-              </View>
+              <Image source={{ uri: profile.avatar }} style={styles.avatar} />
             </View>
           ) : (
             <View style={styles.avatarPlaceholder}>
@@ -373,6 +374,47 @@ export default function SettingsScreen() {
           />
         </Animated.View>
 
+        {/* Fonctionnalités */}
+        <Animated.View
+          style={[
+            styles.section,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }],
+            },
+          ]}
+        >
+          <Text style={styles.sectionTitle}>Fonctionnalités</Text>
+          <SettingCard
+            icon="chart-line"
+            title="Statistiques avancées"
+            description="Graphiques et records personnels"
+            showArrow
+            onPress={() => navigation.navigate('Stats')}
+          />
+          <SettingCard
+            icon="whistle"
+            title="Coaching personnalisé"
+            description="Plans d'entraînement et conseils d'experts"
+            showArrow
+            onPress={() => navigation.navigate('Coaching')}
+          />
+          <SettingCard
+            icon="calendar-star"
+            title="Événements"
+            description="Courses en groupe et compétitions"
+            showArrow
+            onPress={() => navigation.navigate('Events')}
+          />
+          <SettingCard
+            icon="map-marker-path"
+            title="Mes parcours"
+            description="Créer et partager des parcours"
+            showArrow
+            onPress={() => navigation.navigate('Routes')}
+          />
+        </Animated.View>
+
         {/* Application */}
         <Animated.View
           style={[
@@ -387,30 +429,30 @@ export default function SettingsScreen() {
           <SettingCard
             icon="information-outline"
             title="À propos"
-            description="Version 1.0.0"
+            description="Version 1.0.0 · Unify"
             showArrow
-            onPress={() => Alert.alert("Unify", "Version 1.0.0\n\nApplication de running sociale")}
+            onPress={() => navigation.navigate('About')}
           />
           <SettingCard
             icon="help-circle-outline"
             title="Aide et support"
-            description="FAQ et assistance"
+            description="FAQ et contact"
             showArrow
-            onPress={() => Alert.alert("Aide", "Contactez-nous à support@unify.app")}
+            onPress={() => navigation.navigate('Help')}
           />
           <SettingCard
             icon="file-document-outline"
             title="Conditions d'utilisation"
-            description="Lire les conditions"
+            description="Lire les CGU"
             showArrow
-            onPress={() => Alert.alert("Conditions", "Les conditions d'utilisation seront disponibles prochainement.")}
+            onPress={() => navigation.navigate('Terms')}
           />
           <SettingCard
             icon="shield-lock-outline"
             title="Politique de confidentialité"
-            description="Comment nous protégeons vos données"
+            description="RGPD · Comment nous protégeons vos données"
             showArrow
-            onPress={() => Alert.alert("Confidentialité", "Notre politique de confidentialité sera disponible prochainement.")}
+            onPress={() => navigation.navigate('Privacy')}
           />
         </Animated.View>
 
@@ -489,13 +531,13 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.backgroundLight,
+    backgroundColor: '#ffffff',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: COLORS.backgroundLight,
+    backgroundColor: '#ffffff',
   },
   scrollView: {
     flex: 1,
@@ -504,11 +546,12 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   userSection: {
-    backgroundColor: COLORS.background,
+    backgroundColor: '#ffffff',
     padding: 24,
     alignItems: "center",
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    borderBottomColor: '#f0f0f0',
+    marginBottom: 8,
   },
   avatarContainer: {
     marginBottom: 12,
@@ -517,9 +560,11 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: COLORS.backgroundLight,
+    backgroundColor: '#f8f8f8',
     justifyContent: "center",
     alignItems: "center",
+    borderWidth: 2,
+    borderColor: COLORS.primary + "20",
   },
   avatarPlaceholder: {
     marginBottom: 12,
@@ -538,13 +583,13 @@ const styles = StyleSheet.create({
   editProfileButton: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: COLORS.backgroundLight,
+    gap: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 24,
+    backgroundColor: '#f8f8f8',
     borderWidth: 1,
-    borderColor: COLORS.primary + "30",
+    borderColor: COLORS.primary + "20",
   },
   editProfileText: {
     fontSize: 14,
@@ -553,25 +598,28 @@ const styles = StyleSheet.create({
   },
   section: {
     paddingHorizontal: 16,
-    paddingTop: 24,
+    paddingTop: 20,
+    marginBottom: 8,
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: 13,
     fontWeight: "700",
-    color: COLORS.text,
-    marginBottom: 12,
+    color: COLORS.textLight,
+    marginBottom: 16,
     textTransform: "uppercase",
-    letterSpacing: 0.5,
+    letterSpacing: 0.8,
   },
   settingCard: {
-    backgroundColor: COLORS.background,
+    backgroundColor: '#ffffff',
     borderRadius: 16,
     padding: 16,
-    marginBottom: 12,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#f0f0f0',
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
-    shadowRadius: 3,
+    shadowRadius: 8,
     elevation: 2,
   },
   settingCardContent: {
@@ -579,13 +627,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   settingIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: COLORS.primary + "15",
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: COLORS.primary + "10",
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 12,
+    marginRight: 14,
   },
   settingTextContainer: {
     flex: 1,
@@ -605,7 +653,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: COLORS.border,
+    borderTopColor: '#f0f0f0',
   },
   verificationStatus: {
     flexDirection: "row",
@@ -632,12 +680,17 @@ const styles = StyleSheet.create({
   verificationButton: {
     backgroundColor: COLORS.primary,
     borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 18,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   verificationButtonText: {
     color: "white",
@@ -651,8 +704,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-    gap: 8,
-    marginTop: 8,
+    gap: 10,
+    marginTop: 12,
     shadowColor: COLORS.error,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,

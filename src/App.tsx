@@ -32,6 +32,13 @@ import CreateRouteScreen from "./screens/CreateRouteScreen";
 import RouteDetailScreen from "./screens/RouteDetailScreen";
 import UserProfileScreen from "./screens/UserProfileScreen";
 import ResetPasswordScreen from "./screens/ResetPasswordScreen";
+import GroupChatScreen from "./screens/GroupChatScreen";
+import CreateGroupScreen from "./screens/CreateGroupScreen";
+import CoachingScreen from "./screens/CoachingScreen";
+import AboutScreen from "./screens/AboutScreen";
+import HelpScreen from "./screens/HelpScreen";
+import TermsScreen from "./screens/TermsScreen";
+import PrivacyScreen from "./screens/PrivacyScreen";
 import { OnboardingChecker } from "./components/OnboardingChecker";
 import { Pressable } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -41,79 +48,70 @@ if (__DEV__) console.log("=== DÉMARRAGE DE L'APPLICATION UNIFY ===");
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 // Header custom 100% React Native — élimine les artefacts du header natif iOS
-function AppHeader({ title, navigation }: { title: string; navigation: any }) {
+function AppHeader({ title, navigation, showBackButton = false }: { title: string; navigation: any; showBackButton?: boolean }) {
   const insets = useSafeAreaInsets();
   return (
-    <View style={[appHeaderStyles.container, { paddingTop: insets.top + 4 }]}>
-      <Pressable
-        onPress={() => navigation.navigate("Settings")}
-        hitSlop={12}
-        style={appHeaderStyles.pressable}
-      >
-        {({ pressed }) => (
-          <View style={[appHeaderStyles.btn, pressed && appHeaderStyles.btnPressed]}>
-            <MaterialCommunityIcons name="cog-outline" size={19} color="#7D80F4" />
-          </View>
-        )}
-      </Pressable>
-
+    <View style={[appHeaderStyles.container, { paddingTop: insets.top + 6 }]}>
+      {showBackButton ? (
+        <Pressable onPress={() => navigation.goBack()} hitSlop={12}>
+          {({ pressed }) => (
+            <View style={[appHeaderStyles.btn, pressed && appHeaderStyles.btnPressed]}>
+              <MaterialCommunityIcons name="arrow-left" size={22} color="#7D80F4" />
+            </View>
+          )}
+        </Pressable>
+      ) : (
+        <Pressable onPress={() => navigation.navigate("Settings")} hitSlop={12}>
+          {({ pressed }) => (
+            <View style={[appHeaderStyles.btn, pressed && appHeaderStyles.btnPressed]}>
+              <MaterialCommunityIcons name="cog-outline" size={22} color="#7D80F4" />
+            </View>
+          )}
+        </Pressable>
+      )}
       <Text style={appHeaderStyles.title} numberOfLines={1}>{title}</Text>
-
-      <Pressable
-        onPress={() => navigation.navigate("Messages")}
-        hitSlop={12}
-        style={appHeaderStyles.pressable}
-      >
-        {({ pressed }) => (
-          <View style={[appHeaderStyles.btn, pressed && appHeaderStyles.btnPressed]}>
-            <MaterialCommunityIcons name="message-text-outline" size={19} color="#7D80F4" />
-          </View>
-        )}
-      </Pressable>
+      {showBackButton ? (
+        <View style={appHeaderStyles.btn} />
+      ) : (
+        <Pressable onPress={() => navigation.navigate("Messages")} hitSlop={12}>
+          {({ pressed }) => (
+            <View style={[appHeaderStyles.btn, pressed && appHeaderStyles.btnPressed]}>
+              <MaterialCommunityIcons name="message-outline" size={22} color="#7D80F4" />
+            </View>
+          )}
+        </Pressable>
+      )}
     </View>
   );
 }
 
 const appHeaderStyles = StyleSheet.create({
   container: {
-    backgroundColor: "#7D80F4",
+    backgroundColor: "white",
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 16,
-    paddingBottom: 14,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-    elevation: 6,
-  },
-  pressable: {
-    padding: 2,
-  },
-  btn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "rgba(255,255,255,0.95)",
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#5B5ECC",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.18,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  btnPressed: {
-    backgroundColor: "rgba(255,255,255,0.75)",
-    transform: [{ scale: 0.93 }],
+    paddingBottom: 12,
+    borderBottomWidth: 3,
+    borderBottomColor: "#7D80F4",
   },
   title: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: "#7D80F4",
+    letterSpacing: -0.3,
+    fontStyle: "italic",
     flex: 1,
-    color: "white",
-    fontSize: 17,
-    fontWeight: "700",
     textAlign: "center",
-    letterSpacing: 0.3,
+  },
+  btn: {
+    padding: 8,
+    width: 38,
+    alignItems: "center",
+  },
+  btnPressed: {
+    opacity: 0.5,
   },
 });
 
@@ -144,7 +142,7 @@ function AppStack() {
           presentation: 'card',
           freezeOnBlur: true,
           contentStyle: {
-            backgroundColor: '#f5f5f5',
+            backgroundColor: '#ffffff',
           },
           animation: 'none',
         }}
@@ -166,7 +164,9 @@ function AppStack() {
           name="Map"
           component={MapScreen}
           options={({ navigation }) => ({
-            header: () => <AppHeader title="Carte" navigation={navigation} />,
+            header: () => <AppHeader title="Carte" navigation={navigation} showBackButton={true} />,
+            gestureEnabled: true,
+            gestureDirection: 'horizontal',
           })}
         />
         <Stack.Screen
@@ -179,7 +179,11 @@ function AppStack() {
         <Stack.Screen
           name="ActivityDetail"
           component={ActivityDetailScreen}
-          options={{ title: "Détails de l'activité" }}
+          options={({ navigation }) => ({
+            header: () => <AppHeader title="Détails de l'activité" navigation={navigation} showBackButton={true} />,
+            gestureEnabled: true,
+            gestureDirection: 'horizontal',
+          })}
         />
         <Stack.Screen
           name="Stats"
@@ -207,11 +211,11 @@ function AppStack() {
         <Stack.Screen
           name="EditProfile"
           component={EditProfileScreen}
-          options={{
-            title: "Modifier le profil",
+          options={({ navigation }) => ({
+            header: () => <AppHeader title="Modifier le profil" navigation={navigation} showBackButton={true} />,
             gestureEnabled: true,
             gestureDirection: 'horizontal',
-          }}
+          })}
         />
         <Stack.Screen
           name="Contacts"
@@ -230,17 +234,21 @@ function AppStack() {
       <Stack.Screen
         name="Chat"
         component={ChatScreen}
-        options={({ route }) => ({
-          title: route.params.contactName,
-          contentStyle: { backgroundColor: '#f5f5f5' },
+        options={({ navigation, route }) => ({
+          header: () => <AppHeader title={route.params.contactName} navigation={navigation} showBackButton={true} />,
+          gestureEnabled: true,
+          gestureDirection: 'horizontal',
+          contentStyle: { backgroundColor: '#ffffff' },
         })}
       />
       <Stack.Screen
         name="Settings"
         component={SettingsScreen}
-        options={{ 
-          title: "Paramètres",
-        }}
+        options={({ navigation }) => ({
+          header: () => <AppHeader title="Paramètres" navigation={navigation} showBackButton={true} />,
+          gestureEnabled: true,
+          gestureDirection: 'horizontal',
+        })}
       />
       <Stack.Screen
         name="CreateStory"
@@ -286,9 +294,11 @@ function AppStack() {
       <Stack.Screen
         name="RouteDetail"
         component={RouteDetailScreen}
-        options={{
-          title: "Détails du parcours",
-        }}
+        options={({ navigation }) => ({
+          header: () => <AppHeader title="Détails du parcours" navigation={navigation} showBackButton={true} />,
+          gestureEnabled: true,
+          gestureDirection: 'horizontal',
+        })}
       />
       <Stack.Screen
         name="UserProfile"
@@ -296,6 +306,87 @@ function AppStack() {
         options={{
           headerShown: false,
         }}
+      />
+      <Stack.Screen
+        name="GroupChat"
+        component={GroupChatScreen}
+        options={({ navigation, route }) => ({
+          header: () => (
+            <AppHeader
+              title={(route.params as any).groupName}
+              navigation={navigation}
+              showBackButton={true}
+            />
+          ),
+          gestureEnabled: true,
+          gestureDirection: 'horizontal',
+        })}
+      />
+      <Stack.Screen
+        name="CreateGroup"
+        component={CreateGroupScreen}
+        options={({ navigation }) => ({
+          header: () => (
+            <AppHeader title="Nouveau groupe" navigation={navigation} showBackButton={true} />
+          ),
+          gestureEnabled: true,
+          gestureDirection: 'horizontal',
+        })}
+      />
+      <Stack.Screen
+        name="Coaching"
+        component={CoachingScreen}
+        options={({ navigation }) => ({
+          header: () => (
+            <AppHeader title="Coaching" navigation={navigation} showBackButton={true} />
+          ),
+          gestureEnabled: true,
+          gestureDirection: 'horizontal',
+        })}
+      />
+      <Stack.Screen
+        name="About"
+        component={AboutScreen}
+        options={({ navigation }) => ({
+          header: () => (
+            <AppHeader title="À propos" navigation={navigation} showBackButton={true} />
+          ),
+          gestureEnabled: true,
+          gestureDirection: 'horizontal',
+        })}
+      />
+      <Stack.Screen
+        name="Help"
+        component={HelpScreen}
+        options={({ navigation }) => ({
+          header: () => (
+            <AppHeader title="Aide et support" navigation={navigation} showBackButton={true} />
+          ),
+          gestureEnabled: true,
+          gestureDirection: 'horizontal',
+        })}
+      />
+      <Stack.Screen
+        name="Terms"
+        component={TermsScreen}
+        options={({ navigation }) => ({
+          header: () => (
+            <AppHeader title="Conditions d'utilisation" navigation={navigation} showBackButton={true} />
+          ),
+          gestureEnabled: true,
+          gestureDirection: 'horizontal',
+        })}
+      />
+      <Stack.Screen
+        name="Privacy"
+        component={PrivacyScreen}
+        options={({ navigation }) => ({
+          header: () => (
+            <AppHeader title="Politique de confidentialité" navigation={navigation} showBackButton={true} />
+          ),
+          gestureEnabled: true,
+          gestureDirection: 'horizontal',
+        })}
       />
       </Stack.Navigator>
     </>

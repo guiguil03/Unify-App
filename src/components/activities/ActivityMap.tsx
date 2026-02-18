@@ -100,7 +100,6 @@ export function ActivityMap({ route, initialRegion }: ActivityMapProps) {
 const styles = StyleSheet.create({
   mapContainer: {
     height: 300,
-    marginBottom: 16,
   },
   map: {
     flex: 1,

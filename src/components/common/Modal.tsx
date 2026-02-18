@@ -14,7 +14,6 @@ export function Modal({ visible, onClose, children }: ModalProps) {
       transparent
       animationType="fade"
       onRequestClose={onClose}
-      statusBarTranslucent
     >
       <Pressable
         style={styles.overlay}

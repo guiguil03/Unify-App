@@ -5,6 +5,7 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
+  runOnJS,
 } from "react-native-reanimated";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Runner } from "../../types/runner";
@@ -23,6 +24,7 @@ interface RunnersListProps {
   selectedRunner: Runner | null;
   isExpanded?: boolean;
   onCollapse?: () => void;
+  isModalVisible?: boolean;
 }
 
 export function RunnersList({
@@ -31,6 +33,7 @@ export function RunnersList({
   selectedRunner,
   isExpanded = false,
   onCollapse,
+  isModalVisible = false,
 }: RunnersListProps) {
   const translateY = useSharedValue(MIN_TRANSLATE_Y);
 
@@ -38,7 +41,9 @@ export function RunnersList({
     translateY.value = withSpring(
       isExpanded ? MAX_TRANSLATE_Y : MIN_TRANSLATE_Y,
       {
-        damping: 50,
+        damping: 80,
+        stiffness: 200,
+        overshootClamping: true,
       }
     );
   }, [isExpanded, translateY]);
@@ -48,6 +53,7 @@ export function RunnersList({
   
   // Gesture pour faire glisser le panneau (seulement depuis le header)
   const panGesture = Gesture.Pan()
+    .enabled(!isModalVisible)
     .onBegin(() => {
       startY.value = translateY.value;
     })
@@ -70,12 +76,14 @@ export function RunnersList({
         shouldSnapClosed ? MIN_TRANSLATE_Y : MAX_TRANSLATE_Y,
         {
           velocity: event.velocityY,
-          damping: 50,
+          damping: 80,
+          stiffness: 200,
+          overshootClamping: true,
         }
       );
 
       if (shouldSnapClosed && onCollapse) {
-        onCollapse();
+        runOnJS(onCollapse)();
       }
     });
 
@@ -88,7 +96,9 @@ export function RunnersList({
   const handleRunnerPress = useCallback((runner: Runner) => {
     // Fermer la liste en animant vers la position minimale
     translateY.value = withSpring(MIN_TRANSLATE_Y, {
-      damping: 50,
+      damping: 80,
+      stiffness: 200,
+      overshootClamping: true,
     });
     // Appeler les callbacks
     onRunnerPress(runner);

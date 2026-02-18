@@ -276,7 +276,7 @@ export class RunnersService {
           callback([]);
         }
       )
-      
+      .subscribe();
 
     return channel;
   }

@@ -36,6 +36,7 @@ export function useMapScreen() {
     filteredRunners: [] as Runner[],
     isRunnersListExpanded: false,
     showProfileModal: false,
+    showPremiumModal: false,
     location,
     contacts,
     relationships: relationships as Record<string, ContactRelationshipStatus>,
@@ -241,8 +242,8 @@ export function useMapScreen() {
       }));
     },
 
-    handleConnect: async (runnerId: string) => {
-      const result = await addContact(runnerId);
+    handleConnect: async (runnerId: string, isPremium = false) => {
+      const result = await addContact(runnerId, isPremium);
 
       if (result.success) {
         showSuccessToast('Demande envoyée !');
@@ -252,6 +253,9 @@ export function useMapScreen() {
       }
 
       switch (result.reason) {
+        case 'monthly_limit_reached':
+          setState(prev => ({ ...prev, showProfileModal: false, showPremiumModal: true }));
+          break;
         case 'already_friends':
           showInfoToast('Vous êtes déjà amis.');
           setState(prev => ({ ...prev, showProfileModal: false }));
@@ -277,6 +281,10 @@ export function useMapScreen() {
 
     setShowProfileModal: (visible: boolean) => {
       setState(prev => ({ ...prev, showProfileModal: visible }));
+    },
+
+    setShowPremiumModal: (visible: boolean) => {
+      setState(prev => ({ ...prev, showPremiumModal: visible }));
     },
 
     handleFilterChange: async (key: keyof Settings, value: boolean) => {

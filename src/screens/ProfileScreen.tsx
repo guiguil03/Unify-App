@@ -134,29 +134,8 @@ export default function ProfileScreen() {
         }
       >
         <ProfileHeader profile={profile} />
-        <ProfileStats stats={profile.stats} />
 
-        {/* Bouton Statistiques Avancées */}
-        <TouchableOpacity
-          style={styles.statsButton}
-          onPress={() => navigation.navigate('Stats')}
-        >
-          <View style={styles.statsButtonContent}>
-            <MaterialCommunityIcons name="chart-line" size={24} color={COLORS.primary} />
-            <View style={styles.statsButtonText}>
-              <Text style={styles.statsButtonTitle}>Statistiques Avancées</Text>
-              <Text style={styles.statsButtonSubtitle}>
-                Suivi détaillé de vos performances
-              </Text>
-            </View>
-          </View>
-          <MaterialCommunityIcons name="chevron-right" size={24} color={COLORS.textLight} />
-        </TouchableOpacity>
-
-        <SubscriptionCard />
-        <ProfileInfo profile={profile} />
-
-        {/* Section Posts et Stories */}
+        {/* Section Posts et Stories - En haut */}
         <View style={styles.historySection}>
           <View style={styles.tabContainer}>
             <TouchableOpacity
@@ -229,6 +208,29 @@ export default function ProfileScreen() {
             )
           )}
         </View>
+
+        {/* Autres informations */}
+        <ProfileStats stats={profile.stats} />
+
+        {/* Bouton Statistiques Avancées */}
+        <TouchableOpacity
+          style={styles.statsButton}
+          onPress={() => navigation.navigate('Stats')}
+        >
+          <View style={styles.statsButtonContent}>
+            <MaterialCommunityIcons name="chart-line" size={24} color={COLORS.primary} />
+            <View style={styles.statsButtonText}>
+              <Text style={styles.statsButtonTitle}>Statistiques Avancées</Text>
+              <Text style={styles.statsButtonSubtitle}>
+                Suivi détaillé de vos performances
+              </Text>
+            </View>
+          </View>
+          <MaterialCommunityIcons name="chevron-right" size={24} color={COLORS.textLight} />
+        </TouchableOpacity>
+
+        <SubscriptionCard />
+        <ProfileInfo profile={profile} />
       </ScrollView>
       <BottomNav />
     </View>
@@ -238,12 +240,12 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#ffffff',
   },
   contentContainer: {
     padding: 16,
     paddingBottom: 100,
-    gap: 16,
+    gap: 20,
   },
   loadingContainer: {
     flex: 1,
@@ -269,46 +271,63 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   historySection: {
-    backgroundColor: COLORS.background,
-    borderRadius: 20,
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
     padding: 16,
     marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#f0f0f0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   tabContainer: {
     flexDirection: 'row',
-    gap: 12,
-    marginBottom: 16,
+    gap: 8,
+    marginBottom: 20,
+    backgroundColor: '#f8f8f8',
+    borderRadius: 12,
+    padding: 4,
   },
   tab: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    backgroundColor: COLORS.backgroundLight,
-    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: 'transparent',
+    gap: 6,
   },
   tabActive: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: '#ffffff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
   tabText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
     color: COLORS.textLight,
   },
   tabTextActive: {
-    color: COLORS.background,
+    color: COLORS.primary,
   },
   gridContainer: {
-    gap: 2,
+    gap: 3,
   },
   postItem: {
     flex: 1,
     aspectRatio: 1,
     margin: 1,
     position: 'relative',
+    borderRadius: 8,
+    overflow: 'hidden',
   },
   postImage: {
     width: '100%',
@@ -345,6 +364,8 @@ const styles = StyleSheet.create({
     aspectRatio: 1,
     margin: 1,
     position: 'relative',
+    borderRadius: 8,
+    overflow: 'hidden',
   },
   storyImage: {
     width: '100%',
@@ -399,17 +420,19 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   statsButton: {
-    backgroundColor: '#fff',
+    backgroundColor: '#ffffff',
     borderRadius: 16,
     padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#f0f0f0',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   statsButtonContent: {
     flexDirection: 'row',
