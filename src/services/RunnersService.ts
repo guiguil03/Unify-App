@@ -132,6 +132,131 @@ export class RunnersService {
   }
 
   /**
+   * Récupère TOUS les utilisateurs avec leur position (sans filtre de distance)
+   * Utilisé pour afficher tous les coureurs sur la carte par défaut
+   */
+  static async getAllRunners(): Promise<Runner[]> {
+    try {
+      const currentUser = await getCurrentUserFromDB();
+      const currentUserId = currentUser?.id;
+
+      // Récupérer tous les utilisateurs avec leur dernière position connue
+      // Utiliser la pagination pour récupérer TOUS les utilisateurs
+      
+      let allData: any[] = [];
+      let page = 0;
+      const pageSize = 1000;
+      let hasMore = true;
+
+      while (hasMore) {
+        const { data, error, count } = await supabase
+          .from('users')
+          .select(`
+            id,
+            name,
+            avatar,
+            bio,
+            gender,
+            average_pace,
+            preferred_time,
+            last_latitude,
+            last_longitude,
+            updated_at
+          `, { count: 'exact' })
+          .not('last_latitude', 'is', null)
+          .not('last_longitude', 'is', null)
+          .range(page * pageSize, (page + 1) * pageSize - 1);
+
+        if (error) {
+          throw error;
+        }
+
+        if (data) {
+          allData.push(...data);
+        }
+
+        hasMore = data && data.length === pageSize;
+        page++;
+      }
+      
+      const data = allData;
+
+      // Exclure l'utilisateur actuel
+      const allUsers = (data || []).filter((user: any) => user.id !== currentUserId);
+
+      // Récupérer les infos d'activité pour tous les utilisateurs
+      const userIds = allUsers.map((u: any) => u.id);
+      let runnersData: any[] = [];
+      
+      if (userIds.length > 0) {
+        // Supabase limite les requêtes .in() à 1000 éléments, donc on doit gérer par lots si nécessaire
+        const batchSize = 1000;
+        const batches = [];
+        for (let i = 0; i < userIds.length; i += batchSize) {
+          batches.push(userIds.slice(i, i + batchSize));
+        }
+        
+        // Récupérer les données par lots
+        for (const batch of batches) {
+          const { data } = await supabase
+            .from('runners')
+            .select('user_id, is_active, pace, distance, updated_at')
+            .in('user_id', batch);
+          if (data) {
+            runnersData.push(...data);
+          }
+        }
+      }
+
+      const runnersMap = new Map(
+        runnersData.map((r: any) => [r.user_id, r])
+      );
+
+      // Mapper les utilisateurs en runners avec leurs infos d'activité
+      const runners = allUsers.map((user: any) => {
+        const runnerInfo = runnersMap.get(user.id);
+        const lastSeen = runnerInfo?.updated_at || user.updated_at;
+        return {
+          id: user.id,
+          name: user.name || 'Utilisateur inconnu',
+          location: {
+            latitude: Number(user.last_latitude),
+            longitude: Number(user.last_longitude),
+          },
+          distance: 0, // Pas de distance calculée pour tous les runners
+          pace: runnerInfo?.pace || '',
+          avatar: user.avatar,
+          bio: user.bio,
+          isActive: runnerInfo?.is_active || false,
+          lastSeen: lastSeen,
+          gender: user.gender,
+          averagePace: user.average_pace,
+          preferredTime: user.preferred_time,
+        };
+      });
+
+
+      // Trier par dernière connexion : actifs d'abord, puis par date de dernière activité
+      const sortedRunners = runners.sort((a, b) => {
+        // Les coureurs actifs en premier
+        if (a.isActive && !b.isActive) return -1;
+        if (!a.isActive && b.isActive) return 1;
+        
+        // Si les deux sont actifs ou inactifs, trier par dernière activité
+        const dateA = a.lastSeen ? new Date(a.lastSeen).getTime() : 0;
+        const dateB = b.lastSeen ? new Date(b.lastSeen).getTime() : 0;
+        
+        // Plus récent en premier
+        return dateB - dateA;
+      });
+
+      return sortedRunners;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
    * Met à jour la position de l'utilisateur (pour être visible sur la carte)
    */
   static async updateUserLocation(position: {

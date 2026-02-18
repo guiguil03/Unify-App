@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { View, StyleSheet } from "react-native";
 import MapView from "react-native-maps";
 import { useNavigation } from "@react-navigation/native";
@@ -10,12 +10,14 @@ import { LocationSelector } from "../components/map/LocationSelector";
 import { SearchZone } from "../components/map/SearchZone";
 import { MapControls } from "../components/map/MapControls";
 import { RunnersList } from "../components/map/RunnersList";
+import { ClusterCarousel } from "../components/map/ClusterCarousel";
 import { RunnerProfileModal } from "../components/runners/RunnerProfileModal";
 import { Runner } from "../types/runner";
 import { Location } from "../types/location";
 import { GOOGLE_MAPS_CONFIG } from "../services/map/config";
 import { createRegionFromLocation, createRegionFromRadius } from "../utils/map/region";
 import { MOCK_RUNNERS } from "../data/mockRunners";
+import { RunnersService } from "../services/RunnersService";
 import { useLocation } from "../hooks/useLocation";
 import { useContacts } from "../hooks/useContacts";
 import { showErrorToast, showInfoToast, showSuccessToast } from "../utils/errorHandler";
@@ -35,29 +37,65 @@ export default function MapScreen() {
   const [selectedRunner, setSelectedRunner] = useState<Runner | null>(null);
   const [showLocationSelector, setShowLocationSelector] = useState(false);
   const [activeSearchZone, setActiveSearchZone] = useState(false);
-  const [filteredRunners, setFilteredRunners] = useState(MOCK_RUNNERS);
+  // Tous les runners pour la carte (affichés par défaut)
+  const [allRunners, setAllRunners] = useState<Runner[]>([]);
+  // Runners filtrés pour la liste (dans la zone de recherche)
+  const [filteredRunners, setFilteredRunners] = useState<Runner[]>([]);
   const [isRunnersListExpanded, setIsRunnersListExpanded] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showClusterCarousel, setShowClusterCarousel] = useState(false);
+  const [clusterRunners, setClusterRunners] = useState<Runner[]>([]);
+  const [loadingRunners, setLoadingRunners] = useState(false);
+
+  // Charger tous les runners au démarrage
+  useEffect(() => {
+    const loadAllRunners = async () => {
+      try {
+        setLoadingRunners(true);
+        const runners = await RunnersService.getAllRunners();
+        setAllRunners(runners);
+        // Initialiser filteredRunners avec tous les runners aussi
+        if (location) {
+          const filtered = filterRunnersByDistance(
+            runners,
+            location,
+            searchRadius
+          );
+          setFilteredRunners(filtered);
+        } else {
+          setFilteredRunners(runners);
+        }
+      } catch (error) {
+        setAllRunners([]);
+      } finally {
+        setLoadingRunners(false);
+      }
+    };
+
+    loadAllRunners();
+  }, []); // Charger une seule fois au démarrage
 
   useEffect(() => {
-    if (location) {
+    if (location && allRunners.length > 0) {
       setActiveSearchZone(true);
       const filtered = filterRunnersByDistance(
-        MOCK_RUNNERS,
+        allRunners,
         location,
         searchRadius
       );
       setFilteredRunners(filtered);
     }
-  }, [location]);
+  }, [location, searchRadius, allRunners]);
 
   const handleLocationSelect = (location: Location, address: string) => {
     setIsRunnersListExpanded(false);
     setSelectedLocation(location);
     setSelectedAddress(address);
-    setShowLocationSelector(true);
-    setActiveSearchZone(false);
+    setShowLocationSelector(true); // Ouvrir le sélecteur pour configurer la zone
+    setActiveSearchZone(false); // Ne pas activer la zone tout de suite
+    setShowClusterCarousel(false); // Fermer le carousel
 
+    // Recentrer la carte sur le lieu sélectionné (sans zoom sur la zone)
     if (mapRef.current) {
       const region = createRegionFromLocation(location);
       mapRef.current.animateToRegion(region, GOOGLE_MAPS_CONFIG.ANIMATION_DURATION);
@@ -66,11 +104,15 @@ export default function MapScreen() {
 
   const handleMapPress = () => {
     setIsRunnersListExpanded(false);
+    setShowClusterCarousel(false);
   };
 
   const handleMarkerPress = (runner: Runner) => {
     setSelectedRunner(runner);
-    setIsRunnersListExpanded(true);
+    // Ouvrir le slider avec cet utilisateur
+    setClusterRunners([runner]);
+    setShowClusterCarousel(true);
+    setIsRunnersListExpanded(false);
   };
 
   const handleRecenterPress = async () => {
@@ -97,13 +139,23 @@ export default function MapScreen() {
       setActiveSearchZone(true);
       setShowLocationSelector(false);
 
+      // Filtrer les runners dans cette zone
       const filtered = filterRunnersByDistance(
-        MOCK_RUNNERS,
+        allRunners,
         searchCenter,
         searchRadius
       );
       setFilteredRunners(filtered);
 
+      // Si il y a des runners dans cette zone, les afficher dans le ClusterCarousel
+      if (filtered.length > 0) {
+        setClusterRunners(filtered);
+        setShowClusterCarousel(true);
+      } else {
+        setShowClusterCarousel(false);
+      }
+
+      // Recentrer la carte sur la zone avec le bon zoom
       if (mapRef.current) {
         const region = createRegionFromRadius(searchCenter, searchRadius);
         mapRef.current.animateToRegion(region, GOOGLE_MAPS_CONFIG.ANIMATION_DURATION);
@@ -115,45 +167,73 @@ export default function MapScreen() {
     setSelectedRunner(runner);
     setShowProfileModal(true);
     setIsRunnersListExpanded(false);
+    setShowClusterCarousel(false);
+  };
+
+  const handleClusterPress = useCallback((runners: Runner[]) => {
+    if (runners && runners.length > 0) {
+      setClusterRunners(runners);
+      setShowClusterCarousel(true);
+      setIsRunnersListExpanded(false);
+      setSelectedRunner(null);
+    }
+  }, []);
+
+  const handleResetToMyLocation = () => {
+    // Réinitialiser tout
+    setSelectedLocation(null);
+    setSelectedAddress("");
+    setActiveSearchZone(false);
+    setShowLocationSelector(false);
+    setShowClusterCarousel(false);
+    setClusterRunners([]);
+    setSelectedRunner(null);
+    setIsRunnersListExpanded(false);
+    
+    // Réinitialiser les runners filtrés avec tous les runners
+    setFilteredRunners(allRunners);
+    
+    // Recentrer sur la position actuelle
+    if (location && mapRef.current) {
+      const region = createRegionFromLocation(location);
+      mapRef.current.animateToRegion(region, GOOGLE_MAPS_CONFIG.ANIMATION_DURATION);
+    }
+  };
+
+  const handleMessage = (runnerId: string, runnerName: string, avatar?: string) => {
+    setShowProfileModal(false);
+    setShowClusterCarousel(false);
+    navigation.navigate('Chat', { contactId: runnerId, contactName: runnerName, contactAvatar: avatar });
   };
 
   const handleConnect = async (runnerId: string) => {
-    try {
-      const result = await addContact(runnerId);
+    const result = await addContact(runnerId);
 
-      if (result.success) {
-        if (result.autoAccepted) {
-          showSuccessToast('Vous êtes maintenant amis ! 🎉');
-        } else {
-          showSuccessToast('Demande envoyée !');
-        }
-        // Fermer le modal avant de naviguer
+    if (result.success) {
+      if (result.autoAccepted) {
+        showSuccessToast('Vous êtes maintenant amis ! 🎉');
+      } else {
+        showSuccessToast('Demande envoyée !');
+      }
+      setShowProfileModal(false);
+      navigation.navigate('Contacts');
+      return;
+    }
+
+    switch (result.reason) {
+      case 'already_friends':
+        showInfoToast('Vous êtes déjà amis.');
         setShowProfileModal(false);
-        // Petit délai pour que le modal se ferme proprement
-        setTimeout(() => {
-          navigation.navigate('Contacts');
-        }, 300);
-        return;
-      }
-
-      switch (result.reason) {
-        case 'already_friends':
-          showInfoToast('Vous êtes déjà amis.');
-          setShowProfileModal(false);
-          break;
-        case 'already_sent':
-          showInfoToast('Vous avez déjà envoyé une demande à ce coureur.');
-          break;
-        case 'blocked':
-          showErrorToast('Vous ne pouvez pas envoyer de demande à ce coureur.');
-          break;
-        default:
-          showErrorToast('Impossible d\'envoyer la demande.');
-          break;
-      }
-    } catch (error) {
-      console.error('Erreur lors de la connexion:', error);
-      showErrorToast('Erreur lors de la connexion. Veuillez réessayer.');
+        break;
+      case 'already_sent':
+        showInfoToast('Vous avez déjà envoyé une demande à ce coureur.');
+        break;
+      case 'blocked':
+        showErrorToast('Vous ne pouvez pas envoyer de demande à ce coureur.');
+        break;
+      default:
+        showErrorToast('Impossible d\'envoyer la demande.');
+        break;
     }
   };
 
@@ -171,11 +251,12 @@ export default function MapScreen() {
       <RunnerMap
         ref={mapRef}
         userLocation={location}
-        runners={filteredRunners}
+        runners={activeSearchZone ? filteredRunners : allRunners}
         initialRegion={createRegionFromLocation(location)}
         selectedRunner={selectedRunner}
         onRunnerPress={handleRunnerPress}
         onMarkerPress={handleMarkerPress}
+        onClusterPress={handleClusterPress}
         onMapPress={handleMapPress}
       >
         {(selectedLocation || location) && (
@@ -190,6 +271,8 @@ export default function MapScreen() {
       <MapControls
         onRecenterPress={handleRecenterPress}
         onSettingsPress={handleSettingsPress}
+        onResetPress={handleResetToMyLocation}
+        hasCustomLocation={!!selectedLocation}
       />
 
       {showLocationSelector && (selectedLocation || location) && (
@@ -198,6 +281,7 @@ export default function MapScreen() {
           radius={searchRadius}
           onRadiusChange={setSearchRadius}
           onValidate={handleValidateZone}
+          onClose={handleResetToMyLocation}
           style={styles.locationSelector}
         />
       )}
@@ -208,6 +292,19 @@ export default function MapScreen() {
         selectedRunner={selectedRunner}
         isExpanded={isRunnersListExpanded}
         onCollapse={() => setIsRunnersListExpanded(false)}
+      />
+
+      <ClusterCarousel
+        visible={showClusterCarousel}
+        runners={clusterRunners}
+        relationships={relationships}
+        onClose={() => {
+          setShowClusterCarousel(false);
+          setClusterRunners([]);
+        }}
+        onRunnerPress={handleRunnerPress}
+        onConnect={handleConnect}
+        onMessage={handleMessage}
       />
 
       <RunnerProfileModal
@@ -222,6 +319,7 @@ export default function MapScreen() {
           }, 500);
         }}
         onConnect={handleConnect}
+        onMessage={handleMessage}
         relationshipStatus={selectedRunner ? relationships[selectedRunner.id] ?? 'none' : 'none'}
       />
     </View>

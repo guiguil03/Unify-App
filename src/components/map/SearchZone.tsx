@@ -19,6 +19,8 @@ export function SearchZone({ center, radius, visible }: SearchZoneProps) {
       fillColor={MAP_STYLES.ZONE_FILL_COLOR}
       strokeColor={MAP_STYLES.ZONE_STROKE_COLOR}
       strokeWidth={2}
+      zIndex={1}
+      pointerEvents="none"
     />
   );
 }

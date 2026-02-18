@@ -1,133 +1,178 @@
-import React, { useState } from "react";
-import { TouchableOpacity, View, Text, StyleSheet, ActivityIndicator } from "react-native";
+import React from "react";
+import { TouchableOpacity, View, Text, StyleSheet } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { ContactRelationshipStatus } from "../../../types/contact";
 
 interface ConnectButtonProps {
   status?: ContactRelationshipStatus | 'none';
-  onConnect: () => void | Promise<void>;
+  onMessage: () => void;
+  onConnect?: () => void;
 }
 
-export function ConnectButton({ status = 'none', onConnect }: ConnectButtonProps) {
-  const [isConnecting, setIsConnecting] = useState(false);
-
-  const handlePress = async () => {
-    if (isConnecting) return;
-    
-    setIsConnecting(true);
-    try {
-      await onConnect();
-    } catch (error) {
-      if (__DEV__) console.error('Connect failed:', error);
-    } finally {
-      // Ne pas réinitialiser immédiatement pour éviter les clics multiples
-      setTimeout(() => {
-        setIsConnecting(false);
-      }, 1000);
-    }
-  };
-
-  if (status === 'friends') {
-    return (
-      <View style={[styles.statusContainer, styles.friendsContainer]}>
-        <MaterialCommunityIcons name="check-circle" size={24} color="#4CAF50" />
-        <Text style={[styles.statusText, styles.friendsText]}>Déjà amis</Text>
-      </View>
-    );
-  }
-
-  if (status === 'pending') {
-    return (
-      <View style={[styles.statusContainer, styles.pendingContainer]}>
-        <MaterialCommunityIcons name="clock-outline" size={24} color="#FFA000" />
-        <Text style={[styles.statusText, styles.pendingText]}>Demande envoyée</Text>
-      </View>
-    );
-  }
-
-  if (status === 'incoming') {
-    return (
-      <View style={[styles.statusContainer, styles.incomingContainer]}>
-        <MaterialCommunityIcons name="account-clock" size={24} color="#03A9F4" />
-        <Text style={[styles.statusText, styles.incomingText]}>Demande reçue</Text>
-      </View>
-    );
-  }
+export function ConnectButton({ status = 'none', onMessage, onConnect }: ConnectButtonProps) {
+  const isFriends = status === 'friends';
+  const showConnect = status === 'none';
+  const showAccept = status === 'incoming';
 
   return (
-    <TouchableOpacity 
-      style={[styles.connectButton, isConnecting && styles.connectButtonDisabled]} 
-      onPress={handlePress}
-      disabled={isConnecting}
-      activeOpacity={0.8}
-    >
-      {isConnecting ? (
-        <>
-          <ActivityIndicator size="small" color="white" />
-          <Text style={styles.connectButtonText}>Connexion...</Text>
-        </>
-      ) : (
-        <>
-          <MaterialCommunityIcons name="account-plus" size={24} color="white" />
-          <Text style={styles.connectButtonText}>Se connecter</Text>
-        </>
+    <View style={styles.wrapper}>
+      {/* Badge de statut — affiché uniquement si demande en cours ou amis */}
+      {status !== 'none' && (
+        <View style={[styles.statusBadge, statusBadgeStyle[status]]}>
+          <MaterialCommunityIcons
+            name={statusIcon[status]}
+            size={14}
+            color={statusIconColor[status]}
+          />
+          <Text style={[styles.statusText, statusTextStyle[status]]}>
+            {statusLabel[status]}
+          </Text>
+        </View>
       )}
-    </TouchableOpacity>
+
+      {/* Bouton Se connecter — visible quand pas encore connecté */}
+      {showConnect && onConnect && (
+        <TouchableOpacity
+          style={styles.connectButton}
+          onPress={onConnect}
+          activeOpacity={0.8}
+        >
+          <MaterialCommunityIcons name="account-plus" size={20} color="#7D80F4" />
+          <Text style={styles.connectButtonText}>Se connecter</Text>
+        </TouchableOpacity>
+      )}
+
+      {/* Bouton Accepter — visible quand demande reçue */}
+      {showAccept && onConnect && (
+        <TouchableOpacity
+          style={styles.acceptButton}
+          onPress={onConnect}
+          activeOpacity={0.8}
+        >
+          <MaterialCommunityIcons name="account-check" size={20} color="white" />
+          <Text style={styles.acceptButtonText}>Accepter la demande</Text>
+        </TouchableOpacity>
+      )}
+
+      {/* Bouton message — toujours visible */}
+      <TouchableOpacity
+        style={[styles.messageButton, isFriends && styles.messageButtonFriends]}
+        onPress={onMessage}
+        activeOpacity={0.8}
+      >
+        <MaterialCommunityIcons name="message-text" size={20} color="white" />
+        <Text style={styles.messageButtonText}>Envoyer un message</Text>
+      </TouchableOpacity>
+    </View>
   );
 }
 
+const statusLabel: Record<string, string> = {
+  friends: 'Vous êtes amis',
+  pending: 'Demande envoyée',
+  incoming: 'Demande reçue',
+};
+
+const statusIcon: Record<string, any> = {
+  friends: 'check-circle',
+  pending: 'clock-outline',
+  incoming: 'account-clock',
+};
+
+const statusIconColor: Record<string, string> = {
+  friends: '#2E7D32',
+  pending: '#FF8F00',
+  incoming: '#0288D1',
+};
+
+const statusBadgeStyle: Record<string, object> = {
+  friends: { backgroundColor: '#E8F5E9', borderColor: '#C8E6C9' },
+  pending: { backgroundColor: '#FFF8E1', borderColor: '#FFE082' },
+  incoming: { backgroundColor: '#E1F5FE', borderColor: '#B3E5FC' },
+};
+
+const statusTextStyle: Record<string, object> = {
+  friends: { color: '#2E7D32' },
+  pending: { color: '#FF8F00' },
+  incoming: { color: '#0288D1' },
+};
+
 const styles = StyleSheet.create({
-  connectButton: {
-    backgroundColor: "#7D80F4",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 16,
-    borderRadius: 8,
-    gap: 8,
-    minHeight: 56,
+  wrapper: {
+    gap: 10,
   },
-  connectButtonDisabled: {
-    opacity: 0.7,
-  },
-  connectButtonText: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  statusContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 10,
     borderWidth: 1,
   },
   statusText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  connectButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    borderRadius: 12,
+    gap: 8,
+    minHeight: 54,
+    backgroundColor: 'white',
+    borderWidth: 2,
+    borderColor: '#7D80F4',
+  },
+  connectButtonText: {
+    color: '#7D80F4',
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: '700',
   },
-  friendsContainer: {
-    borderColor: "#C8E6C9",
-    backgroundColor: "#E8F5E9",
+  acceptButton: {
+    backgroundColor: '#2E7D32',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    borderRadius: 12,
+    gap: 8,
+    minHeight: 54,
+    shadowColor: '#2E7D32',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  friendsText: {
-    color: "#2E7D32",
+  acceptButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '700',
   },
-  pendingContainer: {
-    borderColor: "#FFE082",
-    backgroundColor: "#FFF8E1",
+  messageButton: {
+    backgroundColor: '#7D80F4',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    borderRadius: 12,
+    gap: 8,
+    minHeight: 54,
+    shadowColor: '#7D80F4',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  pendingText: {
-    color: "#FF8F00",
+  messageButtonFriends: {
+    backgroundColor: '#5a5dd4',
   },
-  incomingContainer: {
-    borderColor: "#B3E5FC",
-    backgroundColor: "#E1F5FE",
-  },
-  incomingText: {
-    color: "#0288D1",
+  messageButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '700',
   },
 });

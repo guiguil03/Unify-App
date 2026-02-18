@@ -6,13 +6,12 @@ import { MapControls } from "../../../components/map/MapControls";
 import { MapFilters } from "../../../components/map/MapFilters";
 import { RunnersList } from "../../../components/map/RunnersList";
 import { RunnerProfileModal } from "../../../components/runners/RunnerProfileModal";
+import { ClusterCarousel } from "../../../components/map/ClusterCarousel";
 import { PremiumModal } from "../../../components/common/PremiumModal";
-import { useSubscription } from "../../../contexts/SubscriptionContext";
 import { useNavigation } from "@react-navigation/native";
 import { NavigationProp } from "../../../types/navigation";
 
 export function MapOverlays({ state, handlers }: { state: any; handlers: any }) {
-  const { isPremium } = useSubscription();
   const navigation = useNavigation<NavigationProp>();
 
   return (
@@ -25,6 +24,8 @@ export function MapOverlays({ state, handlers }: { state: any; handlers: any }) 
       <MapControls
         onRecenterPress={handlers.handleRecenterPress}
         onSettingsPress={handlers.handleSettingsPress}
+        onResetPress={handlers.handleResetToMyLocation}
+        hasCustomLocation={!!state.selectedLocation}
       />
 
       {state.showLocationSelector && (state.selectedLocation || state.location) && (
@@ -60,8 +61,19 @@ export function MapOverlays({ state, handlers }: { state: any; handlers: any }) 
         visible={state.showProfileModal}
         runner={state.selectedRunner}
         onClose={() => handlers.setShowProfileModal(false)}
-        onConnect={(runnerId) => handlers.handleConnect(runnerId, isPremium)}
+        onMessage={(runnerId, runnerName, avatar) => handlers.handleMessage(runnerId, runnerName, avatar)}
+        onConnect={(runnerId) => handlers.handleConnect(runnerId)}
         relationshipStatus={state.selectedRunner ? state.relationships?.[state.selectedRunner.id] ?? 'none' : 'none'}
+      />
+
+      <ClusterCarousel
+        visible={state.showClusterCarousel}
+        runners={state.selectedCluster ?? []}
+        relationships={state.relationships ?? {}}
+        onClose={handlers.handleCloseCluster}
+        onRunnerPress={handlers.handleRunnerPress}
+        onConnect={(runnerId) => handlers.handleConnect(runnerId)}
+        onMessage={(runnerId, runnerName, avatar) => handlers.handleMessage(runnerId, runnerName, avatar)}
       />
 
       <PremiumModal

@@ -1,5 +1,6 @@
 import React from "react";
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, Image, StyleSheet } from "react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { ChatMessage as ChatMessageType } from "../../types/message";
 import { COLORS } from "../../constants/colors";
 import { useAuth } from "../../contexts/AuthContext";
@@ -7,48 +8,102 @@ import { useAuth } from "../../contexts/AuthContext";
 interface ChatMessageProps {
   message: ChatMessageType;
   senderName?: string;
+  contactAvatar?: string;
+  currentUserAvatar?: string;
 }
 
-export function ChatMessage({ message, senderName }: ChatMessageProps) {
+export function ChatMessage({ message, senderName, contactAvatar, currentUserAvatar }: ChatMessageProps) {
   const { user } = useAuth();
-  // Vérifier si c'est le message de l'utilisateur actuel
   const isOwnMessage = message.senderId === user?.id || message.senderId === "currentUser";
 
   return (
-    <View style={[styles.wrapper, isOwnMessage ? styles.wrapperOwn : styles.wrapperOther]}>
-      {senderName && !isOwnMessage && (
-        <Text style={styles.senderName}>{senderName}</Text>
+    <View style={[styles.row, isOwnMessage ? styles.rowOwn : styles.rowOther]}>
+      {/* Avatar contact — à gauche des messages reçus */}
+      {!isOwnMessage && (
+        <View style={styles.avatarContainer}>
+          {contactAvatar ? (
+            <Image source={{ uri: contactAvatar }} style={styles.avatar} />
+          ) : (
+            <View style={[styles.avatar, styles.avatarPlaceholder]}>
+              <MaterialCommunityIcons name="account" size={18} color={COLORS.primary} />
+            </View>
+          )}
+        </View>
       )}
-      <View
-        style={[
-          styles.container,
-          isOwnMessage ? styles.ownMessage : styles.otherMessage,
-        ]}
-      >
-        <Text
-          style={[styles.text, isOwnMessage ? styles.ownText : styles.otherText]}
-          selectable
-        >
-          {message.content}
-        </Text>
-        <Text style={[styles.time, isOwnMessage ? styles.ownTime : styles.otherTime]}>
-          {message.time}
-        </Text>
+
+      <View style={[styles.bubbleWrapper, isOwnMessage ? styles.bubbleWrapperOwn : styles.bubbleWrapperOther]}>
+        {senderName && !isOwnMessage && (
+          <Text style={styles.senderName}>{senderName}</Text>
+        )}
+        <View style={[styles.bubble, isOwnMessage ? styles.ownMessage : styles.otherMessage]}>
+          <Text style={[styles.text, isOwnMessage ? styles.ownText : styles.otherText]} selectable>
+            {message.content}
+          </Text>
+          <Text style={[styles.time, isOwnMessage ? styles.ownTime : styles.otherTime]}>
+            {message.time}
+          </Text>
+        </View>
       </View>
+
+      {/* Avatar utilisateur courant — à droite des messages envoyés */}
+      {isOwnMessage && (
+        <View style={styles.avatarContainer}>
+          {currentUserAvatar ? (
+            <Image source={{ uri: currentUserAvatar }} style={styles.avatar} />
+          ) : (
+            <View style={[styles.avatar, styles.avatarPlaceholderOwn]}>
+              <MaterialCommunityIcons name="account" size={18} color="white" />
+            </View>
+          )}
+        </View>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrapper: {
-    marginBottom: 8,
-    maxWidth: "75%",
+  row: {
+    flexDirection: "row",
+    marginBottom: 10,
+    alignItems: "flex-end",
+    gap: 8,
   },
-  wrapperOwn: {
-    alignSelf: "flex-end",
+  rowOwn: {
+    justifyContent: "flex-end",
   },
-  wrapperOther: {
-    alignSelf: "flex-start",
+  rowOther: {
+    justifyContent: "flex-start",
+  },
+  avatarContainer: {
+    width: 32,
+    height: 32,
+    flexShrink: 0,
+  },
+  avatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+  },
+  avatarPlaceholder: {
+    backgroundColor: COLORS.backgroundLight,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  avatarPlaceholderOwn: {
+    backgroundColor: COLORS.primary,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  bubbleWrapper: {
+    maxWidth: "72%",
+  },
+  bubbleWrapperOwn: {
+    alignItems: "flex-end",
+  },
+  bubbleWrapperOther: {
+    alignItems: "flex-start",
   },
   senderName: {
     fontSize: 11,
@@ -57,14 +112,13 @@ const styles = StyleSheet.create({
     marginBottom: 3,
     marginLeft: 4,
   },
-  container: {
-    marginBottom: 0,
+  bubble: {
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 20,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.08,
     shadowRadius: 2,
     elevation: 2,
   },

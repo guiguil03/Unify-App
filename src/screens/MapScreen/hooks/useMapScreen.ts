@@ -20,11 +20,26 @@ import { showErrorToast, showInfoToast, showSuccessToast } from "../../../utils/
 
 export function useMapScreen() {
   const mapRef = useRef<MapView>(null);
+  // Guard: first load complete → enables realtime + radius/location effects
+  const isInitialLoadComplete = useRef(false);
+  // Guard: first focus = no runner reload (useEffect[location] handles it)
+  const hasFocusedOnce = useRef(false);
+  // Cooldown: ignore realtime events fired within 15s of a successful load
+  // (prevents our own updateUserLocation write from triggering a filter-apply reload)
+  const lastLoadTimeRef = useRef(0);
+
   const navigation = useNavigation<NavigationProp>();
   const { location, loading, refreshLocation } = useLocation();
   const { contacts, relationships, addContact } = useContacts();
   const { settings, reloadSettings, updateSetting } = useSettings();
   const { profile, refetch: refetchProfile } = useProfile();
+
+  // Stable refs so loadNearbyRunners can have [] deps and never be recreated
+  const settingsRef = useRef(settings);
+  const profileRef = useRef(profile);
+  const searchCenterRef = useRef<{ center: Location; radius: number } | null>(null);
+  useEffect(() => { settingsRef.current = settings; }, [settings]);
+  useEffect(() => { profileRef.current = profile; }, [profile]);
 
   const [state, setState] = useState({
     selectedLocation: null as Location | null,
@@ -37,6 +52,9 @@ export function useMapScreen() {
     isRunnersListExpanded: false,
     showProfileModal: false,
     showPremiumModal: false,
+    // Cluster carousel
+    selectedCluster: null as Runner[] | null,
+    showClusterCarousel: false,
     location,
     contacts,
     relationships: relationships as Record<string, ContactRelationshipStatus>,
@@ -51,30 +69,24 @@ export function useMapScreen() {
     }));
   }, [contacts, relationships]);
 
+  // Stable callback — reads settings/profile from refs, never recreated on settings/profile change
   const loadNearbyRunners = useCallback(async (center: Location, radius: number) => {
+    searchCenterRef.current = { center, radius };
     try {
       setState(prev => ({ ...prev, loadingRunners: true }));
-      const nearbyRunners = await RunnersService.getNearbyRunners(
-        center,
-        radius
-      );
-      
-      // Filtrer par distance avec le rayon de recherche
-      let filtered = filterRunnersByDistance(
-        nearbyRunners,
-        center,
-        radius
-      );
+      const nearbyRunners = await RunnersService.getNearbyRunners(center, radius);
 
-      // Appliquer les filtres de préférences
+      let filtered = filterRunnersByDistance(nearbyRunners, center, radius);
       filtered = filterRunnersByPreferences(
         filtered,
-        settings,
-        profile?.gender,
-        profile?.stats?.averagePace,
-        profile?.preferredTime
+        settingsRef.current,
+        profileRef.current?.gender,
+        profileRef.current?.stats?.averagePace,
+        profileRef.current?.preferredTime
       );
 
+      isInitialLoadComplete.current = true;
+      lastLoadTimeRef.current = Date.now();
       setState(prev => ({
         ...prev,
         activeSearchZone: true,
@@ -83,13 +95,11 @@ export function useMapScreen() {
       }));
     } catch (error) {
       if (__DEV__) console.error('Nearby runners load failed:', error);
-      setState(prev => ({
-        ...prev,
-        filteredRunners: [],
-        loadingRunners: false,
-      }));
+      // Keep existing runners on error — do NOT clear filteredRunners
+      setState(prev => ({ ...prev, loadingRunners: false }));
     }
-  }, [settings, profile]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Stable — reads settings/profile from refs
 
   // Charger les coureurs au démarrage et mettre à jour la position de l'utilisateur
   useEffect(() => {
@@ -101,15 +111,19 @@ export function useMapScreen() {
       }).catch((error: unknown) => {
         if (__DEV__) console.error('Location update failed:', error);
       });
-      
+
       // Charger les utilisateurs à proximité
       loadNearbyRunners(location, state.searchRadius);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location]);
 
-  // Callback pour recharger les coureurs lors d'un changement en temps réel
+  // Callback pour recharger les coureurs lors d'un changement en temps réel.
+  // Cooldown de 15s : évite que notre propre updateUserLocation déclenche un rechargement
+  // filtré (le changement Supabase remonte via postgres_changes ~3s après l'écriture).
   const handleRealtimeUpdate = useCallback(() => {
+    if (!isInitialLoadComplete.current) return;
+    if (Date.now() - lastLoadTimeRef.current < 15000) return;
     const searchCenter = state.selectedLocation || location;
     if (searchCenter) {
       loadNearbyRunners(searchCenter, state.searchRadius);
@@ -125,26 +139,31 @@ export function useMapScreen() {
     enabled: true,
   });
 
+  // Recharger quand le rayon ou la zone de recherche change (après le premier chargement)
   useEffect(() => {
-    if (location && state.activeSearchZone) {
-      const searchCenter = state.selectedLocation || location;
-      loadNearbyRunners(searchCenter, state.searchRadius);
-    }
-  }, [state.searchRadius, state.activeSearchZone, location, state.selectedLocation, loadNearbyRunners, settings, profile]);
+    if (!isInitialLoadComplete.current) return;
+    const searchCenter = state.selectedLocation || location;
+    if (!searchCenter) return;
+    loadNearbyRunners(searchCenter, state.searchRadius);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.searchRadius, state.selectedLocation, loadNearbyRunners]);
 
-  // Recharger les settings et le profil quand on revient sur la carte
-  // Cela permet de mettre à jour les filtres si l'utilisateur a modifié les paramètres
-  // Le useEffect existant se chargera de recharger les coureurs quand settings/profile changent
+  // Recharger les settings et le profil quand on revient sur la carte.
+  // Premier focus : useEffect[location] gère déjà le chargement — pas de double appel.
+  // Focusses suivants : recharger après refresh settings/profile.
   useFocusEffect(
     useCallback(() => {
+      const isFirstFocus = !hasFocusedOnce.current;
+      hasFocusedOnce.current = true;
       const refreshData = async () => {
-        // Recharger les settings depuis la base de données
-        await reloadSettings();
-        // Recharger le profil au cas où il aurait changé
-        await refetchProfile();
+        // Lancer en parallèle pour diviser le temps d'attente par 2
+        await Promise.all([reloadSettings(), refetchProfile()]);
+        if (!isFirstFocus && isInitialLoadComplete.current && searchCenterRef.current) {
+          loadNearbyRunners(searchCenterRef.current.center, searchCenterRef.current.radius);
+        }
       };
       refreshData();
-    }, [reloadSettings, refetchProfile])
+    }, [reloadSettings, refetchProfile, loadNearbyRunners])
   );
 
   const handlers = {
@@ -164,12 +183,31 @@ export function useMapScreen() {
       }
     },
 
+    handleClusterPress: (runners: Runner[]) => {
+      setState(prev => ({
+        ...prev,
+        selectedCluster: runners,
+        showClusterCarousel: true,
+        isRunnersListExpanded: false,
+        showProfileModal: false,
+      }));
+    },
+
+    handleCloseCluster: () => {
+      setState(prev => ({
+        ...prev,
+        showClusterCarousel: false,
+        selectedCluster: null,
+      }));
+    },
+
     handleRunnerPress: (runner: Runner) => {
       setState(prev => ({
         ...prev,
         selectedRunner: runner,
         showProfileModal: true,
         isRunnersListExpanded: false,
+        showClusterCarousel: false,
       }));
     },
 
@@ -190,11 +228,37 @@ export function useMapScreen() {
     },
 
     handleRecenterPress: async () => {
-      const centerLocation = state.selectedLocation || state.location;
+      const centerLocation = state.selectedLocation || location;
       if (centerLocation && mapRef.current) {
         const region = createRegionFromRadius(centerLocation, state.searchRadius);
         mapRef.current.animateToRegion(region, GOOGLE_MAPS_CONFIG.ANIMATION_DURATION);
       }
+    },
+
+    handleResetToMyLocation: () => {
+      if (!location) return;
+      // Réinitialisation complète : on efface tout et on recharge à la position GPS
+      setState(prev => ({
+        ...prev,
+        selectedLocation: null,
+        selectedAddress: '',
+        showLocationSelector: false,
+        activeSearchZone: false,
+        filteredRunners: [],
+        isRunnersListExpanded: false,
+        showProfileModal: false,
+        showPremiumModal: false,
+        showClusterCarousel: false,
+        selectedCluster: null,
+        selectedRunner: null,
+      }));
+      // Recentrer la carte sur la position GPS
+      if (mapRef.current) {
+        const region = createRegionFromRadius(location, state.searchRadius);
+        mapRef.current.animateToRegion(region, GOOGLE_MAPS_CONFIG.ANIMATION_DURATION);
+      }
+      // Recharger les coureurs à la position GPS
+      loadNearbyRunners(location, state.searchRadius);
     },
 
     handleSettingsPress: () => {
@@ -202,7 +266,7 @@ export function useMapScreen() {
         ...prev,
         showLocationSelector: true,
         isRunnersListExpanded: false,
-        selectedLocation: prev.selectedLocation || prev.location,
+        selectedLocation: prev.selectedLocation || location,
         selectedAddress: prev.selectedAddress || "Ma position actuelle",
       }));
     },
@@ -215,15 +279,15 @@ export function useMapScreen() {
     },
 
     handleValidateZone: async () => {
-      const searchCenter = state.selectedLocation || state.location;
+      const searchCenter = state.selectedLocation || location;
       if (searchCenter) {
         // Fermer le LocationSelector immédiatement
-        setState(prev => ({ 
-          ...prev, 
+        setState(prev => ({
+          ...prev,
           showLocationSelector: false,
-          activeSearchZone: true, // Activer la zone de recherche
+          activeSearchZone: true,
         }));
-        
+
         // Charger les coureurs avec les filtres
         await loadNearbyRunners(searchCenter, state.searchRadius);
 
@@ -275,6 +339,11 @@ export function useMapScreen() {
       }
     },
 
+    handleMessage: (runnerId: string, runnerName: string, avatar?: string) => {
+      setState(prev => ({ ...prev, showProfileModal: false }));
+      navigation.navigate('Chat', { contactId: runnerId, contactName: runnerName, contactAvatar: avatar });
+    },
+
     setIsRunnersListExpanded: (expanded: boolean) => {
       setState(prev => ({ ...prev, isRunnersListExpanded: expanded }));
     },
@@ -288,38 +357,25 @@ export function useMapScreen() {
     },
 
     handleFilterChange: async (key: keyof Settings, value: boolean) => {
-      // Mettre à jour le setting
       await updateSetting(key, value);
-      
-      // Recharger les settings pour avoir les valeurs à jour
-      await reloadSettings();
-      
-      // Recharger les coureurs avec les nouveaux filtres
-      const searchCenter = state.selectedLocation || state.location;
+
+      const searchCenter = state.selectedLocation || location;
       if (searchCenter && state.activeSearchZone) {
-        // Utiliser les nouveaux settings directement dans le filtrage
-        const updatedSettings = { ...settings, [key]: value };
+        const updatedSettings = { ...settingsRef.current, [key]: value };
         try {
           setState(prev => ({ ...prev, loadingRunners: true }));
           const nearbyRunners = await RunnersService.getNearbyRunners(
             searchCenter,
             state.searchRadius
           );
-          
-          // Filtrer par distance avec le rayon de recherche
-          let filtered = filterRunnersByDistance(
-            nearbyRunners,
-            searchCenter,
-            state.searchRadius
-          );
 
-          // Appliquer les filtres de préférences avec les nouveaux settings
+          let filtered = filterRunnersByDistance(nearbyRunners, searchCenter, state.searchRadius);
           filtered = filterRunnersByPreferences(
             filtered,
             updatedSettings,
-            profile?.gender,
-            profile?.stats?.averagePace,
-            profile?.preferredTime
+            profileRef.current?.gender,
+            profileRef.current?.stats?.averagePace,
+            profileRef.current?.preferredTime
           );
 
           setState(prev => ({
@@ -329,10 +385,7 @@ export function useMapScreen() {
           }));
         } catch (error) {
           if (__DEV__) console.error('Filter change runners reload failed:', error);
-          setState(prev => ({
-            ...prev,
-            loadingRunners: false,
-          }));
+          setState(prev => ({ ...prev, loadingRunners: false }));
         }
       }
     },

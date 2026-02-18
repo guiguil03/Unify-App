@@ -1,6 +1,7 @@
 import { Message, ChatMessage } from '../types/message';
 import { supabase } from '../config/supabase';
 import { getCurrentUserFromDB, formatTime } from '../utils/supabaseHelpers';
+import { ContactsService } from './ContactsService';
 
 export class MessagesService {
   /**
@@ -106,6 +107,22 @@ export class MessagesService {
         .single();
 
       if (error) throw error;
+
+      // Auto-friendship : si le contact a déjà envoyé un message dans cette conversation,
+      // on crée la relation d'amitié automatiquement (ou on accepte la demande entrante)
+      try {
+        const { count: contactMsgCount } = await supabase
+          .from('chat_messages')
+          .select('*', { count: 'exact', head: true })
+          .eq('conversation_id', conversation.id)
+          .eq('sender_id', contactId);
+
+        if ((contactMsgCount ?? 0) > 0) {
+          ContactsService.addContact(contactId).catch(() => {});
+        }
+      } catch {
+        // Silently ignore — ne pas bloquer l'envoi du message
+      }
 
       return {
         id: data.id,

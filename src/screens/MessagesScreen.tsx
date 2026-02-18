@@ -31,8 +31,8 @@ export default function MessagesScreen() {
   const navigation = useNavigation<NavigationProp>();
   const { isPremium } = useSubscription();
 
-  const handleMessagePress = (contactId: string, contactName: string) => {
-    navigation.navigate('Chat', { contactId, contactName });
+  const handleMessagePress = (contactId: string, contactName: string, contactAvatar?: string) => {
+    navigation.navigate('Chat', { contactId, contactName, contactAvatar });
   };
 
   const handleGroupPress = (groupChatId: string, groupName: string) => {
@@ -96,7 +96,7 @@ export default function MessagesScreen() {
             renderItem={({ item }) => (
               <MessagePreview
                 message={item}
-                onPress={() => handleMessagePress(item.contactId, item.contactName)}
+                onPress={() => handleMessagePress(item.contactId, item.contactName, item.contactAvatar)}
               />
             )}
             contentContainerStyle={styles.list}

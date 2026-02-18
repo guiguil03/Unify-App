@@ -11,7 +11,8 @@ interface RunnerProfileModalProps {
   visible: boolean;
   runner: Runner | null;
   onClose: () => void;
-  onConnect: (runnerId: string) => void;
+  onMessage: (runnerId: string, runnerName: string, avatar?: string) => void;
+  onConnect?: (runnerId: string) => void;
   relationshipStatus?: ContactRelationshipStatus | 'none';
 }
 
@@ -19,6 +20,7 @@ export function RunnerProfileModal({
   visible,
   runner,
   onClose,
+  onMessage,
   onConnect,
   relationshipStatus,
 }: RunnerProfileModalProps) {
@@ -31,25 +33,19 @@ export function RunnerProfileModal({
     <Modal visible={visible} onClose={onClose}>
       {runner ? (
         <>
-          <RunnerHeader
-            name={safeName}
-            avatar={runner.avatar}
-          />
+          <RunnerHeader name={safeName} avatar={runner.avatar} />
           <RunnerStats pace={safePace} distance={safeDistance} />
 
-          <View
-            style={styles.bio}
-            accessible
-            accessibilityLabel={`À propos : ${safeBio}`}
-          >
+          <View style={styles.bio}>
             <Text style={styles.bioTitle}>À propos</Text>
             <Text style={styles.bioText}>{safeBio}</Text>
           </View>
 
           <ConnectButton
             status={relationshipStatus}
-            onConnect={() => {
-              if (runner.id) onConnect(runner.id);
+            onConnect={onConnect ? () => onConnect(runner.id) : undefined}
+            onMessage={() => {
+              if (runner.id) onMessage(runner.id, runner.name, runner.avatar);
             }}
           />
         </>

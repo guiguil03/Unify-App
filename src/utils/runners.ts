@@ -43,30 +43,29 @@ export function filterRunnersByPreferences(
 ): Runner[] {
   let filtered = [...runners];
 
-  // Filtre par genre
+  // Filtre par genre — les coureurs sans genre renseigné sont inclus
   if (settings.sameGenderOnly && currentUserGender) {
-    filtered = filtered.filter(runner => runner.gender === currentUserGender);
+    filtered = filtered.filter(runner => !runner.gender || runner.gender === currentUserGender);
   }
 
   // Filtre par allure similaire (±1 min/km = ±60 secondes)
+  // Les coureurs sans allure renseignée sont inclus (on ne les exclut pas faute de données)
   if (settings.similarPaceOnly && currentUserAveragePace) {
     const currentPaceSeconds = parsePaceToSeconds(currentUserAveragePace);
     if (currentPaceSeconds !== null) {
       filtered = filtered.filter(runner => {
-        if (!runner.averagePace) return false;
+        if (!runner.averagePace) return true; // pas de données → inclure
         const runnerPaceSeconds = parsePaceToSeconds(runner.averagePace);
-        if (runnerPaceSeconds === null) return false;
+        if (runnerPaceSeconds === null) return true; // format invalide → inclure
         // ±1 min/km = ±60 secondes
         return Math.abs(runnerPaceSeconds - currentPaceSeconds) <= 60;
       });
     }
   }
 
-  // Filtre par horaires similaires
+  // Filtre par horaires similaires — les coureurs sans horaire renseigné sont inclus
   if (settings.similarSchedule && currentUserPreferredTime) {
-    filtered = filtered.filter(runner => {
-      return runner.preferredTime === currentUserPreferredTime;
-    });
+    filtered = filtered.filter(runner => !runner.preferredTime || runner.preferredTime === currentUserPreferredTime);
   }
 
   return filtered;

@@ -14,6 +14,7 @@ export function MapContent({ mapRef, state, handlers }: { mapRef: React.RefObjec
       selectedRunner={state.selectedRunner}
       onRunnerPress={handlers.handleRunnerPress}
       onMarkerPress={handlers.handleMarkerPress}
+      onClusterPress={handlers.handleClusterPress}
       onMapPress={handlers.handleMapPress}
     >
       {(state.selectedLocation || state.location) && (

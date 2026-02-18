@@ -21,6 +21,7 @@ export type RootStackParamList = {
   Chat: {
     contactId: string;
     contactName: string;
+    contactAvatar?: string;
   };
   CreateStory: undefined;
   ViewStories: {

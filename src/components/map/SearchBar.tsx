@@ -89,6 +89,6 @@ const styles = StyleSheet.create({
     top: 20,
     left: 16,
     right: 16,
-    zIndex: 1,
+    zIndex: 20,
   },
 });

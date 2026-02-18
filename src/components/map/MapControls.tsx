@@ -5,11 +5,15 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 interface MapControlsProps {
   onRecenterPress: () => void;
   onSettingsPress: () => void;
+  onResetPress?: () => void;
+  hasCustomLocation?: boolean;
 }
 
 export function MapControls({
   onRecenterPress,
   onSettingsPress,
+  onResetPress,
+  hasCustomLocation = false,
 }: MapControlsProps) {
   return (
     <View style={styles.container}>
@@ -18,12 +22,22 @@ export function MapControls({
       </TouchableOpacity>
 
       <TouchableOpacity style={styles.button} onPress={onRecenterPress}>
-        <MaterialCommunityIcons
-          name="crosshairs-gps"
-          size={24}
-          color="#7D80F4"
-        />
+        <MaterialCommunityIcons name="crosshairs-gps" size={24} color="#7D80F4" />
       </TouchableOpacity>
+
+      {/* Bouton retour à la position GPS — mis en avant quand une zone custom est sélectionnée */}
+      {onResetPress && (
+        <TouchableOpacity
+          style={[styles.button, hasCustomLocation && styles.buttonActive]}
+          onPress={onResetPress}
+        >
+          <MaterialCommunityIcons
+            name="home-map-marker"
+            size={24}
+            color={hasCustomLocation ? "white" : "#7D80F4"}
+          />
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
@@ -33,7 +47,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     right: 16,
     top: Platform.OS === "ios" ? 90 : 70,
-    flexDirection: "row",
+    flexDirection: "column",
     gap: 8,
   },
   button: {
@@ -45,5 +59,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+  },
+  buttonActive: {
+    backgroundColor: "#7D80F4",
+    shadowColor: "#7D80F4",
+    shadowOpacity: 0.4,
+    elevation: 5,
   },
 });
