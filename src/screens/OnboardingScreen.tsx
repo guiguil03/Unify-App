@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,10 +6,12 @@ import {
   StyleSheet,
   ScrollView,
   TextInput,
-  Platform,
   ActivityIndicator,
   Image,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -27,7 +29,7 @@ const TRAITS = [
   { id: 'bavard', label: 'Bavard(e)', icon: 'message-text' },
   { id: 'drole', label: 'Drôle', icon: 'emoticon-happy' },
   { id: 'sportif', label: 'Sportif(ve)', icon: 'run' },
-  { id: 'silencieux', label: 'Silencieux(se)', icon: 'message-text-outline' },
+  { id: 'silencieux', label: 'Silencieux', icon: 'message-text-outline' },
   { id: 'serieux', label: 'Sérieux', icon: 'target' },
   { id: 'bienveillant', label: 'Bienveillant', icon: 'flower' },
   { id: 'endurant', label: 'Endurant', icon: 'arm-flex' },
@@ -37,50 +39,176 @@ const TRAITS = [
 
 const MONTHS = [
   'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
-  'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
+  'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre',
 ];
 
+const DAYS = Array.from({ length: 31 }, (_, i) => i + 1);
+const YEARS = Array.from({ length: 75 }, (_, i) => 1950 + i).reverse();
+
+// ─────────────────────────────────────────────
+// Drum-roll wheel picker
+// ─────────────────────────────────────────────
+const ITEM_HEIGHT = 54;
+const VISIBLE_ITEMS = 5;
+const PICKER_HEIGHT = ITEM_HEIGHT * VISIBLE_ITEMS;
+
+interface WheelPickerProps {
+  data: (string | number)[];
+  selectedValue: string | number;
+  onChange: (value: string | number) => void;
+  renderLabel?: (value: string | number) => string;
+  flex?: number;
+}
+
+function WheelPicker({ data, selectedValue, onChange, renderLabel, flex = 1 }: WheelPickerProps) {
+  const scrollRef = useRef<ScrollView>(null);
+  const currentIndexRef = useRef(Math.max(0, data.indexOf(selectedValue)));
+  const [activeIndex, setActiveIndex] = useState(currentIndexRef.current);
+
+  useEffect(() => {
+    const idx = Math.max(0, data.indexOf(selectedValue));
+    currentIndexRef.current = idx;
+    setActiveIndex(idx);
+    // Small delay so the scroll view is mounted
+    setTimeout(() => {
+      scrollRef.current?.scrollTo({ y: idx * ITEM_HEIGHT, animated: false });
+    }, 50);
+  }, []);
+
+  const handleScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const y = e.nativeEvent.contentOffset.y;
+    const idx = Math.round(y / ITEM_HEIGHT);
+    const clamped = Math.max(0, Math.min(idx, data.length - 1));
+    if (clamped !== currentIndexRef.current) {
+      currentIndexRef.current = clamped;
+      setActiveIndex(clamped);
+    }
+  }, [data]);
+
+  const handleMomentumScrollEnd = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const y = e.nativeEvent.contentOffset.y;
+    const idx = Math.round(y / ITEM_HEIGHT);
+    const clamped = Math.max(0, Math.min(idx, data.length - 1));
+    currentIndexRef.current = clamped;
+    setActiveIndex(clamped);
+    onChange(data[clamped]);
+  }, [data, onChange]);
+
+  return (
+    <View style={[wheelStyles.container, { flex }]}>
+      {/* Selection band */}
+      <View style={wheelStyles.selectionBand} pointerEvents="none" />
+
+      {/* Top fade */}
+      <LinearGradient
+        colors={['rgba(245,245,245,1)', 'rgba(245,245,245,0)']}
+        style={wheelStyles.fadeTop}
+        pointerEvents="none"
+      />
+
+      <ScrollView
+        ref={scrollRef}
+        showsVerticalScrollIndicator={false}
+        snapToInterval={ITEM_HEIGHT}
+        decelerationRate="fast"
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+        onMomentumScrollEnd={handleMomentumScrollEnd}
+        contentContainerStyle={{ paddingVertical: ITEM_HEIGHT * 2 }}
+      >
+        {data.map((item, index) => {
+          const dist = Math.abs(index - activeIndex);
+          const isSelected = dist === 0;
+          const opacity = isSelected ? 1 : dist === 1 ? 0.45 : 0.2;
+          const fontSize = isSelected ? 20 : dist === 1 ? 17 : 15;
+          const fontWeight: '700' | '400' = isSelected ? '700' : '400';
+          const color = isSelected ? COLORS.primary : COLORS.text;
+
+          return (
+            <View key={String(item)} style={wheelStyles.item}>
+              <Text style={{ fontSize, fontWeight, color, opacity }}>
+                {renderLabel ? renderLabel(item) : String(item).padStart(2, '0')}
+              </Text>
+            </View>
+          );
+        })}
+      </ScrollView>
+
+      {/* Bottom fade */}
+      <LinearGradient
+        colors={['rgba(245,245,245,0)', 'rgba(245,245,245,1)']}
+        style={wheelStyles.fadeBottom}
+        pointerEvents="none"
+      />
+    </View>
+  );
+}
+
+const wheelStyles = StyleSheet.create({
+  container: {
+    height: PICKER_HEIGHT,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  item: {
+    height: ITEM_HEIGHT,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  selectionBand: {
+    position: 'absolute',
+    top: ITEM_HEIGHT * 2,
+    height: ITEM_HEIGHT,
+    left: 4,
+    right: 4,
+    borderTopWidth: 1.5,
+    borderBottomWidth: 1.5,
+    borderColor: COLORS.primary,
+    zIndex: 2,
+    borderRadius: 2,
+  },
+  fadeTop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: ITEM_HEIGHT * 2,
+    zIndex: 2,
+  },
+  fadeBottom: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: ITEM_HEIGHT * 2,
+    zIndex: 2,
+  },
+});
+
+// ─────────────────────────────────────────────
+// Onboarding screen
+// ─────────────────────────────────────────────
 export default function OnboardingScreen({ route }: Props) {
   const navigation = useNavigation();
   const [currentStep, setCurrentStep] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Données du formulaire
   const [gender, setGender] = useState<'male' | 'female' | 'other' | null>(null);
-  const [birthDate, setBirthDate] = useState<Date>(new Date(2000, 0, 1));
+  const [birthDay, setBirthDay] = useState(1);
+  const [birthMonth, setBirthMonth] = useState(0);
+  const [birthYear, setBirthYear] = useState(2000);
   const [selectedTraits, setSelectedTraits] = useState<string[]>([]);
   const [pseudo, setPseudo] = useState('');
-  
-  const dayScrollRef = useRef<ScrollView>(null);
-  const monthScrollRef = useRef<ScrollView>(null);
-  const yearScrollRef = useRef<ScrollView>(null);
 
   const totalSteps = 6;
   const progress = ((currentStep + 1) / totalSteps) * 100;
 
-  // Scroll automatique vers la valeur sélectionnée pour la date
-  useEffect(() => {
-    if (currentStep === 2) {
-      const days = Array.from({ length: 31 }, (_, i) => i + 1);
-      const years = Array.from({ length: 75 }, (_, i) => 1950 + i).reverse();
-      const selectedDayIndex = birthDate.getDate() - 1;
-      const selectedMonthIndex = birthDate.getMonth();
-      const selectedYearIndex = years.findIndex(y => y === birthDate.getFullYear());
-      
-      setTimeout(() => {
-        dayScrollRef.current?.scrollTo({ y: selectedDayIndex * 72, animated: true });
-        monthScrollRef.current?.scrollTo({ y: selectedMonthIndex * 72, animated: true });
-        yearScrollRef.current?.scrollTo({ y: selectedYearIndex * 72, animated: true });
-      }, 300);
-    }
-  }, [currentStep, birthDate]);
+  const getBirthDate = () => new Date(birthYear, birthMonth, birthDay);
 
   const toggleTrait = (traitId: string) => {
-    if (selectedTraits.includes(traitId)) {
-      setSelectedTraits(selectedTraits.filter(id => id !== traitId));
-    } else {
-      setSelectedTraits([...selectedTraits, traitId]);
-    }
+    setSelectedTraits(prev =>
+      prev.includes(traitId) ? prev.filter(id => id !== traitId) : [...prev, traitId]
+    );
   };
 
   const handleNext = () => {
@@ -106,7 +234,7 @@ export default function OnboardingScreen({ route }: Props) {
       return;
     }
 
-    // Validation de la date de naissance
+    const birthDate = getBirthDate();
     const now = new Date();
     const age = now.getFullYear() - birthDate.getFullYear();
     const monthDiff = now.getMonth() - birthDate.getMonth();
@@ -124,7 +252,6 @@ export default function OnboardingScreen({ route }: Props) {
       return;
     }
 
-    // Validation du pseudo
     const trimmedPseudo = pseudo.trim();
     if (!trimmedPseudo) {
       showErrorToast('Veuillez entrer un pseudo');
@@ -148,7 +275,7 @@ export default function OnboardingScreen({ route }: Props) {
     try {
       await ProfileService.updateProfile({
         name: trimmedPseudo,
-        gender: gender,
+        gender,
         birthDate: birthDate.toISOString().split('T')[0],
         traits: selectedTraits.join(','),
       });
@@ -182,7 +309,25 @@ export default function OnboardingScreen({ route }: Props) {
             <Text style={styles.mainTitle}>Avant de commencer...</Text>
             <Text style={styles.mainText}>Dites en plus sur vous !</Text>
             <View style={styles.illustrationContainer}>
-              <MaterialCommunityIcons name="account-question" size={120} color={COLORS.primary} />
+              <MaterialCommunityIcons name="account-question" size={100} color={COLORS.primary} />
+            </View>
+            <View style={styles.previewCards}>
+              {[
+                { icon: 'gender-male-female', label: 'Votre genre', desc: 'Pour personnaliser votre expérience' },
+                { icon: 'cake-variant', label: 'Votre date de naissance', desc: 'Réservé aux 18 ans et plus' },
+                { icon: 'star-circle', label: 'Votre personnalité', desc: 'Pour trouver des partenaires compatibles' },
+                { icon: 'at', label: 'Votre pseudo', desc: 'Comment vous serez affiché sur l\'app' },
+              ].map((item, i) => (
+                <View key={i} style={styles.previewCard}>
+                  <View style={styles.previewCardIcon}>
+                    <MaterialCommunityIcons name={item.icon as any} size={22} color={COLORS.primary} />
+                  </View>
+                  <View style={styles.previewCardText}>
+                    <Text style={styles.previewCardLabel}>{item.label}</Text>
+                    <Text style={styles.previewCardDesc}>{item.desc}</Text>
+                  </View>
+                </View>
+              ))}
             </View>
           </View>
         );
@@ -220,92 +365,45 @@ export default function OnboardingScreen({ route }: Props) {
         );
 
       case 2:
-        const days = Array.from({ length: 31 }, (_, i) => i + 1);
-        const years = Array.from({ length: 75 }, (_, i) => 1950 + i).reverse();
-        
         return (
           <View style={styles.stepContainer}>
-            <Text style={styles.stepTitle}>Quel est votre Date</Text>
-            <Text style={styles.mainText}>De naissance ?</Text>
-            <View style={styles.dateContainer}>
-              <View style={styles.dateFieldContainer}>
-                <ScrollView 
-                  ref={dayScrollRef}
-                  style={styles.dateScrollView} 
-                  showsVerticalScrollIndicator={false}
-                  contentContainerStyle={styles.dateScrollContent}
-                >
-                  {days.map((day) => (
-                    <TouchableOpacity
-                      key={day}
-                      style={[
-                        styles.dateField,
-                        birthDate.getDate() === day && styles.dateFieldSelected
-                      ]}
-                      onPress={() => setBirthDate(new Date(birthDate.getFullYear(), birthDate.getMonth(), day))}
-                    >
-                      <Text style={[
-                        styles.dateFieldText,
-                        birthDate.getDate() === day && styles.dateFieldTextSelected
-                      ]}>
-                        {day.toString().padStart(2, '0')}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </View>
-              <View style={styles.dateFieldContainer}>
-                <ScrollView 
-                  ref={monthScrollRef}
-                  style={styles.dateScrollView} 
-                  showsVerticalScrollIndicator={false}
-                  contentContainerStyle={styles.dateScrollContent}
-                >
-                  {MONTHS.map((month, index) => (
-                    <TouchableOpacity
-                      key={index}
-                      style={[
-                        styles.dateField,
-                        birthDate.getMonth() === index && styles.dateFieldSelected
-                      ]}
-                      onPress={() => setBirthDate(new Date(birthDate.getFullYear(), index, birthDate.getDate()))}
-                    >
-                      <Text style={[
-                        styles.dateFieldText,
-                        birthDate.getMonth() === index && styles.dateFieldTextSelected
-                      ]}>
-                        {month}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </View>
-              <View style={styles.dateFieldContainer}>
-                <ScrollView 
-                  ref={yearScrollRef}
-                  style={styles.dateScrollView} 
-                  showsVerticalScrollIndicator={false}
-                  contentContainerStyle={styles.dateScrollContent}
-                >
-                  {years.map((year) => (
-                    <TouchableOpacity
-                      key={year}
-                      style={[
-                        styles.dateField,
-                        birthDate.getFullYear() === year && styles.dateFieldSelected
-                      ]}
-                      onPress={() => setBirthDate(new Date(year, birthDate.getMonth(), birthDate.getDate()))}
-                    >
-                      <Text style={[
-                        styles.dateFieldText,
-                        birthDate.getFullYear() === year && styles.dateFieldTextSelected
-                      ]}>
-                        {year}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </View>
+            <Text style={styles.stepTitle}>Quelle est votre</Text>
+            <Text style={styles.mainText}>Date de naissance ?</Text>
+
+            {/* Valeur affichée */}
+            <Text style={styles.dateDisplay}>
+              {`${String(birthDay).padStart(2, '0')} ${MONTHS[birthMonth]} ${birthYear}`}
+            </Text>
+
+            {/* Labels colonnes */}
+            <View style={styles.dateLabels}>
+              <Text style={[styles.dateLabel, { flex: 1 }]}>Jour</Text>
+              <Text style={[styles.dateLabel, { flex: 2 }]}>Mois</Text>
+              <Text style={[styles.dateLabel, { flex: 1.3 }]}>Année</Text>
+            </View>
+
+            {/* Pickers */}
+            <View style={styles.datePickerRow}>
+              <WheelPicker
+                data={DAYS}
+                selectedValue={birthDay}
+                onChange={v => setBirthDay(v as number)}
+                flex={1}
+              />
+              <WheelPicker
+                data={MONTHS}
+                selectedValue={MONTHS[birthMonth]}
+                onChange={v => setBirthMonth(MONTHS.indexOf(v as string))}
+                renderLabel={v => String(v)}
+                flex={2}
+              />
+              <WheelPicker
+                data={YEARS}
+                selectedValue={birthYear}
+                onChange={v => setBirthYear(v as number)}
+                renderLabel={v => String(v)}
+                flex={1.3}
+              />
             </View>
           </View>
         );
@@ -319,10 +417,7 @@ export default function OnboardingScreen({ route }: Props) {
               {TRAITS.map((trait) => (
                 <TouchableOpacity
                   key={trait.id}
-                  style={[
-                    styles.traitButton,
-                    selectedTraits.includes(trait.id) && styles.traitButtonSelected
-                  ]}
+                  style={[styles.traitButton, selectedTraits.includes(trait.id) && styles.traitButtonSelected]}
                   onPress={() => toggleTrait(trait.id)}
                 >
                   <MaterialCommunityIcons
@@ -330,10 +425,12 @@ export default function OnboardingScreen({ route }: Props) {
                     size={36}
                     color={selectedTraits.includes(trait.id) ? COLORS.background : COLORS.primary}
                   />
-                  <Text style={[
-                    styles.traitLabel,
-                    selectedTraits.includes(trait.id) && styles.traitLabelSelected
-                  ]}>
+                  <Text
+                    style={[styles.traitLabel, selectedTraits.includes(trait.id) && styles.traitLabelSelected]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.75}
+                  >
                     {trait.label}
                   </Text>
                 </TouchableOpacity>
@@ -380,7 +477,7 @@ export default function OnboardingScreen({ route }: Props) {
 
   return (
     <View style={styles.container}>
-      {/* Header avec barre de progression */}
+      {/* Header */}
       <View style={styles.header}>
         {currentStep > 0 && (
           <TouchableOpacity onPress={handleBack} style={styles.backButton}>
@@ -402,7 +499,7 @@ export default function OnboardingScreen({ route }: Props) {
         {renderStep()}
       </ScrollView>
 
-      {/* Footer avec bouton */}
+      {/* Footer */}
       <View style={styles.footer}>
         <TouchableOpacity
           style={[styles.nextButton, !canProceed() && styles.nextButtonDisabled]}
@@ -489,6 +586,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 32,
   },
+  // Gender
   genderContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -530,45 +628,36 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     marginTop: 8,
   },
-  dateContainer: {
-    flexDirection: 'row',
-    gap: 16,
-    marginTop: 32,
-    width: '100%',
-  },
-  dateFieldContainer: {
-    flex: 1,
-    height: 180,
-  },
-  dateScrollView: {
-    flex: 1,
-  },
-  dateScrollContent: {
-    paddingVertical: 80,
-  },
-  dateField: {
-    backgroundColor: COLORS.background,
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 4,
-    borderWidth: 2,
-    borderColor: COLORS.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 68,
-  },
-  dateFieldSelected: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
-  },
-  dateFieldText: {
-    fontSize: 18,
-    fontWeight: '600',
+  // Date picker
+  dateDisplay: {
+    fontSize: 22,
+    fontWeight: '700',
     color: COLORS.text,
+    marginBottom: 20,
+    letterSpacing: 0.5,
   },
-  dateFieldTextSelected: {
-    color: COLORS.background,
+  dateLabels: {
+    flexDirection: 'row',
+    width: '100%',
+    marginBottom: 8,
   },
+  dateLabel: {
+    textAlign: 'center',
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.textLight,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  datePickerRow: {
+    flexDirection: 'row',
+    width: '100%',
+    gap: 8,
+    backgroundColor: COLORS.backgroundLight,
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  // Traits
   traitsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -602,6 +691,7 @@ const styles = StyleSheet.create({
   traitLabelSelected: {
     color: COLORS.background,
   },
+  // Pseudo
   pseudoInput: {
     width: '100%',
     backgroundColor: COLORS.background,
@@ -618,6 +708,7 @@ const styles = StyleSheet.create({
     marginTop: 40,
     alignItems: 'center',
   },
+  // Footer
   footer: {
     padding: 20,
     paddingBottom: 30,
@@ -631,20 +722,49 @@ const styles = StyleSheet.create({
     padding: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
   },
   nextButtonDisabled: {
     backgroundColor: COLORS.border,
-    shadowOpacity: 0,
   },
   nextButtonText: {
     fontSize: 18,
     fontWeight: '700',
     color: COLORS.background,
   },
+  // Step 0 preview cards
+  previewCards: {
+    width: '100%',
+    marginTop: 24,
+    gap: 10,
+  },
+  previewCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.background,
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    gap: 14,
+  },
+  previewCardIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#EEF0FE',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  previewCardText: {
+    flex: 1,
+  },
+  previewCardLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  previewCardDesc: {
+    fontSize: 12,
+    color: COLORS.textLight,
+    marginTop: 2,
+  },
 });
-

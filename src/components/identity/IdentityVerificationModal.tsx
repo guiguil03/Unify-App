@@ -9,7 +9,6 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
-  KeyboardAvoidingView,
   Platform,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -38,71 +37,60 @@ export function IdentityVerificationModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadingImage, setUploadingImage] = useState<string | null>(null);
 
+  const requestGalleryPermission = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission requise', "Nous avons besoin d'accéder à vos photos.", [{ text: 'OK' }]);
+      return false;
+    }
+    return true;
+  };
+
+  const requestCameraPermission = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission requise', "Nous avons besoin d'accéder à votre caméra.", [{ text: 'OK' }]);
+      return false;
+    }
+    return true;
+  };
+
   const pickImage = async (type: 'front' | 'back' | 'selfie') => {
-    try {
-      // Demander la permission
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      
-      if (status !== 'granted') {
-        Alert.alert(
-          'Permission requise',
-          'Nous avons besoin de votre permission pour accéder à vos photos.',
-          [{ text: 'OK' }]
-        );
-        return;
-      }
-
-      // Pour le selfie, permettre aussi la caméra
-      const options: ImagePicker.ImagePickerOptions = {
-        mediaTypes: ['images'],
-        allowsEditing: true,
-        quality: 0.8,
-      };
-
-      if (type === 'selfie') {
-        options.aspect = [1, 1]; // Carré pour le selfie
-      } else {
-        options.aspect = [16, 9]; // Paysage pour les documents
-      }
-
-      const result = await ImagePicker.launchImageLibraryAsync(options);
-
-      if (!result.canceled && result.assets[0]) {
-        const asset = result.assets[0];
-        await uploadImage(asset.uri, type);
-      }
-    } catch (error) {
-      showErrorToast('Impossible de sélectionner l\'image');
+    if (!await requestGalleryPermission()) return;
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: type === 'selfie' ? [1, 1] : [16, 9],
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets[0]) {
+      await uploadImage(result.assets[0].uri, type);
     }
   };
 
-  const takePicture = async () => {
-    try {
-      const { status } = await ImagePicker.requestCameraPermissionsAsync();
-      
-      if (status !== 'granted') {
-        Alert.alert(
-          'Permission requise',
-          'Nous avons besoin de votre permission pour utiliser la caméra.',
-          [{ text: 'OK' }]
-        );
-        return;
-      }
-
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ['images'],
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.8,
-      });
-
-      if (!result.canceled && result.assets[0]) {
-        const asset = result.assets[0];
-        await uploadImage(asset.uri, 'selfie');
-      }
-    } catch (error) {
-      showErrorToast('Impossible de prendre la photo');
+  const takePicture = async (type: 'front' | 'back' | 'selfie') => {
+    if (!await requestCameraPermission()) return;
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: type === 'selfie' ? [1, 1] : [16, 9],
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets[0]) {
+      await uploadImage(result.assets[0].uri, type);
     }
+  };
+
+  const showPickerOptions = (type: 'front' | 'back' | 'selfie') => {
+    Alert.alert(
+      'Choisir une photo',
+      '',
+      [
+        { text: 'Prendre une photo', onPress: () => takePicture(type) },
+        { text: 'Depuis la galerie', onPress: () => pickImage(type) },
+        { text: 'Annuler', style: 'cancel' },
+      ]
+    );
   };
 
   const uploadImage = async (uri: string, type: 'front' | 'back' | 'selfie') => {
@@ -111,18 +99,10 @@ export function IdentityVerificationModal({
       const fileName = type === 'front' ? 'id_front' : type === 'back' ? 'id_back' : 'selfie';
       const filePath = await IdentityVerificationService.uploadIdentityDocument(uri, fileName);
 
-      if (type === 'front') {
-        setIdDocumentFront(filePath);
-        setIdDocumentFrontUri(uri);
-      } else if (type === 'back') {
-        setIdDocumentBack(filePath);
-        setIdDocumentBackUri(uri);
-      } else {
-        setSelfie(filePath);
-        setSelfieUri(uri);
-      }
+      if (type === 'front') { setIdDocumentFront(filePath); setIdDocumentFrontUri(uri); }
+      else if (type === 'back') { setIdDocumentBack(filePath); setIdDocumentBackUri(uri); }
+      else { setSelfie(filePath); setSelfieUri(uri); }
 
-      showSuccessToast('Document téléchargé avec succès');
     } catch (error: any) {
       showErrorToast(error.message || 'Impossible de télécharger le document');
     } finally {
@@ -132,12 +112,11 @@ export function IdentityVerificationModal({
 
   const handleSubmit = async () => {
     if (!idDocumentFront) {
-      showErrorToast('Veuillez ajouter une photo de votre pièce d\'identité (recto)');
+      showErrorToast("Ajoutez une photo de votre pièce d'identité (recto)");
       return;
     }
-
     if (!selfie) {
-      showErrorToast('Veuillez ajouter un selfie pour la vérification faciale');
+      showErrorToast('Ajoutez un selfie pour la vérification faciale');
       return;
     }
 
@@ -146,22 +125,15 @@ export function IdentityVerificationModal({
       const verification = await IdentityVerificationService.submitVerification({
         idDocumentFrontUrl: idDocumentFront,
         idDocumentBackUrl: idDocumentBack || undefined,
-        selfieUrl: selfie || undefined,
+        selfieUrl: selfie,
       });
 
-      // Soumettre à didit pour vérification automatique
       await IdentityVerificationService.submitToDidit(verification.id);
 
-      showSuccessToast('Vérification soumise. Résultats sous quelques minutes.');
+      showSuccessToast('Vérification soumise ! Résultat sous quelques minutes.');
       onSuccess();
       onClose();
-      // Reset
-      setIdDocumentFront(null);
-      setIdDocumentBack(null);
-      setSelfie(null);
-      setIdDocumentFrontUri(null);
-      setIdDocumentBackUri(null);
-      setSelfieUri(null);
+      resetState();
     } catch (error: any) {
       showErrorToast(error.message || 'Erreur lors de la soumission');
     } finally {
@@ -169,175 +141,103 @@ export function IdentityVerificationModal({
     }
   };
 
-  const handleClose = () => {
-    if (!isSubmitting) {
-      onClose();
-    }
+  const resetState = () => {
+    setIdDocumentFront(null); setIdDocumentBack(null); setSelfie(null);
+    setIdDocumentFrontUri(null); setIdDocumentBackUri(null); setSelfieUri(null);
   };
+
+  const handleClose = () => {
+    if (!isSubmitting) { onClose(); }
+  };
+
+  const renderUploadSlot = (
+    type: 'front' | 'back' | 'selfie',
+    title: string,
+    description: string,
+    required: boolean,
+    uri: string | null,
+    path: string | null,
+  ) => (
+    <View style={styles.section}>
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>{title}</Text>
+        {required && <View style={styles.requiredBadge}><Text style={styles.requiredText}>Requis</Text></View>}
+      </View>
+      <Text style={styles.sectionDescription}>{description}</Text>
+
+      {uri && path ? (
+        <View style={styles.imagePreview}>
+          <Image source={{ uri }} style={styles.previewImage} />
+          <TouchableOpacity
+            style={styles.changeButton}
+            onPress={() => showPickerOptions(type)}
+            disabled={isSubmitting || uploadingImage !== null}
+          >
+            <MaterialCommunityIcons name="pencil" size={16} color={COLORS.primary} />
+            <Text style={styles.changeButtonText}>Modifier</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <TouchableOpacity
+          style={[styles.uploadButton, uploadingImage === type && styles.uploadButtonLoading]}
+          onPress={() => showPickerOptions(type)}
+          disabled={isSubmitting || uploadingImage !== null}
+        >
+          {uploadingImage === type ? (
+            <ActivityIndicator size="small" color={COLORS.primary} />
+          ) : (
+            <>
+              <MaterialCommunityIcons name="camera-plus" size={24} color={COLORS.primary} />
+              <Text style={styles.uploadButtonText}>Ajouter une photo</Text>
+            </>
+          )}
+        </TouchableOpacity>
+      )}
+    </View>
+  );
 
   return (
     <Modal
       visible={visible}
       animationType="slide"
-      transparent={true}
+      transparent
       onRequestClose={handleClose}
     >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.modalContainer}
-      >
-        <View style={styles.modalContent}>
+      <View style={styles.overlay}>
+        <View style={styles.sheet}>
+          {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.title}>Vérification d'identité</Text>
-            <TouchableOpacity onPress={handleClose} disabled={isSubmitting}>
-              <MaterialCommunityIcons name="close" size={24} color="#333" />
-            </TouchableOpacity>
+            <View style={styles.handle} />
+            <View style={styles.headerRow}>
+              <Text style={styles.title}>Vérification d'identité</Text>
+              <TouchableOpacity onPress={handleClose} disabled={isSubmitting}>
+                <MaterialCommunityIcons name="close" size={22} color={COLORS.textLight} />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.subtitle}>
+              Soumettez vos documents pour confirmer votre identité et rassurer vos partenaires de course.
+            </Text>
           </View>
 
           <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false}>
-            <Text style={styles.description}>
-              Pour garantir la sécurité de notre communauté, nous vérifions l'identité de nos utilisateurs.
-              Veuillez fournir les documents suivants :
-            </Text>
+            {renderUploadSlot('front', "Pièce d'identité — Recto", 'Carte nationale, passeport ou permis de conduire', true, idDocumentFrontUri, idDocumentFront)}
+            {renderUploadSlot('back', "Pièce d'identité — Verso", 'Optionnel mais recommandé', false, idDocumentBackUri, idDocumentBack)}
+            {renderUploadSlot('selfie', 'Selfie', 'Photo de votre visage pour le face match', true, selfieUri, selfie)}
 
-            {/* Pièce d'identité recto */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Pièce d'identité - Recto *</Text>
-              <Text style={styles.sectionDescription}>
-                Photo de votre carte d'identité, passeport ou permis de conduire (recto)
+            <View style={styles.gdprNotice}>
+              <MaterialCommunityIcons name="shield-lock" size={16} color={COLORS.textLight} />
+              <Text style={styles.gdprText}>
+                Vos documents sont chiffrés, traités automatiquement et supprimés dès validation. Conforme RGPD.
               </Text>
-              {idDocumentFront && idDocumentFrontUri ? (
-                <View style={styles.imagePreview}>
-                  <Image source={{ uri: idDocumentFrontUri }} style={styles.previewImage} />
-                  <TouchableOpacity
-                    style={styles.changeButton}
-                    onPress={() => pickImage('front')}
-                    disabled={isSubmitting || uploadingImage === 'front'}
-                  >
-                    <MaterialCommunityIcons name="pencil" size={20} color={COLORS.primary} />
-                    <Text style={styles.changeButtonText}>Modifier</Text>
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                <TouchableOpacity
-                  style={styles.uploadButton}
-                  onPress={() => pickImage('front')}
-                  disabled={isSubmitting || uploadingImage === 'front'}
-                >
-                  {uploadingImage === 'front' ? (
-                    <ActivityIndicator size="small" color={COLORS.primary} />
-                  ) : (
-                    <>
-                      <MaterialCommunityIcons name="camera" size={24} color={COLORS.primary} />
-                      <Text style={styles.uploadButtonText}>Ajouter une photo</Text>
-                    </>
-                  )}
-                </TouchableOpacity>
-              )}
             </View>
-
-            {/* Pièce d'identité verso */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Pièce d'identité - Verso (optionnel)</Text>
-              <Text style={styles.sectionDescription}>
-                Photo du verso de votre pièce d'identité
-              </Text>
-              {idDocumentBack && idDocumentBackUri ? (
-                <View style={styles.imagePreview}>
-                  <Image source={{ uri: idDocumentBackUri }} style={styles.previewImage} />
-                  <TouchableOpacity
-                    style={styles.changeButton}
-                    onPress={() => pickImage('back')}
-                    disabled={isSubmitting || uploadingImage === 'back'}
-                  >
-                    <MaterialCommunityIcons name="pencil" size={20} color={COLORS.primary} />
-                    <Text style={styles.changeButtonText}>Modifier</Text>
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                <TouchableOpacity
-                  style={styles.uploadButton}
-                  onPress={() => pickImage('back')}
-                  disabled={isSubmitting || uploadingImage === 'back'}
-                >
-                  {uploadingImage === 'back' ? (
-                    <ActivityIndicator size="small" color={COLORS.primary} />
-                  ) : (
-                    <>
-                      <MaterialCommunityIcons name="camera" size={24} color={COLORS.primary} />
-                      <Text style={styles.uploadButtonText}>Ajouter une photo</Text>
-                    </>
-                  )}
-                </TouchableOpacity>
-              )}
-            </View>
-
-            {/* Selfie */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Photo de vous (selfie) *</Text>
-              <Text style={styles.sectionDescription}>
-                Un selfie pour vérifier que vous êtes bien la personne sur le document (Face Match)
-              </Text>
-              {selfie && selfieUri ? (
-                <View style={styles.imagePreview}>
-                  <Image source={{ uri: selfieUri }} style={styles.previewImage} />
-                  <View style={styles.imageActions}>
-                    <TouchableOpacity
-                      style={styles.changeButton}
-                      onPress={() => pickImage('selfie')}
-                      disabled={isSubmitting || uploadingImage === 'selfie'}
-                    >
-                      <MaterialCommunityIcons name="pencil" size={20} color={COLORS.primary} />
-                      <Text style={styles.changeButtonText}>Modifier</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.cameraButton}
-                      onPress={takePicture}
-                      disabled={isSubmitting || uploadingImage === 'selfie'}
-                    >
-                      <MaterialCommunityIcons name="camera" size={20} color={COLORS.primary} />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              ) : (
-                <View style={styles.selfieActions}>
-                  <TouchableOpacity
-                    style={styles.uploadButton}
-                    onPress={() => pickImage('selfie')}
-                    disabled={isSubmitting || uploadingImage === 'selfie'}
-                  >
-                    {uploadingImage === 'selfie' ? (
-                      <ActivityIndicator size="small" color={COLORS.primary} />
-                    ) : (
-                      <>
-                        <MaterialCommunityIcons name="image" size={24} color={COLORS.primary} />
-                        <Text style={styles.uploadButtonText}>Depuis la galerie</Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.uploadButton, styles.cameraButton]}
-                    onPress={takePicture}
-                    disabled={isSubmitting || uploadingImage === 'selfie'}
-                  >
-                    <MaterialCommunityIcons name="camera" size={24} color={COLORS.primary} />
-                    <Text style={styles.uploadButtonText}>Prendre une photo</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-            </View>
-
-            <Text style={styles.note}>
-              * Champs obligatoires{'\n'}
-              Vos documents seront traités de manière confidentielle et sécurisée.
-            </Text>
           </ScrollView>
 
+          {/* Footer */}
           <View style={styles.footer}>
             <TouchableOpacity
-              style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
+              style={[styles.submitButton, (!idDocumentFront || !selfie || isSubmitting) && styles.submitButtonDisabled]}
               onPress={handleSubmit}
-              disabled={isSubmitting || !idDocumentFront || !selfie}
+              disabled={!idDocumentFront || !selfie || isSubmitting}
             >
               {isSubmitting ? (
                 <ActivityIndicator size="small" color="white" />
@@ -350,121 +250,145 @@ export function IdentityVerificationModal({
             </TouchableOpacity>
           </View>
         </View>
-      </KeyboardAvoidingView>
+      </View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  modalContainer: {
+  overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end',
   },
-  modalContent: {
+  sheet: {
     backgroundColor: 'white',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: '90%',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '92%',
     paddingBottom: Platform.OS === 'ios' ? 34 : 20,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     padding: 20,
+    paddingTop: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
   },
+  handle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#E0E0E0',
+    alignSelf: 'center',
+    marginBottom: 16,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
   title: {
     fontSize: 20,
-    fontWeight: '600',
-    color: '#333',
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  subtitle: {
+    fontSize: 13,
+    color: COLORS.textLight,
+    lineHeight: 18,
   },
   scrollContent: {
     padding: 20,
   },
-  description: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 24,
-    lineHeight: 20,
-  },
   section: {
     marginBottom: 24,
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
-    color: '#333',
-    marginBottom: 8,
+    color: COLORS.text,
+  },
+  requiredBadge: {
+    backgroundColor: '#FFF0F0',
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  requiredText: {
+    fontSize: 11,
+    color: '#E53E3E',
+    fontWeight: '600',
   },
   sectionDescription: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 12,
+    fontSize: 12,
+    color: COLORS.textLight,
+    marginBottom: 10,
   },
   uploadButton: {
-    borderWidth: 2,
+    borderWidth: 1.5,
     borderColor: COLORS.primary,
     borderStyle: 'dashed',
-    borderRadius: 8,
+    borderRadius: 12,
     padding: 24,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
-    gap: 8,
+    gap: 10,
+    backgroundColor: '#FAFAFA',
+  },
+  uploadButtonLoading: {
+    opacity: 0.6,
   },
   uploadButtonText: {
     fontSize: 14,
     color: COLORS.primary,
-    fontWeight: '500',
-    marginLeft: 8,
+    fontWeight: '600',
   },
   imagePreview: {
-    position: 'relative',
-    borderRadius: 8,
+    borderRadius: 12,
     overflow: 'hidden',
   },
   previewImage: {
     width: '100%',
-    height: 200,
+    height: 180,
     resizeMode: 'cover',
   },
-  imageActions: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 8,
-  },
   changeButton: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.primary,
-    borderRadius: 8,
-    padding: 12,
-    gap: 8,
+    gap: 6,
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+    backgroundColor: 'white',
   },
   changeButtonText: {
-    fontSize: 14,
+    fontSize: 13,
     color: COLORS.primary,
-    fontWeight: '500',
+    fontWeight: '600',
   },
-  cameraButton: {
-    backgroundColor: '#f9f9f9',
-  },
-  selfieActions: {
+  gdprNotice: {
     flexDirection: 'row',
-    gap: 12,
+    alignItems: 'flex-start',
+    gap: 8,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 8,
   },
-  note: {
-    fontSize: 12,
-    color: '#999',
-    fontStyle: 'italic',
-    marginTop: 16,
-    lineHeight: 18,
+  gdprText: {
+    flex: 1,
+    fontSize: 11,
+    color: COLORS.textLight,
+    lineHeight: 16,
   },
   footer: {
     padding: 20,
@@ -473,7 +397,7 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     backgroundColor: COLORS.primary,
-    borderRadius: 8,
+    borderRadius: 14,
     padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
@@ -481,12 +405,11 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   submitButtonDisabled: {
-    opacity: 0.6,
+    opacity: 0.5,
   },
   submitButtonText: {
     color: 'white',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
   },
 });
-

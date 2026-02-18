@@ -3,7 +3,8 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { RootStackParamList } from "./types/navigation";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { StyleSheet, Text, View, ActivityIndicator, TouchableWithoutFeedback, Image, Platform } from "react-native";
+import { StyleSheet, Text, View, ActivityIndicator, Image, Platform } from "react-native";
+import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { SubscriptionProvider } from "./contexts/SubscriptionContext";
 import Toast, { BaseToast, ErrorToast } from "react-native-toast-message";
@@ -32,54 +33,87 @@ import RouteDetailScreen from "./screens/RouteDetailScreen";
 import UserProfileScreen from "./screens/UserProfileScreen";
 import ResetPasswordScreen from "./screens/ResetPasswordScreen";
 import { OnboardingChecker } from "./components/OnboardingChecker";
-import { TouchableOpacity } from "react-native";
+import { Pressable } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 if (__DEV__) console.log("=== DÉMARRAGE DE L'APPLICATION UNIFY ===");
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
-// Composant pour les boutons du header (réglages et messages)
-const HeaderButtons = ({ navigation }: { navigation: any }) => (
-  <TouchableOpacity
-    onPress={() => navigation.navigate("Messages")}
-    style={headerStyles.iconButton}
-    activeOpacity={0.8}
-  >
-    <View style={headerStyles.iconContainer}>
-      <MaterialCommunityIcons name="message-text-outline" size={22} color="#7D80F4" />
-    </View>
-  </TouchableOpacity>
-);
+// Header custom 100% React Native — élimine les artefacts du header natif iOS
+function AppHeader({ title, navigation }: { title: string; navigation: any }) {
+  const insets = useSafeAreaInsets();
+  return (
+    <View style={[appHeaderStyles.container, { paddingTop: insets.top + 4 }]}>
+      <Pressable
+        onPress={() => navigation.navigate("Settings")}
+        hitSlop={12}
+        style={appHeaderStyles.pressable}
+      >
+        {({ pressed }) => (
+          <View style={[appHeaderStyles.btn, pressed && appHeaderStyles.btnPressed]}>
+            <MaterialCommunityIcons name="cog-outline" size={19} color="#7D80F4" />
+          </View>
+        )}
+      </Pressable>
 
-const HeaderLeft = ({ navigation }: { navigation: any }) => (
-  <TouchableOpacity
-    onPress={() => navigation.navigate("Settings")}
-    style={headerStyles.iconButton}
-    activeOpacity={0.8}
-  >
-    <View style={headerStyles.iconContainer}>
-      <MaterialCommunityIcons name="cog-outline" size={22} color="#7D80F4" />
-    </View>
-  </TouchableOpacity>
-);
+      <Text style={appHeaderStyles.title} numberOfLines={1}>{title}</Text>
 
-const headerStyles = StyleSheet.create({
-  iconButton: {
-    marginHorizontal: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  iconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
+      <Pressable
+        onPress={() => navigation.navigate("Messages")}
+        hitSlop={12}
+        style={appHeaderStyles.pressable}
+      >
+        {({ pressed }) => (
+          <View style={[appHeaderStyles.btn, pressed && appHeaderStyles.btnPressed]}>
+            <MaterialCommunityIcons name="message-text-outline" size={19} color="#7D80F4" />
+          </View>
+        )}
+      </Pressable>
+    </View>
+  );
+}
+
+const appHeaderStyles = StyleSheet.create({
+  container: {
+    backgroundColor: "#7D80F4",
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingBottom: 14,
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.12,
     shadowRadius: 6,
-    elevation: 4,
+    elevation: 6,
+  },
+  pressable: {
+    padding: 2,
+  },
+  btn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(255,255,255,0.95)",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#5B5ECC",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  btnPressed: {
+    backgroundColor: "rgba(255,255,255,0.75)",
+    transform: [{ scale: 0.93 }],
+  },
+  title: {
+    flex: 1,
+    color: "white",
+    fontSize: 17,
+    fontWeight: "700",
+    textAlign: "center",
+    letterSpacing: 0.3,
   },
 });
 
@@ -125,96 +159,72 @@ function AppStack() {
           name="Home"
           component={HomeScreen}
           options={({ navigation }) => ({
-            title: "Accueil",
-            headerLeft: () => <HeaderLeft navigation={navigation} />,
-            headerRight: () => <HeaderButtons navigation={navigation} />,
-            contentStyle: { backgroundColor: '#f5f5f5' },
+            header: () => <AppHeader title="Accueil" navigation={navigation} />,
           })}
         />
-      <Stack.Screen
-        name="Map"
-        component={MapScreen}
-        options={({ navigation }) => ({
-          title: "Carte",
-          headerLeft: () => <HeaderLeft navigation={navigation} />,
-          headerRight: () => <HeaderButtons navigation={navigation} />,
-          contentStyle: { backgroundColor: '#f5f5f5' },
-        })}
-      />
-      <Stack.Screen
-        name="Activities"
-        component={ActivitiesScreen}
-        options={({ navigation }) => ({
-          title: "Mes Activités",
-          headerLeft: () => <HeaderLeft navigation={navigation} />,
-          headerRight: () => <HeaderButtons navigation={navigation} />,
-          contentStyle: { backgroundColor: '#f5f5f5' },
-        })}
-      />
-      <Stack.Screen
-        name="ActivityDetail"
-        component={ActivityDetailScreen}
-        options={{ title: "Détails de l'activité" }}
-      />
-      <Stack.Screen
-        name="Stats"
-        component={StatsScreen}
-        options={({ navigation }) => ({
-          title: "Statistiques",
-          headerLeft: () => <HeaderLeft navigation={navigation} />,
-          headerRight: () => <HeaderButtons navigation={navigation} />,
-          contentStyle: { backgroundColor: '#f5f5f5' },
-          gestureEnabled: true,
-          gestureDirection: 'horizontal',
-        })}
-      />
-      <Stack.Screen
-        name="Events"
-        component={EventsScreen}
-        options={({ navigation }) => ({
-          title: "Événements",
-          headerLeft: () => <HeaderLeft navigation={navigation} />,
-          headerRight: () => <HeaderButtons navigation={navigation} />,
-          contentStyle: { backgroundColor: '#f5f5f5' },
-        })}
-      />
-      <Stack.Screen
-        name="Profile"
-        component={ProfileScreen}
-        options={({ navigation }) => ({
-          title: "Mon Profil",
-          headerLeft: () => <HeaderLeft navigation={navigation} />,
-          headerRight: () => <HeaderButtons navigation={navigation} />,
-          contentStyle: { backgroundColor: '#f5f5f5' },
-        })}
-      />
-      <Stack.Screen
-        name="EditProfile"
-        component={EditProfileScreen}
-        options={({ navigation }) => ({
-          title: "Modifier le profil",
-          headerLeft: () => <HeaderLeft navigation={navigation} />,
-          contentStyle: { backgroundColor: '#f5f5f5' },
-          gestureEnabled: true,
-          gestureDirection: 'horizontal',
-        })}
-      />
-      <Stack.Screen
-        name="Contacts"
-        component={ContactsScreen}
-        options={({ navigation }) => ({
-          title: "Contacts",
-          headerLeft: () => <HeaderLeft navigation={navigation} />,
-          headerRight: () => <HeaderButtons navigation={navigation} />,
-          contentStyle: { backgroundColor: '#f5f5f5' },
-        })}
-      />
+        <Stack.Screen
+          name="Map"
+          component={MapScreen}
+          options={({ navigation }) => ({
+            header: () => <AppHeader title="Carte" navigation={navigation} />,
+          })}
+        />
+        <Stack.Screen
+          name="Activities"
+          component={ActivitiesScreen}
+          options={({ navigation }) => ({
+            header: () => <AppHeader title="Mes Activités" navigation={navigation} />,
+          })}
+        />
+        <Stack.Screen
+          name="ActivityDetail"
+          component={ActivityDetailScreen}
+          options={{ title: "Détails de l'activité" }}
+        />
+        <Stack.Screen
+          name="Stats"
+          component={StatsScreen}
+          options={({ navigation }) => ({
+            header: () => <AppHeader title="Statistiques" navigation={navigation} />,
+            gestureEnabled: true,
+            gestureDirection: 'horizontal',
+          })}
+        />
+        <Stack.Screen
+          name="Events"
+          component={EventsScreen}
+          options={({ navigation }) => ({
+            header: () => <AppHeader title="Événements" navigation={navigation} />,
+          })}
+        />
+        <Stack.Screen
+          name="Profile"
+          component={ProfileScreen}
+          options={({ navigation }) => ({
+            header: () => <AppHeader title="Mon Profil" navigation={navigation} />,
+          })}
+        />
+        <Stack.Screen
+          name="EditProfile"
+          component={EditProfileScreen}
+          options={{
+            title: "Modifier le profil",
+            gestureEnabled: true,
+            gestureDirection: 'horizontal',
+          }}
+        />
+        <Stack.Screen
+          name="Contacts"
+          component={ContactsScreen}
+          options={({ navigation }) => ({
+            header: () => <AppHeader title="Contacts" navigation={navigation} />,
+          })}
+        />
       <Stack.Screen
         name="Messages"
         component={MessagesScreen}
         options={{
           headerShown: false,
-          contentStyle: { backgroundColor: '#f5f5f5' },
         }}
       />
       <Stack.Screen
@@ -230,7 +240,6 @@ function AppStack() {
         component={SettingsScreen}
         options={{ 
           title: "Paramètres",
-          contentStyle: { backgroundColor: '#f5f5f5' },
         }}
       />
       <Stack.Screen
@@ -258,18 +267,15 @@ function AppStack() {
           headerShown: false,
         }}
       />
-      <Stack.Screen
-        name="Routes"
-        component={RoutesScreen}
-        options={({ navigation }) => ({
-          title: "Parcours",
-          headerLeft: () => <HeaderLeft navigation={navigation} />,
-          headerRight: () => <HeaderButtons navigation={navigation} />,
-          contentStyle: { backgroundColor: '#f5f5f5' },
-          gestureEnabled: true,
-          gestureDirection: 'horizontal',
-        })}
-      />
+        <Stack.Screen
+          name="Routes"
+          component={RoutesScreen}
+          options={({ navigation }) => ({
+            header: () => <AppHeader title="Parcours" navigation={navigation} />,
+            gestureEnabled: true,
+            gestureDirection: 'horizontal',
+          })}
+        />
       <Stack.Screen
         name="CreateRoute"
         component={CreateRouteScreen}
@@ -356,12 +362,14 @@ function NavigationSwitcher() {
 export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <AuthProvider>
-        <SubscriptionProvider>
-          <NavigationSwitcher />
-          <Toast config={toastConfig} />
-        </SubscriptionProvider>
-      </AuthProvider>
+      <SafeAreaProvider>
+        <AuthProvider>
+          <SubscriptionProvider>
+            <NavigationSwitcher />
+            <Toast config={toastConfig} />
+          </SubscriptionProvider>
+        </AuthProvider>
+      </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 }

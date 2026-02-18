@@ -179,7 +179,7 @@ export class IdentityVerificationService {
   }
 
   /**
-   * Soumet la vérification d'identité à didit pour traitement
+   * Soumet la vérification d'identité à didit pour traitement automatique
    */
   static async submitToDidit(verificationId: string): Promise<void> {
     try {
@@ -188,17 +188,84 @@ export class IdentityVerificationService {
         { body: { verification_id: verificationId } }
       );
 
-      if (error) {
-        throw error;
-      }
-
-      if (data?.error) {
-        throw new Error(data.error);
-      }
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
     } catch (error: any) {
       throw new Error(error.message || 'Impossible de soumettre la vérification à didit');
     }
+  }
+
+  /**
+   * Crée une session iDenfy et retourne l'URL de vérification à ouvrir dans le navigateur
+   */
+  static async createIdenfySession(verificationId: string): Promise<string> {
+    try {
+      const { data, error } = await supabase.functions.invoke(
+        'idenfy-create-session',
+        { body: { verification_id: verificationId } }
+      );
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      if (!data?.sessionUrl) throw new Error('URL de session manquante');
+
+      return data.sessionUrl;
+    } catch (error: any) {
+      throw new Error(error.message || 'Impossible de créer la session iDenfy');
+    }
+  }
+
+  /**
+   * Crée une vérification en attente sans documents (iDenfy gère la capture)
+   */
+  static async createPendingVerification(): Promise<IdentityVerification> {
+    const currentUser = await getCurrentUserFromDB();
+    if (!currentUser) throw new Error('Utilisateur non authentifié');
+
+    const existing = await this.getVerification();
+
+    const verificationData: any = {
+      user_id: currentUser.id,
+      status: 'pending',
+      submitted_at: new Date().toISOString(),
+    };
+
+    let result;
+    if (existing) {
+      const { data: updated, error } = await supabase
+        .from('identity_verifications')
+        .update(verificationData)
+        .eq('user_id', currentUser.id)
+        .select()
+        .single();
+      if (error) throw error;
+      result = updated;
+    } else {
+      const { data: created, error } = await supabase
+        .from('identity_verifications')
+        .insert(verificationData)
+        .select()
+        .single();
+      if (error) throw error;
+      result = created;
+    }
+
+    return {
+      id: result.id,
+      userId: result.user_id,
+      idDocumentFrontUrl: result.id_document_front_url,
+      idDocumentBackUrl: result.id_document_back_url,
+      selfieUrl: result.selfie_url,
+      status: result.status as IdentityVerificationStatus,
+      submittedAt: result.submitted_at,
+      verifiedAt: result.verified_at,
+      rejectionReason: result.rejection_reason,
+      diditSessionId: result.didit_session_id,
+      diditDecisionData: result.didit_decision_data,
+      diditSubmittedAt: result.didit_submitted_at,
+      diditCompletedAt: result.didit_completed_at,
+    };
   }
 }
 

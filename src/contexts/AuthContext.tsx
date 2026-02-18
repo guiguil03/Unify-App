@@ -86,6 +86,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
+        // Email confirmation envoyé mais pas encore validé :
+        // on ne touche pas au user déjà défini par signUp()
+        if (_event === 'SIGNED_UP' && !session) {
+          setIsLoading(false);
+          setHasCompletedInitialCheck(true);
+          return;
+        }
+
         setIsLoading(true);
         if (session?.user) {
           try {

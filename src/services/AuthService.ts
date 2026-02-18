@@ -65,7 +65,6 @@ export class AuthService {
 
     const user = await this.createUserInDB(data.user.id, normalizedEmail, sanitizedName);
 
-    showSuccessToast('Inscription réussie ! Bienvenue !');
     return user;
   }
 

@@ -19,7 +19,16 @@
       "Bash(echo:*)",
       "Bash(done)",
       "Bash(ls:*)",
-      "Bash(for const in assets colors mapDefaults)"
+      "Bash(for const in assets colors mapDefaults)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:didit.me)",
+      "WebFetch(domain:documentation.idenfy.com)",
+      "Bash(New-Item -ItemType Directory -Force -Path \"C:\\\\Users\\\\guill\\\\Documents\\\\MyDigitalSchool\\\\Unify-App\\\\supabase\\\\functions\\\\idenfy-create-session\")",
+      "Bash(Out-Null)",
+      "Bash(New-Item -ItemType Directory -Force -Path \"C:\\\\Users\\\\guill\\\\Documents\\\\MyDigitalSchool\\\\Unify-App\\\\supabase\\\\functions\\\\idenfy-webhook\")",
+      "Bash(Write-Host \"Dossiers créés\")",
+      "Bash(npx supabase functions deploy:*)",
+      "Bash(npx supabase:*)"
     ]
   }
 }

@@ -11,112 +11,127 @@ interface DiditWebhookPayload {
   session_id: string;
   status: 'Approved' | 'Declined' | 'In Review';
   decision: {
-    id_verification?: {
-      status: string;
-      confidence: number;
-    };
-    face_match?: {
-      status: string;
-      confidence: number;
-    };
+    id_verification?: { status: string; confidence: number; };
+    face_match?: { status: string; confidence: number; };
   };
   vendor_data?: string;
   timestamp?: string;
 }
 
-// Helper function to verify HMAC signature
-async function verifySignature(
-  body: string,
-  signature: string | null,
-  secret: string
-): Promise<boolean> {
-  if (!signature) {
-    return false;
-  }
-
+async function verifySignature(body: string, signature: string | null, secret: string): Promise<boolean> {
+  if (!signature) return false;
   try {
     const encoder = new TextEncoder();
-    const keyData = encoder.encode(secret);
-    const messageData = encoder.encode(body);
-
     const key = await crypto.subtle.importKey(
-      'raw',
-      keyData,
-      { name: 'HMAC', hash: 'SHA-256' },
-      false,
-      ['sign']
+      'raw', encoder.encode(secret),
+      { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
     );
-
-    const signatureBuffer = await crypto.subtle.sign('HMAC', key, messageData);
-    const hashArray = Array.from(new Uint8Array(signatureBuffer));
-    const expectedSignature = hashArray
-      .map(b => b.toString(16).padStart(2, '0'))
-      .join('');
-
-    return expectedSignature === signature;
+    const sigBuffer = await crypto.subtle.sign('HMAC', key, encoder.encode(body));
+    const expected = Array.from(new Uint8Array(sigBuffer))
+      .map(b => b.toString(16).padStart(2, '0')).join('');
+    console.log('[didit-webhook] Signature attendue:', expected);
+    console.log('[didit-webhook] Signature reçue:   ', signature);
+    return expected === signature;
   } catch (error) {
-    console.error('Error verifying signature:', error);
+    console.error('[didit-webhook] Erreur vérification signature:', error);
     return false;
   }
 }
 
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
+  console.log('[didit-webhook] Request received, method:', req.method);
+
   try {
-    // Initialize Supabase client
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-      {
-        auth: {
-          persistSession: false,
-        },
-      }
+      { auth: { persistSession: false } }
     );
 
-    // Get webhook secret
     const DIDIT_WEBHOOK_SECRET = Deno.env.get('DIDIT_WEBHOOK_SECRET');
+    console.log('[didit-webhook] DIDIT_WEBHOOK_SECRET:', DIDIT_WEBHOOK_SECRET ? '✓ présent' : '✗ MANQUANT');
+
     if (!DIDIT_WEBHOOK_SECRET) {
-      console.error('Missing DIDIT_WEBHOOK_SECRET');
+      console.error('[didit-webhook] Missing DIDIT_WEBHOOK_SECRET');
       return new Response('Configuration error', { status: 500 });
     }
 
-    // Get request body as text for signature verification
     const bodyText = await req.text();
     const signature = req.headers.get('x-signature-v2');
+    // Log du body complet pour comprendre la structure didit
+    console.log('[didit-webhook] Body complet:', bodyText);
+    console.log('[didit-webhook] Header x-signature-v2:', signature ?? 'absent');
 
-    // Verify signature
     const isValid = await verifySignature(bodyText, signature, DIDIT_WEBHOOK_SECRET);
+    console.log('[didit-webhook] Signature valide:', isValid);
+
     if (!isValid) {
-      console.error('Invalid webhook signature');
+      console.error('[didit-webhook] ❌ Signature invalide');
       return new Response('Invalid signature', { status: 401 });
     }
 
-    // Parse payload
     const payload: DiditWebhookPayload = JSON.parse(bodyText);
-    console.log('Received webhook for session:', payload.session_id);
-    console.log('Status:', payload.status);
+    console.log('[didit-webhook] session_id:', payload.session_id);
+    console.log('[didit-webhook] status:', payload.status);
+    console.log('[didit-webhook] vendor_data:', payload.vendor_data);
+    console.log('[didit-webhook] decision:', JSON.stringify(payload.decision));
 
-    // Find verification by didit_session_id
-    const { data: verification, error: fetchError } = await supabaseClient
-      .from('identity_verifications')
-      .select('*')
-      .eq('didit_session_id', payload.session_id)
-      .single();
+    // Retry pour gérer la race condition (didit peut envoyer le webhook avant que le session_id soit en base)
+    let verification = null;
+    const maxRetries = 5;
+    const retryDelay = 2000; // 2 secondes
 
-    if (fetchError || !verification) {
-      console.error('Verification not found for session:', payload.session_id);
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      console.log(`[didit-webhook] Lookup tentative ${attempt}/${maxRetries} — session_id: ${payload.session_id}`);
+
+      const { data } = await supabaseClient
+        .from('identity_verifications')
+        .select('*')
+        .eq('didit_session_id', payload.session_id)
+        .single();
+
+      if (data) {
+        verification = data;
+        console.log('[didit-webhook] ✓ Verification trouvée à la tentative', attempt);
+        break;
+      }
+
+      // Fallback : chercher par vendor_data si didit le renvoie
+      if (payload.vendor_data) {
+        const { data: byVendor } = await supabaseClient
+          .from('identity_verifications')
+          .select('*')
+          .eq('id', payload.vendor_data)
+          .single();
+
+        if (byVendor) {
+          verification = byVendor;
+          console.log('[didit-webhook] ✓ Verification trouvée via vendor_data:', payload.vendor_data);
+          break;
+        }
+      }
+
+      if (attempt < maxRetries) {
+        console.log(`[didit-webhook] Non trouvée, retry dans ${retryDelay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, retryDelay));
+      }
+    }
+
+    if (!verification) {
+      console.error('[didit-webhook] ❌ Verification introuvable après', maxRetries, 'tentatives — session_id:', payload.session_id);
+      // Retourner 200 pour que didit ne retente pas (la vérif est perdue)
       return new Response(
         JSON.stringify({ error: 'Verification not found' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Map didit status to app status
+    console.log('[didit-webhook] Verification trouvée, id:', verification.id, 'statut actuel:', verification.status);
+
     let newStatus: 'verified' | 'rejected' | 'pending' = 'pending';
     let verifiedAt: string | null = null;
     let rejectionReason: string | null = null;
@@ -124,34 +139,31 @@ serve(async (req) => {
     if (payload.status === 'Approved') {
       newStatus = 'verified';
       verifiedAt = new Date().toISOString();
+      console.log('[didit-webhook] → APPROVED');
     } else if (payload.status === 'Declined') {
       newStatus = 'rejected';
-
-      // Extract rejection reason from decision
       const reasons: string[] = [];
       if (payload.decision?.id_verification?.status !== 'Approved') {
-        reasons.push('Document d\'identité invalide ou non reconnu');
+        reasons.push("Document d'identité invalide ou non reconnu");
       }
       if (payload.decision?.face_match?.status !== 'Approved') {
         reasons.push('La photo ne correspond pas au document');
       }
       rejectionReason = reasons.length > 0 ? reasons.join('. ') : 'Vérification refusée par didit';
+      console.log('[didit-webhook] → DECLINED, raison:', rejectionReason);
+    } else {
+      console.log('[didit-webhook] → IN REVIEW, statut conservé à pending');
     }
 
-    // Update verification record
     const updateData: any = {
       status: newStatus,
       didit_decision_data: payload.decision,
       didit_completed_at: new Date().toISOString(),
     };
+    if (verifiedAt) updateData.verified_at = verifiedAt;
+    if (rejectionReason) updateData.rejection_reason = rejectionReason;
 
-    if (verifiedAt) {
-      updateData.verified_at = verifiedAt;
-    }
-
-    if (rejectionReason) {
-      updateData.rejection_reason = rejectionReason;
-    }
+    console.log('[didit-webhook] Mise à jour DB:', JSON.stringify(updateData));
 
     const { error: updateError } = await supabaseClient
       .from('identity_verifications')
@@ -159,51 +171,21 @@ serve(async (req) => {
       .eq('id', verification.id);
 
     if (updateError) {
-      console.error('Failed to update verification:', updateError);
+      console.error('[didit-webhook] ❌ Erreur mise à jour DB:', updateError);
       return new Response(
         JSON.stringify({ error: 'Failed to update verification' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log(`Verification ${verification.id} updated to status: ${newStatus}`);
-
-    // If verification approved, delete documents from storage (GDPR compliance)
-    if (newStatus === 'verified') {
-      console.log('Deleting documents from storage...');
-      const filesToDelete: string[] = [];
-
-      if (verification.id_document_front_url) {
-        filesToDelete.push(verification.id_document_front_url);
-      }
-      if (verification.id_document_back_url) {
-        filesToDelete.push(verification.id_document_back_url);
-      }
-      if (verification.selfie_url) {
-        filesToDelete.push(verification.selfie_url);
-      }
-
-      if (filesToDelete.length > 0) {
-        const { error: deleteError } = await supabaseClient.storage
-          .from('identity-verifications')
-          .remove(filesToDelete);
-
-        if (deleteError) {
-          console.error('Failed to delete documents:', deleteError);
-          // Don't fail the webhook if deletion fails - log it for manual cleanup
-        } else {
-          console.log('Documents deleted successfully');
-        }
-      }
-    }
-
+    console.log('[didit-webhook] ✅ Verification', verification.id, 'mise à jour →', newStatus);
     return new Response(
       JSON.stringify({ success: true }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error: any) {
-    console.error('Error in didit-webhook:', error);
+    console.error('[didit-webhook] ❌ Erreur non gérée:', error.message, error.stack);
     return new Response(
       JSON.stringify({ error: error.message || 'Internal server error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

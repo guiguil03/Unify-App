@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal as RNModal, View, TouchableWithoutFeedback, StyleSheet } from 'react-native';
+import { Modal as RNModal, View, Pressable, ScrollView, StyleSheet } from 'react-native';
 
 interface ModalProps {
   visible: boolean;
@@ -8,31 +8,37 @@ interface ModalProps {
 }
 
 export function Modal({ visible, onClose, children }: ModalProps) {
-  if (!visible) return null;
-
-  const handleClose = () => {
-    // Utiliser requestAnimationFrame pour s'assurer que la fermeture se fait après le rendu
-    requestAnimationFrame(() => {
-      onClose();
-    });
-  };
-
   return (
     <RNModal
       visible={visible}
       transparent
       animationType="fade"
-      onRequestClose={handleClose}
+      onRequestClose={onClose}
+      statusBarTranslucent
     >
-      <TouchableWithoutFeedback onPress={handleClose}>
-        <View style={styles.overlay}>
-          <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
-            <View style={styles.content}>
-              {children}
-            </View>
-          </TouchableWithoutFeedback>
-        </View>
-      </TouchableWithoutFeedback>
+      <Pressable
+        style={styles.overlay}
+        onPress={onClose}
+        accessibilityLabel="Fermer"
+        accessibilityRole="button"
+        accessibilityHint="Appuyez pour fermer le modal"
+      >
+        <Pressable
+          style={styles.content}
+          onPress={() => {}}
+          accessibilityViewIsModal
+          accessible={false}
+        >
+          <ScrollView
+            bounces
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+          >
+            {children}
+          </ScrollView>
+        </Pressable>
+      </Pressable>
     </RNModal>
   );
 }
@@ -47,8 +53,11 @@ const styles = StyleSheet.create({
   content: {
     backgroundColor: 'white',
     borderRadius: 12,
-    padding: 20,
     width: '90%',
     maxWidth: 400,
+    maxHeight: '80%',
+  },
+  scrollContent: {
+    padding: 20,
   },
 });

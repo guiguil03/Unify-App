@@ -81,7 +81,11 @@ export default function LoginScreen({ route, navigation }: Props) {
         const sanitizedName = sanitizeName(name);
         success = await signUp(sanitizedName, normalizedEmail, password);
         if (success) {
-          navigation.navigate("Onboarding");
+          showInfoToast(
+            `Un email de confirmation a été envoyé à ${normalizedEmail}. Vérifiez votre boîte mail pour activer votre compte.`,
+            'Confirmation requise'
+          );
+          navigation.navigate("Home" as never);
         }
       }
     } catch {
