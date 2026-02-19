@@ -5,13 +5,14 @@ import {
   ScrollView,
   Switch,
   StyleSheet,
-  ActivityIndicator,
   TouchableOpacity,
   Alert,
   Animated,
   Linking,
   Image,
+  ActivityIndicator,
 } from "react-native";
+import { SkeletonBlock } from "../components/common/SkeletonBlock";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useSettings } from "../hooks/useSettings";
 import { useAuth } from "../contexts/AuthContext";
@@ -22,6 +23,54 @@ import { IdentityVerificationModal } from "../components/identity/IdentityVerifi
 import { IdentityVerificationService } from "../services/IdentityVerificationService";
 import { IdentityVerification } from "../types/identityVerification";
 import { COLORS } from "../constants/colors";
+
+const SWITCH_TRACK_COLOR = { false: "#E0E0E0", true: COLORS.primary + "80" };
+
+interface SettingCardProps {
+  icon: string;
+  title: string;
+  description?: string;
+  value?: boolean;
+  onValueChange?: (v: boolean) => void;
+  children?: React.ReactNode;
+  onPress?: () => void;
+  showArrow?: boolean;
+}
+
+function SettingCard({ icon, title, description, value, onValueChange, children, onPress, showArrow = false }: SettingCardProps) {
+  return (
+    <TouchableOpacity
+      style={styles.settingCard}
+      onPress={onPress}
+      activeOpacity={onPress ? 0.7 : 1}
+      disabled={!onPress}
+    >
+      <View style={styles.settingCardContent}>
+        <View style={styles.settingIconContainer}>
+          <MaterialCommunityIcons name={icon as any} size={24} color={COLORS.primary} />
+        </View>
+        <View style={styles.settingTextContainer}>
+          <Text style={styles.settingTitle}>{title}</Text>
+          {description && (
+            <Text style={styles.settingDescription}>{description}</Text>
+          )}
+        </View>
+        {onValueChange !== undefined ? (
+          <Switch
+            value={value}
+            onValueChange={onValueChange}
+            trackColor={SWITCH_TRACK_COLOR}
+            thumbColor={value ? COLORS.primary : "#f4f3f4"}
+            ios_backgroundColor="#E0E0E0"
+          />
+        ) : showArrow ? (
+          <MaterialCommunityIcons name="chevron-right" size={24} color="#999" />
+        ) : null}
+      </View>
+      {children}
+    </TouchableOpacity>
+  );
+}
 
 export default function SettingsScreen() {
   const { settings, loading, updateSetting } = useSettings();
@@ -150,53 +199,27 @@ export default function SettingsScreen() {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
-      </View>
+      <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }}>
+        {/* Section user */}
+        <View style={{ alignItems: 'center', gap: 10, paddingVertical: 20 }}>
+          <SkeletonBlock width={64} height={64} borderRadius={32} />
+          <SkeletonBlock width={140} height={18} />
+          <SkeletonBlock width={200} height={14} />
+        </View>
+        {/* 5 rangées de settings */}
+        {Array.from({ length: 5 }).map((_, i) => (
+          <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, backgroundColor: '#fff', borderRadius: 16, borderWidth: 1, borderColor: '#f0f0f0' }}>
+            <SkeletonBlock width={48} height={48} borderRadius={24} />
+            <View style={{ flex: 1, gap: 6 }}>
+              <SkeletonBlock width="60%" height={16} />
+              <SkeletonBlock width="80%" height={12} />
+            </View>
+            <SkeletonBlock width={44} height={24} borderRadius={12} />
+          </View>
+        ))}
+      </ScrollView>
     );
   }
-
-  const SettingCard = ({ 
-    icon, 
-    title, 
-    description, 
-    value, 
-    onValueChange, 
-    children,
-    onPress,
-    showArrow = false 
-  }: any) => (
-    <TouchableOpacity
-      style={styles.settingCard}
-      onPress={onPress}
-      activeOpacity={onPress ? 0.7 : 1}
-      disabled={!onPress}
-    >
-      <View style={styles.settingCardContent}>
-        <View style={styles.settingIconContainer}>
-          <MaterialCommunityIcons name={icon} size={24} color={COLORS.primary} />
-        </View>
-        <View style={styles.settingTextContainer}>
-          <Text style={styles.settingTitle}>{title}</Text>
-          {description && (
-            <Text style={styles.settingDescription}>{description}</Text>
-          )}
-        </View>
-        {onValueChange !== undefined ? (
-          <Switch
-            value={value}
-            onValueChange={onValueChange}
-            trackColor={{ false: "#E0E0E0", true: COLORS.primary + "80" }}
-            thumbColor={value ? COLORS.primary : "#f4f3f4"}
-            ios_backgroundColor="#E0E0E0"
-          />
-        ) : showArrow ? (
-          <MaterialCommunityIcons name="chevron-right" size={24} color="#999" />
-        ) : null}
-      </View>
-      {children}
-    </TouchableOpacity>
-  );
 
   return (
     <View style={styles.container}>

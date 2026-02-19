@@ -5,4 +5,7 @@ export interface Event {
   location: string;
   participants: number;
   description: string;
+  imageUrl?: string;
+  maxParticipants?: number;
+  isParticipating?: boolean;
 }

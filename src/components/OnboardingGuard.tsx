@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
-import { useNavigation, useNavigationContainerRef } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 import { getCurrentUserFromDB } from '../utils/supabaseHelpers';
@@ -13,7 +13,6 @@ interface OnboardingGuardProps {
 
 export function OnboardingGuard({ children }: OnboardingGuardProps) {
   const navigation = useNavigation<NavigationProp>();
-  const navigationRef = useNavigationContainerRef<RootStackParamList>();
   const [isChecking, setIsChecking] = useState(true);
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
   const hasNavigated = useRef(false);

@@ -1,6 +1,7 @@
 import { Contact, ContactRelationshipStatus, ContactRequest } from '../types/contact';
 import { supabase } from '../config/supabase';
 import { getCurrentUserFromDB } from '../utils/supabaseHelpers';
+import { NotificationService } from './NotificationService';
 
 export class ContactsService {
   /**
@@ -189,6 +190,19 @@ export class ContactsService {
         throw error;
       }
 
+      // Envoyer une notification push au destinataire
+      try {
+        const token = await NotificationService.getRecipientToken(contactId);
+        if (token) {
+          await NotificationService.sendPushNotification(
+            token,
+            'Nouvelle demande de contact',
+            `${currentUser.name} souhaite vous rejoindre`,
+            { type: 'contact_request', senderId: currentUser.id }
+          );
+        }
+      } catch {}
+
       return {
         id: contactUser.id,
         name: contactUser.name,
@@ -330,7 +344,7 @@ export class ContactsService {
       // Rechercher des utilisateurs (exclure l'utilisateur actuel)
       const { data, error } = await supabase
         .from('users')
-        .select('id, name, avatar')
+        .select('id, name, avatar, level, preferred_time, average_pace, gender')
         .neq('id', currentUser.id)
         .ilike('name', `%${query}%`)
         .limit(20);
@@ -342,6 +356,10 @@ export class ContactsService {
         name: user.name,
         avatar: user.avatar,
         lastActivity: 'Nouveau',
+        level: user.level,
+        preferredTime: user.preferred_time,
+        averagePace: user.average_pace,
+        gender: user.gender,
       }));
     } catch (error) {
       throw error;

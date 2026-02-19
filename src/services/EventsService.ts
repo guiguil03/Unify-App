@@ -1,7 +1,7 @@
 // src/services/EventsService.ts
 import { Event } from '../types/event';
 import { supabase } from '../config/supabase';
-import { formatDate, formatTime } from '../utils/supabaseHelpers';
+import { formatDate, formatTime, getCurrentUserFromDB } from '../utils/supabaseHelpers';
 
 export class EventsService {
   /**
@@ -9,28 +9,35 @@ export class EventsService {
    */
   static async getEvents(): Promise<Event[]> {
     try {
+      const currentUser = await getCurrentUserFromDB();
       const { data, error } = await supabase
         .from('events')
-        .select('*')
+        .select('id, title, description, date, location, participants, max_participants, image_url')
         .gte('date', new Date().toISOString())
         .order('date', { ascending: true });
 
-      if (error) {
-        throw error;
+      if (error) throw error;
+
+      let participatingIds = new Set<string>();
+      if (currentUser?.id) {
+        const { data: p } = await supabase
+          .from('event_participants')
+          .select('event_id')
+          .eq('user_id', currentUser.id);
+        participatingIds = new Set((p || []).map((x: any) => x.event_id));
       }
 
-      // Transformer les données au format Event
-      return (data || []).map((event) => {
-        const eventDate = new Date(event.date);
-        return {
-          id: event.id,
-          title: event.title,
-          date: `${formatDate(event.date)} - ${formatTime(event.date)}`,
-          location: event.location,
-          participants: event.participants || 0,
-          description: event.description || '',
-        };
-      });
+      return (data || []).map((event: any) => ({
+        id: event.id,
+        title: event.title,
+        date: `${formatDate(event.date)} - ${formatTime(event.date)}`,
+        location: event.location,
+        participants: event.participants || 0,
+        description: event.description || '',
+        imageUrl: event.image_url,
+        maxParticipants: event.max_participants,
+        isParticipating: participatingIds.has(event.id),
+      }));
     } catch (error) {
       throw error;
     }

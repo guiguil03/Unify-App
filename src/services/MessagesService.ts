@@ -2,6 +2,7 @@ import { Message, ChatMessage } from '../types/message';
 import { supabase } from '../config/supabase';
 import { getCurrentUserFromDB, formatTime } from '../utils/supabaseHelpers';
 import { ContactsService } from './ContactsService';
+import { NotificationService } from './NotificationService';
 
 export class MessagesService {
   /**
@@ -107,6 +108,19 @@ export class MessagesService {
         .single();
 
       if (error) throw error;
+
+      // Envoyer une notification push au destinataire
+      try {
+        const token = await NotificationService.getRecipientToken(contactId);
+        if (token) {
+          await NotificationService.sendPushNotification(
+            token,
+            currentUser.name,
+            content,
+            { type: 'message', contactId: currentUser.id, contactName: currentUser.name }
+          );
+        }
+      } catch {}
 
       // Auto-friendship : si le contact a déjà envoyé un message dans cette conversation,
       // on crée la relation d'amitié automatiquement (ou on accepte la demande entrante)

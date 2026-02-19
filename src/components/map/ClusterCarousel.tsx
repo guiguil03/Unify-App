@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -39,6 +39,21 @@ export function ClusterCarousel({
 }: ClusterCarouselProps) {
   const [activeIndex, setActiveIndex] = useState(0);
 
+  const handleScrollEnd = useCallback((e: any) => {
+    const index = Math.round(e.nativeEvent.contentOffset.x / SNAP_INTERVAL);
+    setActiveIndex(Math.max(0, Math.min(index, runners.length - 1)));
+  }, [runners.length]);
+
+  const renderItem = useCallback(({ item }: { item: Runner }) => (
+    <RunnerCard
+      runner={item}
+      status={relationships[item.id] ?? 'none'}
+      onPress={() => onRunnerPress(item)}
+      onConnect={() => onConnect(item.id)}
+      onMessage={() => onMessage(item.id, item.name, item.avatar)}
+    />
+  ), [relationships, onRunnerPress, onConnect, onMessage]);
+
   if (!visible || runners.length === 0) return null;
 
   return (
@@ -68,19 +83,11 @@ export function ClusterCarousel({
         snapToInterval={SNAP_INTERVAL}
         decelerationRate="fast"
         contentContainerStyle={styles.listContent}
-        onMomentumScrollEnd={(e) => {
-          const index = Math.round(e.nativeEvent.contentOffset.x / SNAP_INTERVAL);
-          setActiveIndex(Math.max(0, Math.min(index, runners.length - 1)));
-        }}
-        renderItem={({ item }) => (
-          <RunnerCard
-            runner={item}
-            status={relationships[item.id] ?? 'none'}
-            onPress={() => onRunnerPress(item)}
-            onConnect={() => onConnect(item.id)}
-            onMessage={() => onMessage(item.id, item.name, item.avatar)}
-          />
-        )}
+        onMomentumScrollEnd={handleScrollEnd}
+        renderItem={renderItem}
+        initialNumToRender={2}
+        maxToRenderPerBatch={2}
+        removeClippedSubviews
       />
 
       {/* Dots indicateurs */}
@@ -98,7 +105,7 @@ export function ClusterCarousel({
   );
 }
 
-function RunnerCard({
+const RunnerCard = React.memo(function RunnerCard({
   runner,
   status,
   onPress,
@@ -197,7 +204,7 @@ function RunnerCard({
       <Text style={styles.viewProfile}>Appuyer pour voir le profil complet</Text>
     </TouchableOpacity>
   );
-}
+});
 
 const statusLabel: Record<string, string> = {
   friends: 'Amis',

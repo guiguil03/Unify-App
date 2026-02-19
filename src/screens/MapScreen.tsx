@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { View, StyleSheet } from "react-native";
 import MapView from "react-native-maps";
 import { useNavigation } from "@react-navigation/native";
@@ -37,67 +37,65 @@ export default function MapScreen() {
   const [selectedRunner, setSelectedRunner] = useState<Runner | null>(null);
   const [showLocationSelector, setShowLocationSelector] = useState(false);
   const [activeSearchZone, setActiveSearchZone] = useState(false);
-  // Tous les runners pour la carte (affichés par défaut)
   const [allRunners, setAllRunners] = useState<Runner[]>([]);
-  // Runners filtrés pour la liste (dans la zone de recherche)
-  const [filteredRunners, setFilteredRunners] = useState<Runner[]>([]);
+
+  // Extraire les coordonnées pour stabiliser le useMemo
+  const userLat = location?.latitude;
+  const userLng = location?.longitude;
+  const selectedLat = selectedLocation?.latitude;
+  const selectedLng = selectedLocation?.longitude;
+  
+  const filteredRunners = useMemo(() => {
+    const searchCenter = selectedLocation || location;
+    if (!searchCenter || allRunners.length === 0) return allRunners;
+    
+    return filterRunnersByDistance(
+      allRunners,
+      searchCenter,
+      searchRadius
+    );
+  }, [allRunners, selectedLat, selectedLng, userLat, userLng, searchRadius]);
+
   const [isRunnersListExpanded, setIsRunnersListExpanded] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showClusterCarousel, setShowClusterCarousel] = useState(false);
   const [clusterRunners, setClusterRunners] = useState<Runner[]>([]);
   const [loadingRunners, setLoadingRunners] = useState(false);
 
-  // Charger tous les runners au démarrage
+  // Charger les runners - S'assurer que ça tourne à chaque montage
   useEffect(() => {
+    let isMounted = true;
     const loadAllRunners = async () => {
       try {
         setLoadingRunners(true);
         const runners = await RunnersService.getAllRunners();
-        setAllRunners(runners);
-        // Initialiser filteredRunners avec tous les runners aussi
-        if (location) {
-          const filtered = filterRunnersByDistance(
-            runners,
-            location,
-            searchRadius
-          );
-          setFilteredRunners(filtered);
-        } else {
-          setFilteredRunners(runners);
+        if (isMounted) {
+          setAllRunners(runners);
+          // Activer la zone par défaut si on a une position
+          if (location) setActiveSearchZone(true);
         }
       } catch (error) {
-        setAllRunners([]);
+        if (isMounted) setAllRunners([]);
       } finally {
-        setLoadingRunners(false);
+        if (isMounted) setLoadingRunners(false);
       }
     };
 
     loadAllRunners();
-  }, []); // Charger une seule fois au démarrage
-
-  useEffect(() => {
-    if (location && allRunners.length > 0) {
-      setActiveSearchZone(true);
-      const filtered = filterRunnersByDistance(
-        allRunners,
-        location,
-        searchRadius
-      );
-      setFilteredRunners(filtered);
-    }
-  }, [location, searchRadius, allRunners]);
+    return () => { isMounted = false; };
+  }, [!!location]); // Se redéclenche si la présence de location change
 
   const handleLocationSelect = (location: Location, address: string) => {
     setIsRunnersListExpanded(false);
     setSelectedLocation(location);
     setSelectedAddress(address);
-    setShowLocationSelector(true); // Ouvrir le sélecteur pour configurer la zone
-    setActiveSearchZone(false); // Ne pas activer la zone tout de suite
-    setShowClusterCarousel(false); // Fermer le carousel
+    setShowLocationSelector(true);
+    setActiveSearchZone(true);
+    setShowClusterCarousel(false);
 
-    // Recentrer la carte sur le lieu sélectionné (sans zoom sur la zone)
+    // Recentrer la carte
     if (mapRef.current) {
-      const region = createRegionFromLocation(location);
+      const region = createRegionFromRadius(location, searchRadius);
       mapRef.current.animateToRegion(region, GOOGLE_MAPS_CONFIG.ANIMATION_DURATION);
     }
   };
@@ -133,23 +131,24 @@ export default function MapScreen() {
     }
   };
 
+  const handleRadiusChange = (newRadius: number) => {
+    setSearchRadius(newRadius);
+    const searchCenter = selectedLocation || location;
+    if (searchCenter && mapRef.current) {
+      const region = createRegionFromRadius(searchCenter, newRadius);
+      mapRef.current.animateToRegion(region, 100); 
+    }
+  };
+
   const handleValidateZone = () => {
     if (selectedLocation || location) {
       const searchCenter = selectedLocation || location;
       setActiveSearchZone(true);
       setShowLocationSelector(false);
 
-      // Filtrer les runners dans cette zone
-      const filtered = filterRunnersByDistance(
-        allRunners,
-        searchCenter,
-        searchRadius
-      );
-      setFilteredRunners(filtered);
-
       // Si il y a des runners dans cette zone, les afficher dans le ClusterCarousel
-      if (filtered.length > 0) {
-        setClusterRunners(filtered);
+      if (filteredRunners.length > 0) {
+        setClusterRunners(filteredRunners);
         setShowClusterCarousel(true);
       } else {
         setShowClusterCarousel(false);
@@ -251,7 +250,7 @@ export default function MapScreen() {
       <RunnerMap
         ref={mapRef}
         userLocation={location}
-        runners={activeSearchZone ? filteredRunners : allRunners}
+        runners={filteredRunners}
         initialRegion={createRegionFromLocation(location)}
         selectedRunner={selectedRunner}
         onRunnerPress={handleRunnerPress}
@@ -279,7 +278,7 @@ export default function MapScreen() {
         <LocationSelector
           address={selectedAddress || "Ma position actuelle"}
           radius={searchRadius}
-          onRadiusChange={setSearchRadius}
+          onRadiusChange={handleRadiusChange}
           onValidate={handleValidateZone}
           onClose={handleResetToMyLocation}
           style={styles.locationSelector}

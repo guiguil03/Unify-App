@@ -1,14 +1,15 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  ScrollView, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
   Image,
 } from 'react-native';
+import { SearchFilters, SearchFilterState } from '../components/contacts/SearchFilters';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useContacts } from '../hooks/useContacts';
@@ -37,6 +38,7 @@ export default function ContactsScreen() {
   const [requestsCount, setRequestsCount] = useState<number>(0);
   const [isSearching, setIsSearching] = useState(false);
   const [isLoadingRequests, setIsLoadingRequests] = useState(false);
+  const [filters, setFilters] = useState<SearchFilterState>({ level: '', preferredTime: '' });
 
   const loadCounts = useCallback(async () => {
     try {
@@ -82,9 +84,11 @@ export default function ContactsScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      loadCounts();
+      // loadPendingRequests already updates requestsCount — avoid double call
       if (activeTab === 'requests') {
         loadPendingRequests();
+      } else {
+        loadCounts();
       }
     }, [activeTab, loadCounts, loadPendingRequests])
   );
@@ -365,20 +369,27 @@ export default function ContactsScreen() {
         {/* Recherche */}
         {activeTab === 'search' && (
           <View>
-            <View style={styles.searchContainer}>
-              <MaterialCommunityIcons name="magnify" size={20} color="#666" style={styles.searchIcon} />
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Rechercher des coureur(se)s..."
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                autoFocus
+            <View style={styles.searchRow}>
+              <View style={[styles.searchContainer, { flex: 1 }]}>
+                <MaterialCommunityIcons name="magnify" size={20} color="#666" style={styles.searchIcon} />
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Rechercher des coureur(se)s..."
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                  autoFocus
+                />
+                {searchQuery.length > 0 && (
+                  <TouchableOpacity onPress={() => setSearchQuery('')}>
+                    <MaterialCommunityIcons name="close-circle" size={20} color="#999" />
+                  </TouchableOpacity>
+                )}
+              </View>
+              <SearchFilters
+                filters={filters}
+                onFiltersChange={setFilters}
+                activeCount={[filters.level, filters.preferredTime].filter(Boolean).length}
               />
-              {searchQuery.length > 0 && (
-                <TouchableOpacity onPress={() => setSearchQuery('')}>
-                  <MaterialCommunityIcons name="close-circle" size={20} color="#999" />
-                </TouchableOpacity>
-              )}
             </View>
 
             {isSearching ? (
@@ -391,59 +402,65 @@ export default function ContactsScreen() {
                   Tapez un nom pour trouver de nouveaux amis
                 </Text>
               </View>
-            ) : searchResults.length === 0 ? (
-              <View style={styles.emptyState}>
-                <MaterialCommunityIcons name="account-off-outline" size={64} color="#ccc" />
-                <Text style={styles.emptyText}>Aucun résultat</Text>
-              </View>
-            ) : (
-              searchResults.map((user) => {
-                const relationshipStatus = relationships[user.id];
+            ) : (() => {
+              const filteredResults = searchResults.filter(u =>
+                (!filters.level || u.level?.toLowerCase() === filters.level.toLowerCase()) &&
+                (!filters.preferredTime || u.preferredTime?.toLowerCase() === filters.preferredTime.toLowerCase())
+              );
+              return filteredResults.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <MaterialCommunityIcons name="account-off-outline" size={64} color="#ccc" />
+                  <Text style={styles.emptyText}>Aucun résultat</Text>
+                </View>
+              ) : (
+                filteredResults.map((user) => {
+                  const relationshipStatus = relationships[user.id];
 
-                return (
-                  <View key={user.id} style={styles.searchResultCard}>
-                    <View style={styles.resultInfo}>
-                      {user.avatar ? (
-                        <Image source={{ uri: user.avatar }} style={styles.avatar} />
-                      ) : (
-                        <View style={styles.avatarPlaceholder}>
-                          <MaterialCommunityIcons name="account" size={24} color="#999" />
+                  return (
+                    <View key={user.id} style={styles.searchResultCard}>
+                      <View style={styles.resultInfo}>
+                        {user.avatar ? (
+                          <Image source={{ uri: user.avatar }} style={styles.avatar} />
+                        ) : (
+                          <View style={styles.avatarPlaceholder}>
+                            <MaterialCommunityIcons name="account" size={24} color="#999" />
+                          </View>
+                        )}
+                        <Text style={styles.resultName}>{user.name}</Text>
+                      </View>
+
+                      {!relationshipStatus || relationshipStatus === undefined ? (
+                        <TouchableOpacity
+                          style={styles.addContactButton}
+                          onPress={() => handleAddContact(user.id)}
+                        >
+                          <MaterialCommunityIcons name="account-plus" size={20} color="#fff" />
+                          <Text style={styles.addContactButtonText}>Ajouter</Text>
+                        </TouchableOpacity>
+                      ) : relationshipStatus === 'friends' ? (
+                        <View style={[styles.statusPill, styles.friendsPill]}>
+                          <MaterialCommunityIcons name="check-circle" size={18} color="#2E7D32" />
+                          <Text style={[styles.statusPillText, styles.friendsPillText]}>Déjà amis</Text>
                         </View>
+                      ) : relationshipStatus === 'pending' ? (
+                        <View style={[styles.statusPill, styles.pendingPill]}>
+                          <MaterialCommunityIcons name="clock-outline" size={18} color="#FF8F00" />
+                          <Text style={[styles.statusPillText, styles.pendingPillText]}>Demande envoyée</Text>
+                        </View>
+                      ) : (
+                        <TouchableOpacity
+                          style={[styles.statusPill, styles.incomingPill]}
+                          onPress={() => setActiveTab('requests')}
+                        >
+                          <MaterialCommunityIcons name="account-clock" size={18} color="#0288D1" />
+                          <Text style={[styles.statusPillText, styles.incomingPillText]}>Demande reçue</Text>
+                        </TouchableOpacity>
                       )}
-                      <Text style={styles.resultName}>{user.name}</Text>
                     </View>
-
-                    {!relationshipStatus || relationshipStatus === undefined ? (
-                      <TouchableOpacity
-                        style={styles.addContactButton}
-                        onPress={() => handleAddContact(user.id)}
-                      >
-                        <MaterialCommunityIcons name="account-plus" size={20} color="#fff" />
-                        <Text style={styles.addContactButtonText}>Ajouter</Text>
-                      </TouchableOpacity>
-                    ) : relationshipStatus === 'friends' ? (
-                      <View style={[styles.statusPill, styles.friendsPill]}>
-                        <MaterialCommunityIcons name="check-circle" size={18} color="#2E7D32" />
-                        <Text style={[styles.statusPillText, styles.friendsPillText]}>Déjà amis</Text>
-                      </View>
-                    ) : relationshipStatus === 'pending' ? (
-                      <View style={[styles.statusPill, styles.pendingPill]}>
-                        <MaterialCommunityIcons name="clock-outline" size={18} color="#FF8F00" />
-                        <Text style={[styles.statusPillText, styles.pendingPillText]}>Demande envoyée</Text>
-                      </View>
-                    ) : (
-                      <TouchableOpacity
-                        style={[styles.statusPill, styles.incomingPill]}
-                        onPress={() => setActiveTab('requests')}
-                      >
-                        <MaterialCommunityIcons name="account-clock" size={18} color="#0288D1" />
-                        <Text style={[styles.statusPillText, styles.incomingPillText]}>Demande reçue</Text>
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                );
-              })
-            )}
+                  );
+                })
+              );
+            })()}
           </View>
         )}
       </ScrollView>
@@ -535,6 +552,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 16,
+  },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -542,7 +565,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    marginBottom: 16,
     borderWidth: 1,
     borderColor: '#e0e0e0',
   },

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { ScrollView, StyleSheet, View, Text, ActivityIndicator, TouchableOpacity, Image, FlatList, RefreshControl } from 'react-native';
+import { ScrollView, StyleSheet, View, Text, TouchableOpacity, Image, FlatList, RefreshControl, ActivityIndicator } from 'react-native';
+import { SkeletonBlock } from '../components/common/SkeletonBlock';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { ProfileHeader } from '../components/profile/ProfileHeader';
 import { ProfileStats } from '../components/profile/ProfileStats';
@@ -61,7 +62,7 @@ export default function ProfileScreen() {
     setRefreshing(false);
   };
 
-  const renderPostItem = ({ item }: { item: Post }) => (
+  const renderPostItem = React.useCallback(({ item }: { item: Post }) => (
     <TouchableOpacity style={styles.postItem}>
       {item.imageUrl ? (
         <Image source={{ uri: item.imageUrl }} style={styles.postImage} />
@@ -77,11 +78,10 @@ export default function ProfileScreen() {
         </View>
       </View>
     </TouchableOpacity>
-  );
+  ), []);
 
-  const renderStoryItem = ({ item }: { item: Story }) => {
+  const renderStoryItem = React.useCallback(({ item }: { item: Story }) => {
     const isExpired = new Date(item.expiresAt) < new Date();
-    
     return (
       <TouchableOpacity style={styles.storyItem}>
         {item.imageUrl ? (
@@ -104,14 +104,30 @@ export default function ProfileScreen() {
         </View>
       </TouchableOpacity>
     );
-  };
+  }, []);
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#7D80F4" />
-        <Text style={styles.loadingText}>Chargement du profil...</Text>
-      </View>
+      <ScrollView contentContainerStyle={{ padding: 16, gap: 20 }}>
+        {/* Avatar + nom/bio */}
+        <View style={{ alignItems: 'center', gap: 10 }}>
+          <SkeletonBlock width={80} height={80} borderRadius={40} />
+          <SkeletonBlock width={160} height={18} />
+          <SkeletonBlock width={220} height={14} />
+        </View>
+        {/* Stats row */}
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <SkeletonBlock width="30%" height={64} />
+          <SkeletonBlock width="30%" height={64} />
+          <SkeletonBlock width="30%" height={64} />
+        </View>
+        {/* Grid 3×3 */}
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4 }}>
+          {Array.from({ length: 9 }).map((_, i) => (
+            <SkeletonBlock key={i} width="32%" height={110} />
+          ))}
+        </View>
+      </ScrollView>
     );
   }
 
@@ -184,6 +200,9 @@ export default function ProfileScreen() {
                 numColumns={3}
                 scrollEnabled={false}
                 contentContainerStyle={styles.gridContainer}
+                maxToRenderPerBatch={9}
+                initialNumToRender={9}
+                removeClippedSubviews={false}
               />
             )
           ) : (
@@ -204,6 +223,9 @@ export default function ProfileScreen() {
                 numColumns={3}
                 scrollEnabled={false}
                 contentContainerStyle={styles.gridContainer}
+                maxToRenderPerBatch={9}
+                initialNumToRender={9}
+                removeClippedSubviews={false}
               />
             )
           )}

@@ -12,6 +12,7 @@ interface SearchBarProps {
 
 export function SearchBar({ onLocationSelect, onFocus }: SearchBarProps) {
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
   const [results, setResults] = useState<
     Array<{
       id: string;
@@ -22,31 +23,37 @@ export function SearchBar({ onLocationSelect, onFocus }: SearchBarProps) {
   >([]);
   const [showResults, setShowResults] = useState(false);
 
-  const handleSearch = async (query: string) => {
+  const handleSearch = (query: string) => {
     setSearchQuery(query);
 
-    if (query.length < 2) {
+    if (searchTimeout) clearTimeout(searchTimeout);
+
+    if (query.length < 3) {
       setResults([]);
       setShowResults(false);
       return;
     }
 
-    try {
-      const searchResults = await GeocodingService.searchLocation(query);
-      if (searchResults) {
-        setResults([
-          {
-            id: "1",
-            name: searchResults.name,
-            address: searchResults.formattedAddress,
-            location: searchResults.location,
-          },
-        ]);
-        setShowResults(true);
+    const timeout = setTimeout(async () => {
+      try {
+        const searchResults = await GeocodingService.searchLocation(query);
+        if (searchResults) {
+          setResults([
+            {
+              id: "1",
+              name: searchResults.name,
+              address: searchResults.formattedAddress,
+              location: searchResults.location,
+            },
+          ]);
+          setShowResults(true);
+        }
+      } catch (error) {
+        if (__DEV__) console.error('Map search failed:', error);
       }
-    } catch (error) {
-      if (__DEV__) console.error('Map search failed:', error);
-    }
+    }, 500); // Attendre 500ms avant de lancer la recherche
+
+    setSearchTimeout(timeout);
   };
 
   const handleSelectResult = (result: {

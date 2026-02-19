@@ -1,35 +1,17 @@
 import React from 'react';
-import { ScrollView, StyleSheet, View, Text, TouchableOpacity } from 'react-native';
+import { ScrollView, StyleSheet, View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { EventCard } from '../components/events/EventCard';
-import { Event } from '../types/event';
+import { useEvents } from '../hooks/useEvents';
 import { useSubscription } from '../contexts/SubscriptionContext';
 import { COLORS } from '../constants/colors';
 import { NavigationProp } from '../types/navigation';
 
-const MOCK_EVENTS: Event[] = [
-  {
-    id: '1',
-    title: 'Course matinale en groupe',
-    date: '25 Mars 2024 - 7h00',
-    location: 'Parc central',
-    participants: 10,
-    description: 'Rejoignez-nous pour une course matinale en groupe !',
-  },
-  {
-    id: '2',
-    title: 'Marathon des débutants',
-    date: '1 Avril 2024 - 9h00',
-    location: 'Centre-ville',
-    participants: 20,
-    description: 'Un marathon adapté aux coureurs débutants.',
-  },
-];
-
 export default function EventsScreen() {
   const { isPremium } = useSubscription();
   const navigation = useNavigation<NavigationProp>();
+  const { events, loading, toggleParticipation } = useEvents();
 
   if (!isPremium) {
     return (
@@ -72,12 +54,33 @@ export default function EventsScreen() {
     );
   }
 
+  if (loading) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.list}>
-        {MOCK_EVENTS.map((event) => (
-          <EventCard key={event.id} event={event} />
-        ))}
+        {events.length === 0 ? (
+          <View style={styles.emptyState}>
+            <MaterialCommunityIcons name="calendar-blank-outline" size={64} color="#ccc" />
+            <Text style={styles.emptyText}>Aucun événement à venir</Text>
+          </View>
+        ) : (
+          events.map((event) => (
+            <EventCard
+              key={event.id}
+              event={event}
+              onToggleParticipation={() =>
+                toggleParticipation(event.id, !!event.isParticipating)
+              }
+            />
+          ))
+        )}
       </ScrollView>
     </View>
   );
@@ -90,6 +93,16 @@ const styles = StyleSheet.create({
   },
   list: {
     padding: 16,
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 64,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#999',
+    marginTop: 12,
   },
   premiumRequired: {
     flex: 1,

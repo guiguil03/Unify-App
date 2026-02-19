@@ -5,6 +5,10 @@ export interface Contact {
   name: string;
   lastActivity: string;
   avatar?: string;
+  level?: string;
+  preferredTime?: string;
+  averagePace?: string;
+  gender?: string;
 }
 
 export interface ContactRequest extends Contact {

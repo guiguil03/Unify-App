@@ -6,8 +6,8 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
-  ActivityIndicator,
 } from 'react-native';
+import { SkeletonBlock } from '../components/common/SkeletonBlock';
 import { useNavigation } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { ActivityMap } from '../components/activities/ActivityMap';
@@ -98,9 +98,23 @@ export default function ActivityDetailScreen({ route }: ActivityDetailScreenProp
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
-      </View>
+      <ScrollView style={styles.container}>
+        {/* Carte map placeholder */}
+        <SkeletonBlock width="100%" height={200} borderRadius={0} />
+        <View style={{ padding: 16, gap: 12 }}>
+          {/* Date row */}
+          <SkeletonBlock width="100%" height={44} />
+          {/* Stats bar */}
+          <SkeletonBlock width="100%" height={80} />
+          {/* Grid 2×2 */}
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+            <SkeletonBlock width="47.5%" height={90} />
+            <SkeletonBlock width="47.5%" height={90} />
+            <SkeletonBlock width="47.5%" height={90} />
+            <SkeletonBlock width="47.5%" height={90} />
+          </View>
+        </View>
+      </ScrollView>
     );
   }
 

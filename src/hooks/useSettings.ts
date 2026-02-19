@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Settings } from '../types/settings';
 import { SettingsService } from '../services/SettingsService';
 
@@ -14,7 +14,7 @@ export function useSettings() {
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   const [loading, setLoading] = useState(true);
 
-  const loadSettings = async () => {
+  const loadSettings = useCallback(async () => {
     try {
       const savedSettings = await SettingsService.getSettings();
       if (savedSettings) {
@@ -25,11 +25,11 @@ export function useSettings() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadSettings();
-  }, []);
+  }, [loadSettings]);
 
   const updateSetting = async (key: keyof Settings, value: boolean) => {
     const newSettings = {

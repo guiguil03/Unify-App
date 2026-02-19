@@ -3,11 +3,17 @@ import { Profile } from '../types/profile';
 import { supabase } from '../config/supabase';
 import { getCurrentUserFromDB } from '../utils/supabaseHelpers';
 
+// Cache 30s — évite un aller-retour DB à chaque focus sur la carte
+let _profileCache: { data: Profile; ts: number } | null = null;
+const PROFILE_CACHE_TTL = 30_000;
+
 export class ProfileService {
+  static invalidateCache() { _profileCache = null; }
   /**
    * Récupère le profil de l'utilisateur actuel avec ses statistiques
    */
   static async getProfile(): Promise<Profile> {
+    if (_profileCache && Date.now() - _profileCache.ts < PROFILE_CACHE_TTL) return _profileCache.data;
     try {
       const currentUser = await getCurrentUserFromDB();
       if (!currentUser) {
@@ -25,7 +31,7 @@ export class ProfileService {
         throw new Error('Profil non trouvé');
       }
 
-      return {
+      const result: Profile = {
         id: user.id,
         name: user.name,
         avatar: user.avatar || '',
@@ -44,6 +50,8 @@ export class ProfileService {
           averagePace: user.average_pace || '0:00 min/km',
         },
       };
+      _profileCache = { data: result, ts: Date.now() };
+      return result;
     } catch (error: any) {
       // Ne pas logger les erreurs d'authentification
       throw error;
@@ -127,6 +135,8 @@ export class ProfileService {
       if (!data) {
         throw new Error('Aucune donnée retournée après la mise à jour');
       }
+
+      _profileCache = null; // Invalider le cache après mise à jour
 
       return {
         id: data.id,

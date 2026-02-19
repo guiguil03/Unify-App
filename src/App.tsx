@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { RootStackParamList } from "./types/navigation";
@@ -8,6 +8,7 @@ import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-cont
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { SubscriptionProvider } from "./contexts/SubscriptionContext";
 import Toast, { BaseToast, ErrorToast } from "react-native-toast-message";
+import { NotificationService } from "./services/NotificationService";
 
 import LoginScreen from "./screens/LoginScreen";
 import WelcomeScreen from "./screens/WelcomeScreen";
@@ -128,6 +129,10 @@ function AuthStack() {
 
 // Stack pour utilisateurs authentifiés ou qui ont cliqué sur "Continuer sans compte"
 function AppStack() {
+  useEffect(() => {
+    NotificationService.registerForPushNotifications().catch(() => {});
+  }, []);
+
   return (
     <>
       <OnboardingChecker />
@@ -432,8 +437,8 @@ function NavigationSwitcher() {
   if (isLoading || !hasCompletedInitialCheck) {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <Image 
-          source={require("./assets/logo.png")} 
+        <Image
+          source={require("./assets/logo.png")}
           style={{ width: 150, height: 150, marginBottom: 32 }}
           resizeMode="contain"
         />

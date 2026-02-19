@@ -1,6 +1,7 @@
 import { GroupChatPreview, GroupMessage, GroupMember } from '../types/groupChat';
 import { supabase } from '../config/supabase';
 import { getCurrentUserFromDB, formatTime } from '../utils/supabaseHelpers';
+import { NotificationService } from './NotificationService';
 
 export class GroupChatsService {
   /**
@@ -136,6 +137,28 @@ export class GroupChatsService {
           last_message_time: data.created_at,
         })
         .eq('id', groupChatId);
+
+      // Envoyer des notifications push aux autres membres du groupe
+      try {
+        const { data: members } = await supabase
+          .from('group_members')
+          .select('user_id, user:users(push_token)')
+          .eq('group_chat_id', groupChatId)
+          .neq('user_id', currentUser.id);
+        const senderName = data.sender?.name ?? currentUser.name;
+        await Promise.allSettled(
+          (members || [])
+            .filter((m: any) => m.user?.push_token)
+            .map((m: any) =>
+              NotificationService.sendPushNotification(
+                m.user.push_token,
+                senderName,
+                content,
+                { type: 'message', groupChatId, contactId: currentUser.id }
+              )
+            )
+        );
+      } catch {}
 
       return {
         id: data.id,

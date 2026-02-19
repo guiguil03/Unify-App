@@ -50,33 +50,34 @@ export function useActivitiesManager() {
         date: activity.date ? parseDateString(activity.date) : undefined,
       });
 
-      // Si l'activité a une route, l'ajouter
+      // Paralléliser : points de route, pauses, et stats profil
+      const routeOps: Promise<any>[] = [];
       if (activity.route && activity.route.coordinates.length > 0) {
-        await ActivitiesService.addRoutePoints(
-          newActivity.id,
-          activity.route.coordinates.map(coord => ({
-            latitude: coord.latitude,
-            longitude: coord.longitude,
-            timestamp: coord.timestamp,
-          }))
-        );
-
-        // Ajouter les pauses si présentes
-        if (activity.route.pauses && activity.route.pauses.length > 0) {
-          await ActivitiesService.addPauses(
+        routeOps.push(
+          ActivitiesService.addRoutePoints(
             newActivity.id,
-            activity.route.pauses.map(pause => ({
-              startTime: pause.startTime,
-              endTime: pause.endTime,
-              latitude: pause.location.latitude,
-              longitude: pause.location.longitude,
+            activity.route.coordinates.map(coord => ({
+              latitude: coord.latitude,
+              longitude: coord.longitude,
+              timestamp: coord.timestamp,
             }))
+          )
+        );
+        if (activity.route.pauses && activity.route.pauses.length > 0) {
+          routeOps.push(
+            ActivitiesService.addPauses(
+              newActivity.id,
+              activity.route.pauses.map(pause => ({
+                startTime: pause.startTime,
+                endTime: pause.endTime,
+                latitude: pause.location.latitude,
+                longitude: pause.location.longitude,
+              }))
+            )
           );
         }
       }
-
-      // Mettre à jour les statistiques du profil
-      await updateProfileStats(activity.distance, durationSeconds);
+      await Promise.all([...routeOps, updateProfileStats(activity.distance, durationSeconds)]);
 
       // Rafraîchir la liste des activités
       if (refetch) {

@@ -3,7 +3,7 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
+  FlatList,
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
@@ -17,6 +17,8 @@ import { PostCard } from "../components/posts/PostCard";
 import { usePosts } from "../hooks/usePosts";
 import { useAuth } from "../contexts/AuthContext";
 import { NavigationProp } from "../types/navigation";
+import { useNotifications } from "../hooks/useNotifications";
+import { Post } from "../types/post";
 import { COLORS } from "../constants/colors";
 
 function AnimatedPost({ children, index }: { children: React.ReactNode; index: number }) {
@@ -40,6 +42,7 @@ function AnimatedPost({ children, index }: { children: React.ReactNode; index: n
 export default function HomeScreen() {
   const navigation = useNavigation<NavigationProp>();
   const { user } = useAuth();
+  useNotifications(navigation);
   const { posts, loading, error, refetch, handleLike, handleDelete } = usePosts();
   const [refreshing, setRefreshing] = React.useState(false);
 
@@ -53,50 +56,65 @@ export default function HomeScreen() {
     setRefreshing(false);
   }, [refetch]);
 
+  const keyExtractor = React.useCallback((item: Post) => item.id, []);
+
+  const renderPost = React.useCallback(({ item, index }: { item: Post; index: number }) => (
+    <AnimatedPost index={index}>
+      <PostCard
+        post={item}
+        onLike={handleLike}
+        onDelete={handleDelete}
+        isOwnPost={item.userId === user?.id}
+      />
+    </AnimatedPost>
+  ), [handleLike, handleDelete, user?.id]);
+
+  const listEmptyComponent = React.useMemo(() => {
+    if (loading) {
+      return (
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+        </View>
+      );
+    }
+    if (error) {
+      return (
+        <View style={styles.center}>
+          <MaterialCommunityIcons name="wifi-off" size={48} color={COLORS.textLight} />
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity onPress={refetch} style={styles.retryBtn}>
+            <Text style={styles.retryBtnText}>Réessayer</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+    return (
+      <View style={styles.center}>
+        <MaterialCommunityIcons name="newspaper-variant-outline" size={64} color={COLORS.textLight} />
+        <Text style={styles.emptyText}>Aucun post pour le moment</Text>
+        <Text style={styles.emptySubtext}>Soyez le premier à publier !</Text>
+      </View>
+    );
+  }, [loading, error, refetch]);
+
   return (
     <View style={styles.container}>
-      <ScrollView
-        style={styles.scroll}
+      <FlatList
+        data={posts}
+        renderItem={renderPost}
+        keyExtractor={keyExtractor}
+        ListHeaderComponent={<StoriesRow />}
+        ListEmptyComponent={listEmptyComponent}
+        contentContainerStyle={styles.feed}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />
         }
-      >
-        <StoriesRow />
-
-        {loading && posts.length === 0 ? (
-          <View style={styles.center}>
-            <ActivityIndicator size="large" color={COLORS.primary} />
-          </View>
-        ) : error ? (
-          <View style={styles.center}>
-            <MaterialCommunityIcons name="wifi-off" size={48} color={COLORS.textLight} />
-            <Text style={styles.errorText}>{error}</Text>
-            <TouchableOpacity onPress={refetch} style={styles.retryBtn}>
-              <Text style={styles.retryBtnText}>Réessayer</Text>
-            </TouchableOpacity>
-          </View>
-        ) : posts.length === 0 ? (
-          <View style={styles.center}>
-            <MaterialCommunityIcons name="newspaper-variant-outline" size={64} color={COLORS.textLight} />
-            <Text style={styles.emptyText}>Aucun post pour le moment</Text>
-            <Text style={styles.emptySubtext}>Soyez le premier à publier !</Text>
-          </View>
-        ) : (
-          <View style={styles.feed}>
-            {posts.map((post, index) => (
-              <AnimatedPost key={post.id} index={index}>
-                <PostCard
-                  post={post}
-                  onLike={handleLike}
-                  onDelete={handleDelete}
-                  isOwnPost={post.userId === user?.id}
-                />
-              </AnimatedPost>
-            ))}
-          </View>
-        )}
-      </ScrollView>
+        initialNumToRender={3}
+        maxToRenderPerBatch={3}
+        windowSize={5}
+        removeClippedSubviews
+      />
 
       {/* ── FAB ── */}
       <TouchableOpacity
@@ -114,7 +132,6 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#FFFFFF" },
-  scroll: { flex: 1 },
 
   // States
   center: {
@@ -134,7 +151,7 @@ const styles = StyleSheet.create({
   emptySubtext: { fontSize: 14, color: COLORS.textLight, textAlign: "center" },
 
   // Feed
-  feed: { paddingBottom: 100 },
+  feed: { paddingBottom: 100, flexGrow: 1 },
 
   // FAB
   fab: {

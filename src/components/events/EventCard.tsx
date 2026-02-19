@@ -5,9 +5,14 @@ import { Event } from "../../types/event";
 
 interface EventCardProps {
   event: Event;
+  onToggleParticipation?: () => void;
 }
 
-export function EventCard({ event }: EventCardProps) {
+export function EventCard({ event, onToggleParticipation }: EventCardProps) {
+  const participantsText = event.maxParticipants
+    ? `${event.participants} / ${event.maxParticipants} participants`
+    : `${event.participants} participants`;
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -18,14 +23,16 @@ export function EventCard({ event }: EventCardProps) {
       <View style={styles.details}>
         <DetailItem icon="clock-outline" text={event.date} />
         <DetailItem icon="map-marker" text={event.location} />
-        <DetailItem
-          icon="account-group"
-          text={`${event.participants} participants`}
-        />
+        <DetailItem icon="account-group" text={participantsText} />
       </View>
 
-      <TouchableOpacity style={styles.button}>
-        <Text style={styles.buttonText}>S'inscrire</Text>
+      <TouchableOpacity
+        style={[styles.button, event.isParticipating && styles.buttonLeave]}
+        onPress={onToggleParticipation}
+      >
+        <Text style={styles.buttonText}>
+          {event.isParticipating ? "Se désinscrire" : "S'inscrire"}
+        </Text>
       </TouchableOpacity>
     </View>
   );
@@ -66,6 +73,8 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: "600",
+    flex: 1,
+    marginRight: 8,
   },
   details: {
     gap: 8,
@@ -85,6 +94,9 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 8,
     alignItems: "center",
+  },
+  buttonLeave: {
+    backgroundColor: "#FF5252",
   },
   buttonText: {
     color: "white",

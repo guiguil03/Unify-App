@@ -28,7 +28,7 @@ interface PostCardProps {
   isOwnPost?: boolean;
 }
 
-export function PostCard({ post, onLike, onDelete, isOwnPost }: PostCardProps) {
+export const PostCard = React.memo(function PostCard({ post, onLike, onDelete, isOwnPost }: PostCardProps) {
   const { user } = useAuth();
   const navigation = useNavigation<NavigationProp>();
   const [isLiked, setIsLiked] = React.useState(post.isLiked || false);
@@ -281,7 +281,7 @@ export function PostCard({ post, onLike, onDelete, isOwnPost }: PostCardProps) {
       <Text style={styles.timestamp}>{formatDate(post.createdAt)}</Text>
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: {

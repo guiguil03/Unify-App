@@ -55,19 +55,8 @@ export function useMapScreen() {
     // Cluster carousel
     selectedCluster: null as Runner[] | null,
     showClusterCarousel: false,
-    location,
-    contacts,
-    relationships: relationships as Record<string, ContactRelationshipStatus>,
     loadingRunners: false,
   });
-
-  useEffect(() => {
-    setState(prev => ({
-      ...prev,
-      contacts,
-      relationships: relationships as Record<string, ContactRelationshipStatus>,
-    }));
-  }, [contacts, relationships]);
 
   // Stable callback — reads settings/profile from refs, never recreated on settings/profile change
   const loadNearbyRunners = useCallback(async (center: Location, radius: number) => {
@@ -158,12 +147,14 @@ export function useMapScreen() {
       const refreshData = async () => {
         // Lancer en parallèle pour diviser le temps d'attente par 2
         await Promise.all([reloadSettings(), refetchProfile()]);
-        if (!isFirstFocus && isInitialLoadComplete.current && searchCenterRef.current) {
+        // Recharger les runners si ce n'est pas le premier focus, que le chargement initial est terminé,
+        // qu'on a une zone de recherche sauvegardée et une location
+        if (!isFirstFocus && isInitialLoadComplete.current && searchCenterRef.current && location) {
           loadNearbyRunners(searchCenterRef.current.center, searchCenterRef.current.radius);
         }
       };
       refreshData();
-    }, [reloadSettings, refetchProfile, loadNearbyRunners])
+    }, [reloadSettings, refetchProfile, loadNearbyRunners, location])
   );
 
   const handlers = {
@@ -173,12 +164,12 @@ export function useMapScreen() {
         selectedLocation: location,
         selectedAddress: address,
         showLocationSelector: true,
-        activeSearchZone: false,
+        activeSearchZone: true,
         isRunnersListExpanded: false,
       }));
 
       if (mapRef.current) {
-        const region = createRegionFromLocation(location);
+        const region = createRegionFromRadius(location, state.searchRadius);
         mapRef.current.animateToRegion(region, GOOGLE_MAPS_CONFIG.ANIMATION_DURATION);
       }
     },
@@ -396,6 +387,7 @@ export function useMapScreen() {
       ...state,
       location,
       contacts,
+      relationships: relationships as Record<string, ContactRelationshipStatus>,
       settings,
     },
     handlers,
