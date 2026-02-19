@@ -3,6 +3,8 @@ import { ScrollView, StyleSheet, View, Text, ActivityIndicator, TouchableOpacity
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { ProfileService } from '../services/ProfileService';
+import { IdentityVerificationService } from '../services/IdentityVerificationService';
+import { VerifyIdentityModal } from '../components/common/VerifyIdentityModal';
 import { PostsService } from '../services/PostsService';
 import { StoriesService, Story } from '../services/StoriesService';
 import { ContactsService } from '../services/ContactsService';
@@ -32,6 +34,7 @@ export default function UserProfileScreen() {
   const [activeTab, setActiveTab] = useState<'posts' | 'stories'>('posts');
   const [contactStatus, setContactStatus] = useState<'none' | 'friends' | 'pending' | 'incoming'>('none');
   const [loadingContact, setLoadingContact] = useState(false);
+  const [showVerifyModal, setShowVerifyModal] = useState(false);
 
   const isOwnProfile = user?.id === userId;
 
@@ -110,6 +113,24 @@ export default function UserProfileScreen() {
 
     try {
       setLoadingContact(true);
+
+      // Vérifier que l'identité est vérifiée
+      const verification = await IdentityVerificationService.getVerification();
+      if (!verification || verification.status !== 'verified') {
+        setLoadingContact(false);
+        setShowVerifyModal(true);
+        return;
+      }
+
+      // Vérifier que le profil courant est complet avant de se connecter
+      const ownProfile = await ProfileService.getProfile();
+      if (!ProfileService.isProfileComplete(ownProfile)) {
+        showErrorToast('Complétez votre profil (photo + niveau) avant de vous connecter.');
+        setLoadingContact(false);
+        navigation.navigate('EditProfile');
+        return;
+      }
+
       await ContactsService.addContact(userId);
       
       // Vérifier le statut réel de la relation après l'ajout
@@ -399,6 +420,15 @@ export default function UserProfileScreen() {
           )}
         </View>
       </ScrollView>
+
+      <VerifyIdentityModal
+        visible={showVerifyModal}
+        onClose={() => setShowVerifyModal(false)}
+        onVerify={() => {
+          setShowVerifyModal(false);
+          navigation.navigate('Settings');
+        }}
+      />
     </View>
   );
 }

@@ -9,6 +9,10 @@ const PROFILE_CACHE_TTL = 30_000;
 
 export class ProfileService {
   static invalidateCache() { _profileCache = null; }
+
+  static isProfileComplete(profile: Profile): boolean {
+    return !!(profile.name?.trim() && profile.avatar?.trim() && profile.level?.trim());
+  }
   /**
    * Récupère le profil de l'utilisateur actuel avec ses statistiques
    */

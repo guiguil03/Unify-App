@@ -203,6 +203,7 @@ export class SubscriptionService {
     const subscription = await this.getSubscription();
     if (!subscription) return false;
 
-    return subscription.status === 'premium' || subscription.status === 'trial';
+    // 'active' = statut Stripe natif, 'premium'/'trial' = statuts applicatifs
+    return ['premium', 'trial', 'active'].includes(subscription.status as string);
   }
 }

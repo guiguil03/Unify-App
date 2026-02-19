@@ -20,8 +20,10 @@
       "bundleIdentifier": "com.unify.team",
       "buildNumber": "4",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Unify needs access to location to show nearby runners.",
-        "NSLocationAlwaysUsageDescription": "Unify needs access to location to show nearby runners.",
+        "NSLocationWhenInUseUsageDescription": "Unify utilise votre position pour afficher les coureurs proches.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Unify utilise votre position en arrière-plan pour enregistrer votre parcours de course.",
+        "NSLocationAlwaysUsageDescription": "Unify utilise votre position en arrière-plan pour enregistrer votre parcours de course.",
+        "UIBackgroundModes": ["location"],
         "ITSAppUsesNonExemptEncryption": false
       },
       "usesAppleSignIn": true
@@ -35,8 +37,10 @@
       "permissions": [
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_BACKGROUND_LOCATION",
         "android.permission.RECEIVE_BOOT_COMPLETED",
         "android.permission.VIBRATE",
         "android.permission.POST_NOTIFICATIONS"

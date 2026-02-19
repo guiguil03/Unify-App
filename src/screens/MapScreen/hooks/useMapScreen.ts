@@ -52,6 +52,7 @@ export function useMapScreen() {
     isRunnersListExpanded: false,
     showProfileModal: false,
     showPremiumModal: false,
+    showVerifyModal: false,
     // Cluster carousel
     selectedCluster: null as Runner[] | null,
     showClusterCarousel: false,
@@ -239,6 +240,7 @@ export function useMapScreen() {
         isRunnersListExpanded: false,
         showProfileModal: false,
         showPremiumModal: false,
+        showVerifyModal: false,
         showClusterCarousel: false,
         selectedCluster: null,
         selectedRunner: null,
@@ -308,6 +310,13 @@ export function useMapScreen() {
       }
 
       switch (result.reason) {
+        case 'identity_not_verified':
+          setState(prev => ({ ...prev, showProfileModal: false, showClusterCarousel: false, showVerifyModal: true }));
+          break;
+        case 'profile_incomplete':
+          setState(prev => ({ ...prev, showProfileModal: false, showClusterCarousel: false }));
+          navigation.navigate('EditProfile');
+          break;
         case 'monthly_limit_reached':
           setState(prev => ({ ...prev, showProfileModal: false, showPremiumModal: true }));
           break;
@@ -345,6 +354,10 @@ export function useMapScreen() {
 
     setShowPremiumModal: (visible: boolean) => {
       setState(prev => ({ ...prev, showPremiumModal: visible }));
+    },
+
+    setShowVerifyModal: (visible: boolean) => {
+      setState(prev => ({ ...prev, showVerifyModal: visible }));
     },
 
     handleFilterChange: async (key: keyof Settings, value: boolean) => {

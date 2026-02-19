@@ -12,7 +12,7 @@ export class EventsService {
       const currentUser = await getCurrentUserFromDB();
       const { data, error } = await supabase
         .from('events')
-        .select('id, title, description, date, location, participants, max_participants, image_url')
+        .select('id, title, description, date, location, participants, max_participants, distance, difficulty')
         .gte('date', new Date().toISOString())
         .order('date', { ascending: true });
 
@@ -31,12 +31,14 @@ export class EventsService {
         id: event.id,
         title: event.title,
         date: `${formatDate(event.date)} - ${formatTime(event.date)}`,
+        rawDate: event.date,
         location: event.location,
         participants: event.participants || 0,
         description: event.description || '',
-        imageUrl: event.image_url,
         maxParticipants: event.max_participants,
         isParticipating: participatingIds.has(event.id),
+        distance: event.distance ?? undefined,
+        difficulty: event.difficulty ?? undefined,
       }));
     } catch (error) {
       throw error;

@@ -8,6 +8,7 @@ import { RunnersList } from "../../../components/map/RunnersList";
 import { RunnerProfileModal } from "../../../components/runners/RunnerProfileModal";
 import { ClusterCarousel } from "../../../components/map/ClusterCarousel";
 import { PremiumModal } from "../../../components/common/PremiumModal";
+import { VerifyIdentityModal } from "../../../components/common/VerifyIdentityModal";
 import { useNavigation } from "@react-navigation/native";
 import { NavigationProp } from "../../../types/navigation";
 
@@ -82,6 +83,15 @@ export function MapOverlays({ state, handlers }: { state: any; handlers: any }) 
         onClose={() => handlers.setShowPremiumModal(false)}
         onUpgrade={() => {
           handlers.setShowPremiumModal(false);
+          navigation.navigate('Settings');
+        }}
+      />
+
+      <VerifyIdentityModal
+        visible={state.showVerifyModal}
+        onClose={() => handlers.setShowVerifyModal(false)}
+        onVerify={() => {
+          handlers.setShowVerifyModal(false);
           navigation.navigate('Settings');
         }}
       />

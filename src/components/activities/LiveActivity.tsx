@@ -7,13 +7,72 @@ import {
   AppState,
 } from "react-native";
 import MapView, { Polyline, Marker } from "react-native-maps";
+import * as ExpoLocation from "expo-location";
+import * as TaskManager from "expo-task-manager";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useLocation } from "../../hooks/useLocation";
 import { formatDuration, formatDistance } from "../../utils/format";
 import { LiveActivityService } from "../../services/LiveActivityService";
 import { RunnersService } from "../../services/RunnersService";
 import { Route } from "../../types/route";
 import { COLORS } from "../../constants/colors";
+
+// ── Constants ─────────────────────────────────────────────────────────────────
+const BG_TASK_NAME = "UNIFY_BG_LOCATION";
+const BG_POINTS_KEY = "@unify/bg_points";
+
+type BgPoint = { lat: number; lng: number; ts: number };
+
+// ── Background task (module-level, obligatoire avant tout appel) ──────────────
+// Stocke chaque point GPS en AsyncStorage pendant que l'app est en arrière-plan
+if (!TaskManager.isTaskDefined(BG_TASK_NAME)) {
+  TaskManager.defineTask(BG_TASK_NAME, async ({ data, error }: any) => {
+    if (error || !data?.locations) return;
+    try {
+      const raw = await AsyncStorage.getItem(BG_POINTS_KEY);
+      const existing: BgPoint[] = raw ? JSON.parse(raw) : [];
+      const newPoints: BgPoint[] = (
+        data.locations as ExpoLocation.LocationObject[]
+      ).map((loc) => ({
+        lat: loc.coords.latitude,
+        lng: loc.coords.longitude,
+        ts: loc.timestamp,
+      }));
+      await AsyncStorage.setItem(
+        BG_POINTS_KEY,
+        JSON.stringify([...existing, ...newPoints])
+      );
+    } catch {}
+  });
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function haversineKm(
+  a: { latitude: number; longitude: number },
+  b: { latitude: number; longitude: number }
+): number {
+  const R = 6371;
+  const dLat = ((b.latitude - a.latitude) * Math.PI) / 180;
+  const dLon = ((b.longitude - a.longitude) * Math.PI) / 180;
+  const x =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((a.latitude * Math.PI) / 180) *
+      Math.cos((b.latitude * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
+}
+
+function fmtPace(durationSec: number, distanceKm: number): string {
+  if (distanceKm <= 0) return "--:--";
+  const secPerKm = durationSec / distanceKm;
+  const m = Math.floor(secPerKm / 60);
+  const s = Math.floor(secPerKm % 60);
+  return `${m}:${s.toString().padStart(2, "0")} /km`;
+}
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+type TrackPoint = { latitude: number; longitude: number; timestamp: number };
 
 interface LiveActivityProps {
   onFinish: (activity: {
@@ -23,341 +82,311 @@ interface LiveActivityProps {
     trackedPath?: Array<{ latitude: number; longitude: number }>;
   }) => void;
   onCancel: () => void;
-  route?: Route; // Parcours optionnel à suivre
+  route?: Route;
 }
 
+// ── Component ─────────────────────────────────────────────────────────────────
 export function LiveActivity({ onFinish, onCancel, route }: LiveActivityProps) {
   const [isRunning, setIsRunning] = useState(true);
-  const [startTime] = useState(new Date());
+  const [startTime] = useState(() => new Date());
   const [duration, setDuration] = useState(0);
   const [distance, setDistance] = useState(0);
-  const [trackedPath, setTrackedPath] = useState<Array<{ latitude: number; longitude: number; timestamp: number }>>([]);
-  const { location, refreshLocation } = useLocation();
-  const previousLocationRef = useRef<{ latitude: number; longitude: number } | null>(null);
-  const activityIdRef = useRef<string | null>(null);
+  const [trackedPath, setTrackedPath] = useState<TrackPoint[]>([]);
+  const [initialRegion, setInitialRegion] = useState<any>(null);
 
+  // Refs stables pour les callbacks (évite les closures périmées)
+  const prevPtRef = useRef<{ latitude: number; longitude: number } | null>(null);
+  const distanceRef = useRef(0);
+  const durationRef = useRef(0);
+  const isRunningRef = useRef(true);
+  const trackedPathRef = useRef<TrackPoint[]>([]);
+  const startTimeRef = useRef(startTime);
+
+  useEffect(() => { distanceRef.current = distance; }, [distance]);
+  useEffect(() => { durationRef.current = duration; }, [duration]);
+  useEffect(() => { isRunningRef.current = isRunning; }, [isRunning]);
+  useEffect(() => { trackedPathRef.current = trackedPath; }, [trackedPath]);
+
+  // ── Notification persistante ──────────────────────────────────────────────
   useEffect(() => {
-    const setupLiveActivity = async () => {
-      await LiveActivityService.startActivity();
-    };
-    setupLiveActivity();
-
+    LiveActivityService.startActivity();
     return () => {
       LiveActivityService.stopActivity();
-      // Désactiver le coureur quand le composant se démonte
-      RunnersService.deactivateRunner().catch((error: unknown) => {
-        if (__DEV__) console.error('Runner deactivation failed:', error);
-      });
+      RunnersService.deactivateRunner().catch(() => {});
     };
   }, []);
 
-  // Activer le coureur quand la location est disponible
+  // ── Timer : 1 tick / seconde ──────────────────────────────────────────────
   useEffect(() => {
-    const activateRunner = async () => {
-      if (isRunning && trackedPath.length === 0) {
-        // Essayer d'obtenir la location si elle n'est pas encore disponible
-        let currentLocation = location;
-        if (!currentLocation) {
-          currentLocation = await refreshLocation();
-        }
-        
-        if (currentLocation) {
-          try {
-            await RunnersService.updateRunnerPosition({
-              latitude: currentLocation.latitude,
-              longitude: currentLocation.longitude,
-              distance: 0,
-              pace: '--:--',
-              isActive: true,
-            });
-            previousLocationRef.current = { ...currentLocation };
-            
-            // Initialiser le tracé avec le point de départ
-            setTrackedPath([{ 
-              latitude: currentLocation.latitude, 
-              longitude: currentLocation.longitude,
-              timestamp: Math.floor((Date.now() - startTime.getTime()) / 1000)
-            }]);
-            
-          } catch (error) {
-            if (__DEV__) console.error('Runner activation failed:', error);
-          }
-        } else {
-          // Unable to get location for runner activation
-        }
-      }
-    };
-    activateRunner();
-  }, [location, isRunning, refreshLocation, trackedPath.length]);
-
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (isRunning) {
-      interval = setInterval(() => {
-        setDuration((prev) => {
-          const newDuration = prev + 1;
-          LiveActivityService.updateActivity(newDuration, distance);
-          return newDuration;
-        });
-      }, 1000);
-    }
+    if (!isRunning) return;
+    const interval = setInterval(() => {
+      setDuration((prev) => {
+        const nd = prev + 1;
+        LiveActivityService.updateActivity(nd, distanceRef.current);
+        return nd;
+      });
+    }, 1000);
     return () => clearInterval(interval);
-  }, [isRunning, distance]);
+  }, [isRunning]);
 
-  // Refs pour les valeurs qui changent fréquemment
-  const distanceRef = useRef(0);
-  const durationRef = useRef(0);
-  
-  // Synchroniser les refs avec les states
+  // ── GPS tracking ──────────────────────────────────────────────────────────
   useEffect(() => {
-    distanceRef.current = distance;
-  }, [distance]);
-  
-  useEffect(() => {
-    durationRef.current = duration;
-  }, [duration]);
+    let fgSub: ExpoLocation.LocationSubscription | null = null;
+    let active = true;
 
-  // Mettre à jour la position du coureur périodiquement
-  useEffect(() => {
-    let locationUpdateInterval: NodeJS.Timeout;
-    
-    if (isRunning && location) {
-      // Mettre à jour la position toutes les 10 secondes
-      locationUpdateInterval = setInterval(async () => {
-        try {
-          // Rafraîchir la position
-          const currentLocation = await refreshLocation();
-          if (currentLocation) {
-            // Calculer la distance parcourue depuis la dernière position
-            let distanceIncrement = 0;
-            if (previousLocationRef.current) {
-              const R = 6371; // Rayon de la Terre en km
-              const dLat = ((currentLocation.latitude - previousLocationRef.current.latitude) * Math.PI) / 180;
-              const dLon = ((currentLocation.longitude - previousLocationRef.current.longitude) * Math.PI) / 180;
-              const a =
-                Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                Math.cos((previousLocationRef.current.latitude * Math.PI) / 180) *
-                  Math.cos((currentLocation.latitude * Math.PI) / 180) *
-                  Math.sin(dLon / 2) *
-                  Math.sin(dLon / 2);
-              const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-              distanceIncrement = R * c;
-            }
-
-            const currentDistance = distanceRef.current + distanceIncrement;
-            setDistance(currentDistance);
-
-            // Calculer l'allure
-            const currentDuration = durationRef.current;
-            const paceSeconds = currentDistance > 0 && currentDuration > 0 
-              ? Math.round((currentDuration / 60) / currentDistance * 60)
-              : 0;
-            const paceMinutes = Math.floor(paceSeconds / 60);
-            const paceSecs = paceSeconds % 60;
-            const paceFormatted = `${paceMinutes}:${paceSecs.toString().padStart(2, '0')} min/km`;
-
-            // Mettre à jour la position dans la table runners
-            await RunnersService.updateRunnerPosition({
-              latitude: currentLocation.latitude,
-              longitude: currentLocation.longitude,
-              distance: currentDistance,
-              pace: paceFormatted,
-              paceSeconds: paceSeconds,
-              isActive: true,
-              activityId: activityIdRef.current || undefined,
-            });
-
-            // Ajouter le point au tracé réel avec timestamp
-            setTrackedPath((prev) => {
-              const currentTimestamp = Math.floor((Date.now() - startTime.getTime()) / 1000);
-              
-              // Éviter d'ajouter des points trop proches (seuil de ~10m)
-              if (prev.length > 0) {
-                const lastPoint = prev[prev.length - 1];
-                const R = 6371; // Rayon de la Terre en km
-                const dLat = ((currentLocation.latitude - lastPoint.latitude) * Math.PI) / 180;
-                const dLon = ((currentLocation.longitude - lastPoint.longitude) * Math.PI) / 180;
-                const a =
-                  Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                  Math.cos((lastPoint.latitude * Math.PI) / 180) *
-                    Math.cos((currentLocation.latitude * Math.PI) / 180) *
-                    Math.sin(dLon / 2) *
-                    Math.sin(dLon / 2);
-                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-                const distanceKm = R * c;
-                
-                // Ajouter seulement si la distance est supérieure à ~10m (0.01 km)
-                if (distanceKm > 0.01) {
-                  return [...prev, { 
-                    latitude: currentLocation.latitude, 
-                    longitude: currentLocation.longitude,
-                    timestamp: currentTimestamp
-                  }];
-                }
-                return prev;
-              }
-              // Premier point
-              return [{ 
-                latitude: currentLocation.latitude, 
-                longitude: currentLocation.longitude,
-                timestamp: currentTimestamp
-              }];
-            });
-
-            previousLocationRef.current = { ...currentLocation };
-          }
-        } catch (error) {
-          if (__DEV__) console.error('Position update failed:', error);
+    const addPoint = (
+      pt: { latitude: number; longitude: number },
+      timestampMs: number
+    ) => {
+      if (!active) return;
+      if (prevPtRef.current) {
+        const inc = haversineKm(prevPtRef.current, pt);
+        // Filtre: ignore < 3m (jitter GPS) et > 200m (mauvais fix)
+        if (inc > 0.003 && inc < 0.2) {
+          setDistance((prev) => {
+            distanceRef.current = prev + inc;
+            return prev + inc;
+          });
+          const ts = Math.floor(
+            (timestampMs - startTimeRef.current.getTime()) / 1000
+          );
+          setTrackedPath((prev) => [...prev, { ...pt, timestamp: ts }]);
         }
-      }, 10000); // Toutes les 10 secondes
-    }
+      }
+      prevPtRef.current = pt;
+    };
 
-    return () => {
-      if (locationUpdateInterval) {
-        clearInterval(locationUpdateInterval);
+    const startTracking = async () => {
+      // Foreground permissions
+      const { status: fgStatus } =
+        await ExpoLocation.requestForegroundPermissionsAsync();
+      if (fgStatus !== "granted" || !active) return;
+
+      // Vider les points background d'une éventuelle session précédente
+      await AsyncStorage.removeItem(BG_POINTS_KEY);
+
+      // Position initiale pour centrer la carte immédiatement
+      try {
+        const initial = await ExpoLocation.getCurrentPositionAsync({
+          accuracy: ExpoLocation.Accuracy.High,
+        });
+        if (!active) return;
+        const pt = {
+          latitude: initial.coords.latitude,
+          longitude: initial.coords.longitude,
+        };
+        prevPtRef.current = pt;
+        setTrackedPath([{ ...pt, timestamp: 0 }]);
+        setInitialRegion({
+          latitude: pt.latitude,
+          longitude: pt.longitude,
+          latitudeDelta: 0.005,
+          longitudeDelta: 0.005,
+        });
+        RunnersService.updateRunnerPosition({
+          latitude: pt.latitude,
+          longitude: pt.longitude,
+          distance: 0,
+          pace: "--:--",
+          isActive: true,
+        }).catch(() => {});
+      } catch (e) {
+        if (__DEV__) console.error("Initial GPS failed:", e);
+      }
+
+      // ── Background location permissions ────────────────────────────────
+      const { status: bgStatus } =
+        await ExpoLocation.requestBackgroundPermissionsAsync();
+
+      // ── Surveillance foreground (temps réel, met à jour le state) ──────
+      fgSub = await ExpoLocation.watchPositionAsync(
+        { accuracy: ExpoLocation.Accuracy.High, distanceInterval: 5 },
+        (loc) => {
+          if (!isRunningRef.current) return;
+          addPoint(
+            { latitude: loc.coords.latitude, longitude: loc.coords.longitude },
+            loc.timestamp
+          );
+          // Mise à jour runner sur la carte (fire-and-forget)
+          const paceStr = fmtPace(durationRef.current, distanceRef.current);
+          RunnersService.updateRunnerPosition({
+            latitude: loc.coords.latitude,
+            longitude: loc.coords.longitude,
+            distance: distanceRef.current,
+            pace: paceStr,
+            paceSeconds:
+              distanceRef.current > 0
+                ? Math.round(durationRef.current / distanceRef.current)
+                : 0,
+            isActive: true,
+          }).catch(() => {});
+        }
+      );
+
+      // ── Background location task (écran verrouillé) ────────────────────
+      if (bgStatus === "granted") {
+        try {
+          const alreadyRunning =
+            await ExpoLocation.hasStartedLocationUpdatesAsync(BG_TASK_NAME);
+          if (!alreadyRunning) {
+            await ExpoLocation.startLocationUpdatesAsync(BG_TASK_NAME, {
+              accuracy: ExpoLocation.Accuracy.High,
+              distanceInterval: 5,
+              showsBackgroundLocationIndicator: true, // iOS : barre bleue
+              foregroundService: {
+                // Android : notification persistante
+                notificationTitle: "Course en cours",
+                notificationBody: "Votre parcours est enregistré",
+                notificationColor: "#7D80F4",
+              },
+            });
+          }
+        } catch (e) {
+          if (__DEV__) console.error("BG location start failed:", e);
+        }
       }
     };
-  }, [isRunning, location, refreshLocation]);
 
+    startTracking();
+    return () => {
+      active = false;
+      fgSub?.remove();
+    };
+  }, []); // une seule fois au montage
+
+  // ── Réconciliation au retour au premier plan ──────────────────────────────
   useEffect(() => {
-    const subscription = AppState.addEventListener("change", (nextAppState) => {
-      if (nextAppState === "active") {
-        const now = new Date();
-        const elapsed = Math.floor(
-          (now.getTime() - startTime.getTime()) / 1000
-        );
-        setDuration(elapsed);
+    const sub = AppState.addEventListener("change", async (nextState) => {
+      if (nextState !== "active" || !isRunningRef.current) return;
+
+      // Resync le timer (l'interval était pausé)
+      const elapsed = Math.floor(
+        (Date.now() - startTimeRef.current.getTime()) / 1000
+      );
+      setDuration(elapsed);
+
+      // Récupérer les points enregistrés en background
+      try {
+        const raw = await AsyncStorage.getItem(BG_POINTS_KEY);
+        if (!raw) return;
+        const bgPoints: BgPoint[] = JSON.parse(raw);
+        if (bgPoints.length === 0) return;
+
+        // Trouver le timestamp du dernier point connu
+        const path = trackedPathRef.current;
+        const lastKnownTs =
+          path.length > 0
+            ? startTimeRef.current.getTime() +
+              path[path.length - 1].timestamp * 1000
+            : 0;
+
+        // Ne traiter que les nouveaux points
+        const newBgPoints = bgPoints.filter((p) => p.ts > lastKnownTs + 1000);
+        if (newBgPoints.length === 0) return;
+
+        // Calculer la distance additionnelle et construire les points
+        let prev = prevPtRef.current;
+        let addedDist = 0;
+        const newTrackPoints: TrackPoint[] = [];
+
+        for (const p of newBgPoints) {
+          const pt = { latitude: p.lat, longitude: p.lng };
+          if (prev) {
+            const inc = haversineKm(prev, pt);
+            if (inc > 0.003 && inc < 0.2) {
+              addedDist += inc;
+              const ts = Math.floor(
+                (p.ts - startTimeRef.current.getTime()) / 1000
+              );
+              newTrackPoints.push({ ...pt, timestamp: ts });
+            }
+          }
+          prev = pt;
+        }
+
+        if (newTrackPoints.length > 0) {
+          setDistance((prev) => {
+            distanceRef.current = prev + addedDist;
+            return prev + addedDist;
+          });
+          setTrackedPath((prev) => [...prev, ...newTrackPoints]);
+          prevPtRef.current = {
+            latitude: newTrackPoints[newTrackPoints.length - 1].latitude,
+            longitude: newTrackPoints[newTrackPoints.length - 1].longitude,
+          };
+        }
+      } catch (e) {
+        if (__DEV__) console.error("BG sync failed:", e);
       }
     });
+    return () => sub.remove();
+  }, []);
 
-    return () => {
-      subscription.remove();
-    };
-  }, [startTime]);
-
-  const handleFinish = async () => {
+  // ── Stop propre ───────────────────────────────────────────────────────────
+  const stopAll = async () => {
     setIsRunning(false);
+    isRunningRef.current = false;
     await LiveActivityService.stopActivity();
-    
-    // Désactiver le coureur
     try {
       await RunnersService.deactivateRunner();
-    } catch (error) {
-      if (__DEV__) console.error('Runner deactivation failed:', error);
-    }
+    } catch {}
+    try {
+      const running =
+        await ExpoLocation.hasStartedLocationUpdatesAsync(BG_TASK_NAME);
+      if (running) await ExpoLocation.stopLocationUpdatesAsync(BG_TASK_NAME);
+    } catch {}
+    await AsyncStorage.removeItem(BG_POINTS_KEY);
+  };
 
-    const activity = {
-      distance: parseFloat(distance.toFixed(2)),
-      duration: formatDuration(duration),
+  const handleFinish = async () => {
+    await stopAll();
+    onFinish({
+      distance: parseFloat(distanceRef.current.toFixed(2)),
+      duration: formatDuration(durationRef.current),
       date: new Date().toLocaleDateString("fr-FR", {
         day: "numeric",
         month: "long",
         year: "numeric",
       }),
-      trackedPath: trackedPath.length > 0 
-        ? trackedPath.map(p => ({ latitude: p.latitude, longitude: p.longitude }))
-        : undefined,
-    };
-    onFinish(activity);
+      trackedPath:
+        trackedPathRef.current.length > 0
+          ? trackedPathRef.current.map((p) => ({
+              latitude: p.latitude,
+              longitude: p.longitude,
+            }))
+          : undefined,
+    });
   };
 
   const handleCancel = async () => {
-    setIsRunning(false);
-    await LiveActivityService.stopActivity();
-    
-    // Désactiver le coureur
-    try {
-      await RunnersService.deactivateRunner();
-    } catch (error) {
-      if (__DEV__) console.error('Runner deactivation failed:', error);
-    }
-
+    await stopAll();
     onCancel();
   };
 
-  // Calculer la région de la carte pour afficher le parcours et la position actuelle
-  const getMapRegion = () => {
-    const allLatitudes: number[] = [];
-    const allLongitudes: number[] = [];
-    
-    // Ajouter les points du parcours prévu
-    if (route?.points && route.points.length > 0) {
-      route.points.forEach((p) => {
-        allLatitudes.push(p.latitude);
-        allLongitudes.push(p.longitude);
-      });
-    }
-    
-    // Ajouter les points du tracé réel
-    if (trackedPath.length > 0) {
-      trackedPath.forEach((p) => {
-        allLatitudes.push(p.latitude);
-        allLongitudes.push(p.longitude);
-      });
-    }
-    
-    // Ajouter la position actuelle
-    if (location) {
-      allLatitudes.push(location.latitude);
-      allLongitudes.push(location.longitude);
-    }
-    
-    if (allLatitudes.length > 0 && allLongitudes.length > 0) {
-      const minLat = Math.min(...allLatitudes);
-      const maxLat = Math.max(...allLatitudes);
-      const minLon = Math.min(...allLongitudes);
-      const maxLon = Math.max(...allLongitudes);
-      
-      const latDelta = Math.max((maxLat - minLat) * 1.5, 0.01);
-      const lonDelta = Math.max((maxLon - minLon) * 1.5, 0.01);
-      
-      return {
-        latitude: (minLat + maxLat) / 2,
-        longitude: (minLon + maxLon) / 2,
-        latitudeDelta: latDelta,
-        longitudeDelta: lonDelta,
-      };
-    }
-    
-    if (location) {
-      return {
-        latitude: location.latitude,
-        longitude: location.longitude,
-        latitudeDelta: 0.01,
-        longitudeDelta: 0.01,
-      };
-    }
-    
-    return null;
-  };
-
-  const routeCoordinates = route?.points?.map((p) => ({
-    latitude: p.latitude,
-    longitude: p.longitude,
-  })) || [];
+  // ── Map ───────────────────────────────────────────────────────────────────
+  const routeCoords =
+    route?.points?.map((p) => ({
+      latitude: p.latitude,
+      longitude: p.longitude,
+    })) || [];
 
   return (
     <View style={styles.container}>
-      {/* Carte avec le parcours */}
       <View style={styles.mapContainer}>
         <MapView
           style={styles.map}
-          initialRegion={getMapRegion() || undefined}
-          region={getMapRegion() || undefined}
+          initialRegion={initialRegion || undefined}
           showsUserLocation
           followsUserLocation={isRunning}
         >
-          {/* Parcours à suivre (si disponible) */}
-          {route && routeCoordinates.length > 1 && (
+          {route && routeCoords.length > 1 && (
             <Polyline
-              coordinates={routeCoordinates}
+              coordinates={routeCoords}
               strokeColor={COLORS.textLight}
               strokeWidth={3}
               lineDashPattern={[5, 5]}
             />
           )}
-          
-          {/* Tracé réel de la course en temps réel */}
           {trackedPath.length > 1 && (
             <Polyline
               coordinates={trackedPath}
@@ -365,9 +394,7 @@ export function LiveActivity({ onFinish, onCancel, route }: LiveActivityProps) {
               strokeWidth={5}
             />
           )}
-          
-          {/* Point de départ du parcours prévu */}
-          {route && route.points && route.points.length > 0 && (
+          {route?.points?.[0] && (
             <Marker
               coordinate={{
                 latitude: route.points[0].latitude,
@@ -377,18 +404,7 @@ export function LiveActivity({ onFinish, onCancel, route }: LiveActivityProps) {
               pinColor="green"
             />
           )}
-          
-          {/* Point de départ du tracé réel */}
-          {trackedPath.length > 0 && (
-            <Marker
-              coordinate={trackedPath[0]}
-              title="Départ"
-              pinColor="blue"
-            />
-          )}
-          
-          {/* Point d'arrivée du parcours prévu */}
-          {route && route.points && route.points.length > 1 && (
+          {route?.points && route.points.length > 1 && (
             <Marker
               coordinate={{
                 latitude: route.points[route.points.length - 1].latitude,
@@ -398,50 +414,38 @@ export function LiveActivity({ onFinish, onCancel, route }: LiveActivityProps) {
               pinColor="red"
             />
           )}
+          {trackedPath.length > 0 && (
+            <Marker coordinate={trackedPath[0]} title="Départ" pinColor="blue" />
+          )}
         </MapView>
+
         {route && (
           <View style={styles.routeInfoOverlay}>
             <Text style={styles.routeInfoText}>{route.title}</Text>
-            <Text style={styles.routeInfoSubtext}>{route.distance.toFixed(2)} km</Text>
+            <Text style={styles.routeInfoSubtext}>
+              {route.distance.toFixed(2)} km
+            </Text>
           </View>
         )}
       </View>
 
       <View style={styles.card}>
         <Text style={styles.title}>
-          {route ? `Course sur: ${route.title}` : 'Course en cours'}
+          {route ? `Course sur : ${route.title}` : "Course en cours"}
         </Text>
 
         <View style={styles.stats}>
-          <View style={styles.stat}>
-            <MaterialCommunityIcons name="timer" size={24} color="#7D80F4" />
-            <Text style={styles.statLabel}>Durée</Text>
-            <Text style={styles.statValue}>{formatDuration(duration)}</Text>
-          </View>
-
-          <View style={styles.stat}>
-            <MaterialCommunityIcons
-              name="map-marker-distance"
-              size={24}
-              color="#7D80F4"
-            />
-            <Text style={styles.statLabel}>Distance</Text>
-            <Text style={styles.statValue}>{formatDistance(distance)}</Text>
-          </View>
-
-          <View style={styles.stat}>
-            <MaterialCommunityIcons
-              name="speedometer"
-              size={24}
-              color="#7D80F4"
-            />
-            <Text style={styles.statLabel}>Allure</Text>
-            <Text style={styles.statValue}>
-              {distance > 0
-                ? `${duration / 60 / parseFloat(distance.toFixed(2))} min/km`
-                : "--:--"}
-            </Text>
-          </View>
+          <StatItem icon="timer" label="Durée" value={formatDuration(duration)} />
+          <StatItem
+            icon="map-marker-distance"
+            label="Distance"
+            value={formatDistance(distance)}
+          />
+          <StatItem
+            icon="speedometer"
+            label="Allure"
+            value={fmtPace(duration, distance)}
+          />
         </View>
 
         <View style={styles.buttonContainer}>
@@ -470,42 +474,43 @@ export function LiveActivity({ onFinish, onCancel, route }: LiveActivityProps) {
   );
 }
 
+function StatItem({
+  icon,
+  label,
+  value,
+}: {
+  icon: string;
+  label: string;
+  value: string;
+}) {
+  return (
+    <View style={styles.stat}>
+      <MaterialCommunityIcons name={icon as any} size={24} color="#7D80F4" />
+      <Text style={styles.statLabel}>{label}</Text>
+      <Text style={styles.statValue}>{value}</Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "white",
-  },
-  mapContainer: {
-    height: 300,
-    width: '100%',
-    position: 'relative',
-  },
-  map: {
-    flex: 1,
-  },
+  container: { flex: 1, backgroundColor: "white" },
+  mapContainer: { height: 300, width: "100%", position: "relative" },
+  map: { flex: 1 },
   routeInfoOverlay: {
-    position: 'absolute',
+    position: "absolute",
     top: 16,
     left: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    backgroundColor: "rgba(255,255,255,0.95)",
     padding: 12,
     borderRadius: 8,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
   },
-  routeInfoText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: COLORS.text,
-  },
-  routeInfoSubtext: {
-    fontSize: 14,
-    color: COLORS.textLight,
-    marginTop: 4,
-  },
+  routeInfoText: { fontSize: 16, fontWeight: "700", color: COLORS.text },
+  routeInfoSubtext: { fontSize: 14, color: COLORS.textLight, marginTop: 4 },
   card: {
     backgroundColor: "white",
     borderRadius: 12,
@@ -528,20 +533,9 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: 24,
   },
-  stat: {
-    alignItems: "center",
-    flex: 1,
-  },
-  statLabel: {
-    fontSize: 14,
-    color: "#666",
-    marginTop: 4,
-  },
-  statValue: {
-    fontSize: 16,
-    fontWeight: "600",
-    marginTop: 2,
-  },
+  stat: { alignItems: "center", flex: 1 },
+  statLabel: { fontSize: 14, color: "#666", marginTop: 4 },
+  statValue: { fontSize: 16, fontWeight: "600", marginTop: 2 },
   buttonContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -556,19 +550,8 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     gap: 8,
   },
-  finishButton: {
-    backgroundColor: "#7D80F4",
-  },
-  cancelButton: {
-    backgroundColor: "#f5f5f5",
-  },
-  buttonText: {
-    color: "white",
-    fontWeight: "600",
-  },
-  cancelButtonText: {
-    color: "#666",
-    fontWeight: "600",
-  },
+  finishButton: { backgroundColor: "#7D80F4" },
+  cancelButton: { backgroundColor: "#f5f5f5" },
+  buttonText: { color: "white", fontWeight: "600" },
+  cancelButtonText: { color: "#666", fontWeight: "600" },
 });
-

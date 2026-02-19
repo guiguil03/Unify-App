@@ -22,14 +22,16 @@ import { NavigationProp } from '../types/navigation';
 import { BottomNav } from '../components/common/BottomNav';
 import { useSubscription } from '../contexts/SubscriptionContext';
 import { PremiumModal } from '../components/common/PremiumModal';
+import { VerifyIdentityModal } from '../components/common/VerifyIdentityModal';
 
 type Tab = 'friends' | 'requests' | 'search';
 
 export default function ContactsScreen() {
   const { contacts, loading, error, refetch, addContact: addContactAction, removeContact, relationships } = useContacts();
   const navigation = useNavigation<NavigationProp>();
-  const { isPremium } = useSubscription();
+  const { isPremium, refreshSubscription } = useSubscription();
   const [showPremiumModal, setShowPremiumModal] = useState(false);
+  const [showVerifyModal, setShowVerifyModal] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>('friends');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Contact[]>([]);
@@ -84,7 +86,7 @@ export default function ContactsScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      // loadPendingRequests already updates requestsCount — avoid double call
+      refreshSubscription();
       if (activeTab === 'requests') {
         loadPendingRequests();
       } else {
@@ -160,6 +162,13 @@ export default function ContactsScreen() {
     }
 
     switch (result.reason) {
+      case 'identity_not_verified':
+        setShowVerifyModal(true);
+        break;
+      case 'profile_incomplete':
+        showErrorToast('Complétez votre profil (photo + niveau) avant de vous connecter.');
+        navigation.navigate('EditProfile');
+        break;
       case 'monthly_limit_reached':
         setShowPremiumModal(true);
         break;
@@ -472,6 +481,15 @@ export default function ContactsScreen() {
         onClose={() => setShowPremiumModal(false)}
         onUpgrade={() => {
           setShowPremiumModal(false);
+          navigation.navigate('Settings');
+        }}
+      />
+
+      <VerifyIdentityModal
+        visible={showVerifyModal}
+        onClose={() => setShowVerifyModal(false)}
+        onVerify={() => {
+          setShowVerifyModal(false);
           navigation.navigate('Settings');
         }}
       />

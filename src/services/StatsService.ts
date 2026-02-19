@@ -17,91 +17,103 @@ export interface MonthlyStats {
   averagePace: number;
 }
 
+export interface PaceTrend {
+  label: string;  // date courte ex: "12 jan"
+  pace: number;   // min/km
+  distance: number;
+}
+
+export interface DistanceZone {
+  label: string;
+  min: number;
+  max: number;
+  count: number;
+  color: string;
+}
+
+export interface WeekdayDistrib {
+  day: string;
+  count: number;
+}
+
+export interface FeelingBreakdown {
+  feeling: string;
+  count: number;
+  color: string;
+}
+
 export interface AdvancedStats {
-  totalDistance: number;
-  totalDuration: number;
+  // Totaux
+  totalDistance: number;      // mètres
+  totalDuration: number;      // secondes
   totalActivities: number;
-  averagePace: number;
+  averagePace: number;        // min/km
   bestPace: number;
   longestRun: number;
   currentStreak: number;
-  weeklyStats: WeeklyStats[];
-  monthlyStats: MonthlyStats[];
+  longestStreak: number;
+  // Comparaisons
   thisWeekDistance: number;
   lastWeekDistance: number;
   thisMonthDistance: number;
   lastMonthDistance: number;
+  thisMonthActivities: number;
+  lastMonthActivities: number;
+  // Graphiques
+  weeklyStats: WeeklyStats[];
+  monthlyStats: MonthlyStats[];
+  paceTrend: PaceTrend[];
+  distanceZones: DistanceZone[];
+  weekdayDistrib: WeekdayDistrib[];
+  feelingBreakdown: FeelingBreakdown[];
+  // Moyenne distance par sortie
+  avgDistancePerRun: number;
+  avgDurationPerRun: number;
 }
 
 export class StatsService {
-  /**
-   * Récupère toutes les statistiques avancées de l'utilisateur
-   */
   static async getAdvancedStats(): Promise<AdvancedStats | null> {
     try {
       const currentUser = await getCurrentUserFromDB();
-      if (!currentUser) {
-        throw new Error('Utilisateur non authentifié');
-      }
+      if (!currentUser) throw new Error('Utilisateur non authentifié');
 
-      // Récupérer toutes les activités de l'utilisateur
       const { data: activities, error } = await supabase
         .from('activities')
-        .select('*')
+        .select('id, date, distance, duration_seconds, pace_seconds, feeling')
         .eq('user_id', currentUser.id)
-        .order('started_at', { ascending: false });
+        .order('date', { ascending: false });
 
       if (error) throw error;
 
-      if (!activities || activities.length === 0) {
-        return {
-          totalDistance: 0,
-          totalDuration: 0,
-          totalActivities: 0,
-          averagePace: 0,
-          bestPace: 0,
-          longestRun: 0,
-          currentStreak: 0,
-          weeklyStats: [],
-          monthlyStats: [],
-          thisWeekDistance: 0,
-          lastWeekDistance: 0,
-          thisMonthDistance: 0,
-          lastMonthDistance: 0,
-        };
-      }
+      const empty: AdvancedStats = {
+        totalDistance: 0, totalDuration: 0, totalActivities: 0,
+        averagePace: 0, bestPace: 0, longestRun: 0,
+        currentStreak: 0, longestStreak: 0,
+        thisWeekDistance: 0, lastWeekDistance: 0,
+        thisMonthDistance: 0, lastMonthDistance: 0,
+        thisMonthActivities: 0, lastMonthActivities: 0,
+        weeklyStats: [], monthlyStats: [], paceTrend: [],
+        distanceZones: this.emptyZones(),
+        weekdayDistrib: this.emptyWeekdays(),
+        feelingBreakdown: [],
+        avgDistancePerRun: 0, avgDurationPerRun: 0,
+      };
 
-      // Calculer les stats globales
-      const totalDistance = activities.reduce((sum, act) => sum + (act.distance || 0), 0);
-      const totalDuration = activities.reduce((sum, act) => sum + (act.duration || 0), 0);
+      if (!activities || activities.length === 0) return empty;
+
+      const totalDistance = activities.reduce((s, a) => s + (a.distance || 0), 0);
+      const totalDuration = activities.reduce((s, a) => s + (a.duration_seconds || 0), 0);
       const totalActivities = activities.length;
-
-      // Calculer l'allure moyenne (en min/km)
-      const averagePace = totalDistance > 0 ? (totalDuration / 60) / (totalDistance / 1000) : 0;
-
-      // Meilleure allure
-      const paces = activities
-        .filter(act => act.distance > 0 && act.duration > 0)
-        .map(act => (act.duration / 60) / (act.distance / 1000));
+      const averagePace = totalDistance > 0 ? (totalDuration / 60) / totalDistance : 0;
+      const paces = activities.filter(a => a.distance > 0 && a.duration_seconds > 0)
+        .map(a => (a.duration_seconds / 60) / a.distance);
       const bestPace = paces.length > 0 ? Math.min(...paces) : 0;
+      const longestRun = Math.max(...activities.map(a => a.distance || 0));
+      const avgDistancePerRun = totalActivities > 0 ? totalDistance / totalActivities : 0;
+      const avgDurationPerRun = totalActivities > 0 ? totalDuration / totalActivities : 0;
 
-      // Plus longue course
-      const longestRun = Math.max(...activities.map(act => act.distance || 0));
-
-      // Série en cours (jours consécutifs)
-      const currentStreak = this.calculateCurrentStreak(activities);
-
-      // Stats par semaine (8 dernières semaines)
-      const weeklyStats = this.calculateWeeklyStats(activities, 8);
-
-      // Stats par mois (6 derniers mois)
-      const monthlyStats = this.calculateMonthlyStats(activities, 6);
-
-      // Cette semaine vs semaine dernière
       const { thisWeek, lastWeek } = this.getWeekComparison(activities);
-
-      // Ce mois vs mois dernier
-      const { thisMonth, lastMonth } = this.getMonthComparison(activities);
+      const { thisMonth, lastMonth, thisMonthCount, lastMonthCount } = this.getMonthComparison(activities);
 
       return {
         totalDistance: Math.round(totalDistance),
@@ -110,13 +122,22 @@ export class StatsService {
         averagePace: Math.round(averagePace * 100) / 100,
         bestPace: Math.round(bestPace * 100) / 100,
         longestRun: Math.round(longestRun),
-        currentStreak,
-        weeklyStats,
-        monthlyStats,
+        currentStreak: this.calculateCurrentStreak(activities),
+        longestStreak: this.calculateLongestStreak(activities),
         thisWeekDistance: Math.round(thisWeek),
         lastWeekDistance: Math.round(lastWeek),
         thisMonthDistance: Math.round(thisMonth),
         lastMonthDistance: Math.round(lastMonth),
+        thisMonthActivities: thisMonthCount,
+        lastMonthActivities: lastMonthCount,
+        weeklyStats: this.calcWeeklyStats(activities, 8),
+        monthlyStats: this.calcMonthlyStats(activities, 6),
+        paceTrend: this.calcPaceTrend(activities),
+        distanceZones: this.calcDistanceZones(activities),
+        weekdayDistrib: this.calcWeekdayDistrib(activities),
+        feelingBreakdown: this.calcFeelingBreakdown(activities),
+        avgDistancePerRun: Math.round(avgDistancePerRun),
+        avgDurationPerRun: Math.round(avgDurationPerRun),
       };
     } catch (error) {
       if (__DEV__) console.error('Stats load failed:', error);
@@ -124,191 +145,163 @@ export class StatsService {
     }
   }
 
-  /**
-   * Calcule la série en cours (jours consécutifs avec activité)
-   */
-  private static calculateCurrentStreak(activities: any[]): number {
-    if (!activities || activities.length === 0) return 0;
+  // ── Helpers date ─────────────────────────────────────────────────────────────
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+  private static d(act: any): Date { return new Date(act.date); }
 
-    const activityDates = activities
-      .map(act => {
-        const date = new Date(act.started_at);
-        date.setHours(0, 0, 0, 0);
-        return date.getTime();
-      })
-      .filter((date, index, self) => self.indexOf(date) === index) // Unique dates
-      .sort((a, b) => b - a); // Tri décroissant
+  // ── Streak ───────────────────────────────────────────────────────────────────
 
-    let streak = 0;
-    let currentDate = today.getTime();
-
-    for (const activityDate of activityDates) {
-      const diffDays = Math.floor((currentDate - activityDate) / (1000 * 60 * 60 * 24));
-
-      if (diffDays === 0 || diffDays === 1) {
-        streak++;
-        currentDate = activityDate;
-      } else {
-        break;
-      }
+  private static calculateCurrentStreak(acts: any[]): number {
+    if (!acts.length) return 0;
+    const today = new Date(); today.setHours(0,0,0,0);
+    const dates = [...new Set(acts.map(a => { const d=this.d(a); d.setHours(0,0,0,0); return d.getTime(); }))].sort((a,b)=>b-a);
+    let streak = 0, cur = today.getTime();
+    for (const d of dates) {
+      const diff = Math.floor((cur - d) / 86400000);
+      if (diff === 0 || diff === 1) { streak++; cur = d; } else break;
     }
-
     return streak;
   }
 
-  /**
-   * Calcule les stats par semaine
-   */
-  private static calculateWeeklyStats(activities: any[], weeksCount: number): WeeklyStats[] {
-    const weeks: WeeklyStats[] = [];
-    const today = new Date();
-
-    for (let i = 0; i < weeksCount; i++) {
-      const weekStart = new Date(today);
-      weekStart.setDate(today.getDate() - (today.getDay() + 7 * i));
-      weekStart.setHours(0, 0, 0, 0);
-
-      const weekEnd = new Date(weekStart);
-      weekEnd.setDate(weekStart.getDate() + 6);
-      weekEnd.setHours(23, 59, 59, 999);
-
-      const weekActivities = activities.filter(act => {
-        const actDate = new Date(act.started_at);
-        return actDate >= weekStart && actDate <= weekEnd;
-      });
-
-      const totalDistance = weekActivities.reduce((sum, act) => sum + (act.distance || 0), 0);
-      const totalDuration = weekActivities.reduce((sum, act) => sum + (act.duration || 0), 0);
-      const averagePace = totalDistance > 0 ? (totalDuration / 60) / (totalDistance / 1000) : 0;
-
-      // Format: "S47" pour semaine 47
-      const weekNumber = this.getWeekNumber(weekStart);
-      const weekLabel = `S${weekNumber}`;
-
-      weeks.unshift({
-        week: weekLabel,
-        totalDistance: Math.round(totalDistance),
-        totalDuration: Math.round(totalDuration),
-        activitiesCount: weekActivities.length,
-        averagePace: Math.round(averagePace * 100) / 100,
-      });
+  private static calculateLongestStreak(acts: any[]): number {
+    if (!acts.length) return 0;
+    const dates = [...new Set(acts.map(a => { const d=this.d(a); d.setHours(0,0,0,0); return d.getTime(); }))].sort((a,b)=>a-b);
+    let best = 1, cur = 1;
+    for (let i = 1; i < dates.length; i++) {
+      const diff = Math.floor((dates[i] - dates[i-1]) / 86400000);
+      if (diff === 1) { cur++; best = Math.max(best, cur); } else cur = 1;
     }
-
-    return weeks;
+    return best;
   }
 
-  /**
-   * Calcule les stats par mois
-   */
-  private static calculateMonthlyStats(activities: any[], monthsCount: number): MonthlyStats[] {
-    const months: MonthlyStats[] = [];
+  // ── Weekly / Monthly ─────────────────────────────────────────────────────────
+
+  private static calcWeeklyStats(acts: any[], n: number): WeeklyStats[] {
     const today = new Date();
-
-    for (let i = 0; i < monthsCount; i++) {
-      const monthStart = new Date(today.getFullYear(), today.getMonth() - i, 1);
-      const monthEnd = new Date(today.getFullYear(), today.getMonth() - i + 1, 0, 23, 59, 59, 999);
-
-      const monthActivities = activities.filter(act => {
-        const actDate = new Date(act.started_at);
-        return actDate >= monthStart && actDate <= monthEnd;
-      });
-
-      const totalDistance = monthActivities.reduce((sum, act) => sum + (act.distance || 0), 0);
-      const totalDuration = monthActivities.reduce((sum, act) => sum + (act.duration || 0), 0);
-      const averagePace = totalDistance > 0 ? (totalDuration / 60) / (totalDistance / 1000) : 0;
-
-      const monthNames = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
-      const monthLabel = monthNames[monthStart.getMonth()];
-
-      months.unshift({
-        month: monthLabel,
-        totalDistance: Math.round(totalDistance),
-        totalDuration: Math.round(totalDuration),
-        activitiesCount: monthActivities.length,
-        averagePace: Math.round(averagePace * 100) / 100,
-      });
-    }
-
-    return months;
+    return Array.from({ length: n }, (_, i) => {
+      const ws = new Date(today); ws.setDate(today.getDate() - today.getDay() - 7*i); ws.setHours(0,0,0,0);
+      const we = new Date(ws); we.setDate(ws.getDate()+6); we.setHours(23,59,59,999);
+      const wa = acts.filter(a => { const d=this.d(a); return d>=ws && d<=we; });
+      const dist = wa.reduce((s,a)=>s+(a.distance||0),0);
+      const dur = wa.reduce((s,a)=>s+(a.duration_seconds||0),0);
+      return { week:`S${this.weekNum(ws)}`, totalDistance:Math.round(dist*10)/10, totalDuration:Math.round(dur), activitiesCount:wa.length, averagePace:dist>0?Math.round((dur/60)/dist*100)/100:0 };
+    }).reverse();
   }
 
-  /**
-   * Compare cette semaine vs semaine dernière
-   */
-  private static getWeekComparison(activities: any[]): { thisWeek: number; lastWeek: number } {
+  private static calcMonthlyStats(acts: any[], n: number): MonthlyStats[] {
     const today = new Date();
+    const names = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
+    return Array.from({ length: n }, (_, i) => {
+      const s = new Date(today.getFullYear(), today.getMonth()-i, 1);
+      const e = new Date(today.getFullYear(), today.getMonth()-i+1, 0, 23,59,59,999);
+      const ma = acts.filter(a => { const d=this.d(a); return d>=s && d<=e; });
+      const dist = ma.reduce((s,a)=>s+(a.distance||0),0);
+      const dur = ma.reduce((s,a)=>s+(a.duration_seconds||0),0);
+      return { month:names[s.getMonth()], totalDistance:Math.round(dist*10)/10, totalDuration:Math.round(dur), activitiesCount:ma.length, averagePace:dist>0?Math.round((dur/60)/dist*100)/100:0 };
+    }).reverse();
+  }
 
-    // Cette semaine
-    const thisWeekStart = new Date(today);
-    thisWeekStart.setDate(today.getDate() - today.getDay());
-    thisWeekStart.setHours(0, 0, 0, 0);
+  // ── Pace trend (10 dernières activités avec distance > 0) ────────────────────
 
-    const thisWeekActivities = activities.filter(act => {
-      const actDate = new Date(act.started_at);
-      return actDate >= thisWeekStart;
-    });
+  private static calcPaceTrend(acts: any[]): PaceTrend[] {
+    const months = ['jan','fév','mar','avr','mai','jun','jul','aoû','sep','oct','nov','déc'];
+    return acts
+      .filter(a => a.distance > 0 && a.duration_seconds > 0)
+      .slice(0, 10)
+      .reverse()
+      .map(a => {
+        const d = this.d(a);
+        return {
+          label: `${d.getDate()} ${months[d.getMonth()]}`,
+          pace: Math.round(((a.duration_seconds/60)/a.distance)*100)/100,
+          distance: a.distance,
+        };
+      });
+  }
 
-    const thisWeek = thisWeekActivities.reduce((sum, act) => sum + (act.distance || 0), 0);
+  // ── Distance zones ────────────────────────────────────────────────────────────
 
-    // Semaine dernière
-    const lastWeekStart = new Date(thisWeekStart);
-    lastWeekStart.setDate(thisWeekStart.getDate() - 7);
+  private static emptyZones(): DistanceZone[] {
+    return [
+      { label:'< 5 km',   min:0,      max:5,        count:0, color:'#A78BFA' },
+      { label:'5–10 km',  min:5,      max:10,       count:0, color:'#7D80F4' },
+      { label:'10–21 km', min:10,     max:21.097,   count:0, color:'#4F46E5' },
+      { label:'> 21 km',  min:21.097, max:Infinity, count:0, color:'#1D1D8F' },
+    ];
+  }
 
-    const lastWeekEnd = new Date(thisWeekStart);
-    lastWeekEnd.setSeconds(lastWeekEnd.getSeconds() - 1);
+  private static calcDistanceZones(acts: any[]): DistanceZone[] {
+    const zones = this.emptyZones();
+    for (const a of acts) {
+      const d = a.distance || 0;
+      const z = zones.find(z => d >= z.min && d < z.max);
+      if (z) z.count++;
+    }
+    return zones;
+  }
 
-    const lastWeekActivities = activities.filter(act => {
-      const actDate = new Date(act.started_at);
-      return actDate >= lastWeekStart && actDate <= lastWeekEnd;
-    });
+  // ── Weekday distribution ──────────────────────────────────────────────────────
 
-    const lastWeek = lastWeekActivities.reduce((sum, act) => sum + (act.distance || 0), 0);
+  private static emptyWeekdays(): WeekdayDistrib[] {
+    return ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'].map(day => ({ day, count: 0 }));
+  }
 
+  private static calcWeekdayDistrib(acts: any[]): WeekdayDistrib[] {
+    const days = this.emptyWeekdays();
+    for (const a of acts) {
+      const dow = (this.d(a).getDay() + 6) % 7; // 0=Lun..6=Dim
+      days[dow].count++;
+    }
+    return days;
+  }
+
+  // ── Feeling breakdown ─────────────────────────────────────────────────────────
+
+  private static calcFeelingBreakdown(acts: any[]): FeelingBreakdown[] {
+    const map: Record<string, { label: string; color: string; count: number }> = {
+      excellent: { label:'Excellent', color:'#10B981', count:0 },
+      good:      { label:'Bien',      color:'#7D80F4', count:0 },
+      ok:        { label:'Moyen',     color:'#F59E0B', count:0 },
+      tough:     { label:'Difficile', color:'#EF4444', count:0 },
+    };
+    for (const a of acts) {
+      if (a.feeling && map[a.feeling]) map[a.feeling].count++;
+    }
+    return Object.values(map).filter(f => f.count > 0);
+  }
+
+  // ── Week / Month comparisons ──────────────────────────────────────────────────
+
+  private static getWeekComparison(acts: any[]) {
+    const today = new Date();
+    const wStart = new Date(today); wStart.setDate(today.getDate()-today.getDay()); wStart.setHours(0,0,0,0);
+    const lwStart = new Date(wStart); lwStart.setDate(wStart.getDate()-7);
+    const lwEnd = new Date(wStart); lwEnd.setSeconds(lwEnd.getSeconds()-1);
+    const thisWeek = acts.filter(a=>this.d(a)>=wStart).reduce((s,a)=>s+(a.distance||0),0);
+    const lastWeek = acts.filter(a=>{const d=this.d(a);return d>=lwStart&&d<=lwEnd;}).reduce((s,a)=>s+(a.distance||0),0);
     return { thisWeek, lastWeek };
   }
 
-  /**
-   * Compare ce mois vs mois dernier
-   */
-  private static getMonthComparison(activities: any[]): { thisMonth: number; lastMonth: number } {
+  private static getMonthComparison(acts: any[]) {
     const today = new Date();
-
-    // Ce mois
-    const thisMonthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-
-    const thisMonthActivities = activities.filter(act => {
-      const actDate = new Date(act.started_at);
-      return actDate >= thisMonthStart;
-    });
-
-    const thisMonth = thisMonthActivities.reduce((sum, act) => sum + (act.distance || 0), 0);
-
-    // Mois dernier
-    const lastMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-    const lastMonthEnd = new Date(thisMonthStart);
-    lastMonthEnd.setSeconds(lastMonthEnd.getSeconds() - 1);
-
-    const lastMonthActivities = activities.filter(act => {
-      const actDate = new Date(act.started_at);
-      return actDate >= lastMonthStart && actDate <= lastMonthEnd;
-    });
-
-    const lastMonth = lastMonthActivities.reduce((sum, act) => sum + (act.distance || 0), 0);
-
-    return { thisMonth, lastMonth };
+    const mStart = new Date(today.getFullYear(), today.getMonth(), 1);
+    const lmStart = new Date(today.getFullYear(), today.getMonth()-1, 1);
+    const lmEnd = new Date(mStart); lmEnd.setSeconds(lmEnd.getSeconds()-1);
+    const thisMonthActs = acts.filter(a=>this.d(a)>=mStart);
+    const lastMonthActs = acts.filter(a=>{const d=this.d(a);return d>=lmStart&&d<=lmEnd;});
+    return {
+      thisMonth: thisMonthActs.reduce((s,a)=>s+(a.distance||0),0),
+      lastMonth: lastMonthActs.reduce((s,a)=>s+(a.distance||0),0),
+      thisMonthCount: thisMonthActs.length,
+      lastMonthCount: lastMonthActs.length,
+    };
   }
 
-  /**
-   * Obtient le numéro de semaine dans l'année
-   */
-  private static getWeekNumber(date: Date): number {
+  private static weekNum(date: Date): number {
     const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-    const dayNum = d.getUTCDay() || 7;
-    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-    return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+    const day = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - day);
+    const y = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    return Math.ceil((((d.getTime()-y.getTime())/86400000)+1)/7);
   }
 }

@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Contact, ContactRelationshipStatus } from '../types/contact';
 import { ContactsService } from '../services/ContactsService';
+import { ProfileService } from '../services/ProfileService';
+import { SubscriptionService } from '../services/SubscriptionService';
+import { IdentityVerificationService } from '../services/IdentityVerificationService';
 import { useAuth } from '../contexts/AuthContext';
 
 type AddContactResult =
   | { success: true; autoAccepted?: boolean }
-  | { success: false; reason: 'already_friends' | 'already_sent' | 'incoming_request' | 'blocked' | 'monthly_limit_reached' | 'unknown' };
+  | { success: false; reason: 'already_friends' | 'already_sent' | 'incoming_request' | 'blocked' | 'monthly_limit_reached' | 'profile_incomplete' | 'identity_not_verified' | 'unknown' };
 
 export function useContacts() {
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -58,10 +61,25 @@ export function useContacts() {
     }
   };
 
-  const addContact = async (runnerId: string, isPremium = false): Promise<AddContactResult> => {
+  const addContact = async (runnerId: string, _unused?: boolean): Promise<AddContactResult> => {
     try {
-      // Vérifier la limite mensuelle pour les utilisateurs gratuits
-      if (!isPremium) {
+      // Vérifier que le profil de l'utilisateur courant est complet
+      const ownProfile = await ProfileService.getProfile();
+      if (!ProfileService.isProfileComplete(ownProfile)) {
+        return { success: false, reason: 'profile_incomplete' };
+      }
+
+      // Vérifier que l'identité est vérifiée
+      const verification = await IdentityVerificationService.getVerification();
+      if (!verification || verification.status !== 'verified') {
+        return { success: false, reason: 'identity_not_verified' };
+      }
+
+      // Lire le statut premium directement depuis la DB (pas depuis le contexte React)
+      const userIsPremium = await SubscriptionService.isPremium();
+
+      // Vérifier la limite mensuelle uniquement pour les utilisateurs gratuits
+      if (!userIsPremium) {
         const monthlyCount = await ContactsService.getMonthlyContactRequestCount();
         if (monthlyCount >= 2) {
           return { success: false, reason: 'monthly_limit_reached' };

@@ -31,9 +31,13 @@ export class LiveActivityService {
   }
 
   static async updateActivity(duration: number, distance: number) {
-    const pace = distance > 0 
-      ? `${((duration / 60) / distance).toFixed(2)} min/km`
-      : '--:--';
+    let pace = '--:--';
+    if (distance > 0) {
+      const secPerKm = duration / distance;
+      const m = Math.floor(secPerKm / 60);
+      const s = Math.floor(secPerKm % 60);
+      pace = `${m}:${s.toString().padStart(2, '0')} /km`;
+    }
 
     await Notifications.scheduleNotificationAsync({
       content: {
