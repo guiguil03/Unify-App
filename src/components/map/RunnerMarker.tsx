@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { View, Image, Text, StyleSheet } from "react-native";
 import { Marker } from "react-native-maps";
 import { Runner } from "../../types/runner";
@@ -12,6 +12,14 @@ interface RunnerMarkerProps {
 
 export function RunnerMarker({ runner, isSelected, onPress }: RunnerMarkerProps) {
   const [imageLoaded, setImageLoaded] = useState(false);
+
+  // Sur Android, avoir trop de markers avec tracksViewChanges=true simultanément
+  // peut crasher le Maps SDK natif. On limite la fenêtre de tracking à 600ms max.
+  useEffect(() => {
+    if (!runner.avatar || imageLoaded) return;
+    const timer = setTimeout(() => setImageLoaded(true), 600);
+    return () => clearTimeout(timer);
+  }, [runner.avatar, imageLoaded]);
 
   const isActive = runner.isActive !== false;
   const size = isSelected ? 52 : 42;

@@ -8,13 +8,14 @@ import { MAP_STYLES } from '../../services/map/config';
 interface ClusterMarkerProps {
   cluster: RunnerCluster;
   onPress: (runners: Runner[]) => void;
+  maxAvatars?: number;
 }
 
-export function ClusterMarker({ cluster, onPress }: ClusterMarkerProps) {
+export function ClusterMarker({ cluster, onPress, maxAvatars = 3 }: ClusterMarkerProps) {
   const { runners, location } = cluster;
   const count = runners.length;
-  // Afficher au plus 3 avatars empilés
-  const visibleAvatars = runners.slice(0, 3);
+  // Nombre d'avatars à afficher selon le zoom courant (1 à 5)
+  const visibleAvatars = runners.slice(0, Math.max(1, maxAvatars));
   const stackWidth = 36 + (visibleAvatars.length - 1) * 18;
 
   const handlePress = (e: any) => {

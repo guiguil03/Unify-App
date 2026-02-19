@@ -16,8 +16,9 @@ export interface RunnerCluster {
  * Regroupe les runners proches les uns des autres en clusters.
  * Un cluster de 1 runner = marker individuel.
  * Un cluster de 2+ runners = ClusterMarker.
+ * @param threshold - Seuil en degrés lat/lng pour regrouper (défaut ~110m). Passer 0 pour désactiver le clustering.
  */
-export function clusterRunners(runners: Runner[]): RunnerCluster[] {
+export function clusterRunners(runners: Runner[], threshold = CLUSTER_THRESHOLD): RunnerCluster[] {
   const clusters: RunnerCluster[] = [];
 
   for (const runner of runners) {
@@ -27,7 +28,7 @@ export function clusterRunners(runners: Runner[]): RunnerCluster[] {
       const dLat = Math.abs(runner.location.latitude - cluster.location.latitude);
       const dLng = Math.abs(runner.location.longitude - cluster.location.longitude);
 
-      if (dLat <= CLUSTER_THRESHOLD && dLng <= CLUSTER_THRESHOLD) {
+      if (threshold > 0 && dLat <= threshold && dLng <= threshold) {
         cluster.runners.push(runner);
         added = true;
         break;
