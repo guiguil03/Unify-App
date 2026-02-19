@@ -1,14 +1,51 @@
-import React, { useEffect } from "react";
+import React, { useEffect, Component } from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { RootStackParamList } from "./types/navigation";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { StyleSheet, Text, View, ActivityIndicator, Image, Platform } from "react-native";
+import { StyleSheet, Text, View, ActivityIndicator, Image, Platform, ScrollView } from "react-native";
 import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { SubscriptionProvider } from "./contexts/SubscriptionContext";
 import Toast, { BaseToast, ErrorToast } from "react-native-toast-message";
 import { NotificationService } from "./services/NotificationService";
+
+// ErrorBoundary — attrape les crashes React en prod et affiche l'erreur
+// au lieu d'un écran blanc (utile pour le debug TestFlight)
+class ErrorBoundary extends Component<
+  { children: React.ReactNode },
+  { error: Error | null }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+
+  render() {
+    if (this.state.error) {
+      return (
+        <ScrollView
+          contentContainerStyle={{ flex: 1, padding: 24, paddingTop: 80, backgroundColor: '#fff' }}
+        >
+          <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#c00', marginBottom: 12 }}>
+            Erreur au démarrage
+          </Text>
+          <Text style={{ fontSize: 13, color: '#333', marginBottom: 8 }}>
+            {this.state.error.toString()}
+          </Text>
+          <Text style={{ fontSize: 11, color: '#666', fontFamily: 'monospace' }}>
+            {this.state.error.stack}
+          </Text>
+        </ScrollView>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 import LoginScreen from "./screens/LoginScreen";
 import WelcomeScreen from "./screens/WelcomeScreen";
@@ -457,15 +494,17 @@ function NavigationSwitcher() {
 
 export default function App() {
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider>
-        <AuthProvider>
-          <SubscriptionProvider>
-            <NavigationSwitcher />
-            <Toast config={toastConfig} />
-          </SubscriptionProvider>
-        </AuthProvider>
-      </SafeAreaProvider>
-    </GestureHandlerRootView>
+    <ErrorBoundary>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <SafeAreaProvider>
+          <AuthProvider>
+            <SubscriptionProvider>
+              <NavigationSwitcher />
+              <Toast config={toastConfig} />
+            </SubscriptionProvider>
+          </AuthProvider>
+        </SafeAreaProvider>
+      </GestureHandlerRootView>
+    </ErrorBoundary>
   );
 }
