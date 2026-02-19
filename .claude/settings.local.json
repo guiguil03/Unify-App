@@ -33,7 +33,11 @@
       "Bash(dir \"C:\\\\Users\\\\guill\\\\Documents\\\\MyDigitalSchool\\\\Unify-App\\\\node_modules\" /b)",
       "Bash(findstr:*)",
       "Bash(test:*)",
-      "Bash(powershell -Command \"Test-Path 'C:\\\\Users\\\\guill\\\\Documents\\\\MyDigitalSchool\\\\Unify-App\\\\node_modules\\\\expo-device'\":*)"
+      "Bash(powershell -Command \"Test-Path 'C:\\\\Users\\\\guill\\\\Documents\\\\MyDigitalSchool\\\\Unify-App\\\\node_modules\\\\expo-device'\":*)",
+      "Bash(node -e:*)",
+      "Bash(npm ci:*)",
+      "Bash(npm show:*)",
+      "Bash(npm ls:*)"
     ]
   }
 }
