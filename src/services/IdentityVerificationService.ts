@@ -181,7 +181,7 @@ export class IdentityVerificationService {
   /**
    * Soumet la vérification d'identité à didit pour traitement automatique
    */
-  static async submitToDidit(verificationId: string): Promise<void> {
+  static async submitToDidit(verificationId: string): Promise<string> {
     try {
       const { data, error } = await supabase.functions.invoke(
         'didit-create-session',
@@ -190,7 +190,9 @@ export class IdentityVerificationService {
 
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
+      if (!data?.session_url) throw new Error('URL de session didit manquante');
 
+      return data.session_url as string;
     } catch (error: any) {
       throw new Error(error.message || 'Impossible de soumettre la vérification à didit');
     }

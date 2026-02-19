@@ -45,72 +45,12 @@ serve(async (req) => {
       );
     }
 
-    // Récupérer la vérification
-    const { data: verification, error: fetchError } = await supabaseClient
-      .from('identity_verifications')
-      .select('*')
-      .eq('id', verification_id)
-      .single();
-
-    if (fetchError || !verification) {
-      console.error('[didit-create-session] Verification not found:', fetchError);
-      return new Response(
-        JSON.stringify({ error: 'Verification not found' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    console.log('[didit-create-session] front:', verification.id_document_front_url ? '✓' : '✗');
-    console.log('[didit-create-session] back:', verification.id_document_back_url ? '✓' : 'absent');
-    console.log('[didit-create-session] selfie:', verification.selfie_url ? '✓' : '✗');
-
-    if (!verification.id_document_front_url) {
-      return new Response(JSON.stringify({ error: 'ID document front is required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    }
-    if (!verification.selfie_url) {
-      return new Response(JSON.stringify({ error: 'Selfie is required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    }
-
-    // Convertir image en base64
-    async function getImageBase64(filePath: string): Promise<string> {
-      const { data: signedUrlData, error } = await supabaseClient.storage
-        .from('identity-verifications')
-        .createSignedUrl(filePath, 3600);
-
-      if (error || !signedUrlData) throw new Error(`Signed URL error: ${error?.message}`);
-
-      const imageResponse = await fetch(signedUrlData.signedUrl);
-      if (!imageResponse.ok) throw new Error(`Download failed: ${imageResponse.status}`);
-
-      const arrayBuffer = await imageResponse.arrayBuffer();
-      console.log('[didit-create-session] Image:', filePath.split('/').pop(), '→', Math.round(arrayBuffer.byteLength / 1024), 'KB');
-
-      const bytes = new Uint8Array(arrayBuffer);
-      let binary = '';
-      for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
-      return btoa(binary);
-    }
-
-    console.log('[didit-create-session] Converting images...');
-    const frontBase64 = await getImageBase64(verification.id_document_front_url);
-    const selfieBase64 = await getImageBase64(verification.selfie_url);
-    let backBase64: string | undefined;
-    if (verification.id_document_back_url) {
-      backBase64 = await getImageBase64(verification.id_document_back_url);
-    }
-
     const diditPayload = {
       workflow_id: DIDIT_WORKFLOW_ID,
       vendor_data: verification_id,
-      documents: {
-        front: frontBase64,
-        ...(backBase64 ? { back: backBase64 } : {}),
-      },
-      selfie: selfieBase64,
     };
 
     console.log('[didit-create-session] Calling didit API — workflow_id:', DIDIT_WORKFLOW_ID);
-    console.log('[didit-create-session] URL: https://verification.didit.me/v3/session/');
 
     const diditResponse = await fetch('https://verification.didit.me/v3/session/', {
       method: 'POST',
@@ -134,7 +74,7 @@ serve(async (req) => {
     }
 
     const diditData = JSON.parse(responseText);
-    console.log('[didit-create-session] session_id:', diditData.session_id);
+    console.log('[didit-create-session] session_id:', diditData.session_id, '— url:', diditData.url);
 
     await supabaseClient
       .from('identity_verifications')
@@ -146,7 +86,7 @@ serve(async (req) => {
 
     console.log('[didit-create-session] ✅ Done');
     return new Response(
-      JSON.stringify({ success: true, session_id: diditData.session_id }),
+      JSON.stringify({ success: true, session_id: diditData.session_id, session_url: diditData.url }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 

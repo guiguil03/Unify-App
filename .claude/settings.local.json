@@ -40,7 +40,8 @@
       "Bash(npm ls:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(npx eas-cli:*)"
     ]
   }
 }
