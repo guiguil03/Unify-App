@@ -27,9 +27,9 @@ const SecureStoreAdapter = {
   },
 };
 
-// Configuration Supabase - les variables d'environnement sont obligatoires
-const supabaseUrl = getEnv('SUPABASE_URL');
-const supabaseAnonKey = getEnv('SUPABASE_API_KEY');
+// Configuration Supabase - fallbacks hardcodés pour éviter un crash module-level en production
+const supabaseUrl = getEnv('SUPABASE_URL', 'https://muhexuopzmqdxonurktn.supabase.co');
+const supabaseAnonKey = getEnv('SUPABASE_API_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im11aGV4dW9wem1xZHhvbnVya3RuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI0NTYyMzMsImV4cCI6MjA3ODAzMjIzM30.Q9c9BDzB1NeLOftXq4A9aqDM3bltWwcEL_LNJNxM3JI');
 
 // Créer le client Supabase avec SecureStore pour la persistance sécurisée
 let supabaseClient: SupabaseClient | null = null;
