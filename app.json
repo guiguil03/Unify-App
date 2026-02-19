@@ -18,6 +18,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.unify.team",
+      "buildNumber": "2",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Unify needs access to location to show nearby runners.",
         "NSLocationAlwaysUsageDescription": "Unify needs access to location to show nearby runners.",
