@@ -24,26 +24,32 @@ const BG_POINTS_KEY = "@unify/bg_points";
 type BgPoint = { lat: number; lng: number; ts: number };
 
 // ── Background task (module-level, obligatoire avant tout appel) ──────────────
-// Stocke chaque point GPS en AsyncStorage pendant que l'app est en arrière-plan
-if (!TaskManager.isTaskDefined(BG_TASK_NAME)) {
-  TaskManager.defineTask(BG_TASK_NAME, async ({ data, error }: any) => {
-    if (error || !data?.locations) return;
-    try {
-      const raw = await AsyncStorage.getItem(BG_POINTS_KEY);
-      const existing: BgPoint[] = raw ? JSON.parse(raw) : [];
-      const newPoints: BgPoint[] = (
-        data.locations as ExpoLocation.LocationObject[]
-      ).map((loc) => ({
-        lat: loc.coords.latitude,
-        lng: loc.coords.longitude,
-        ts: loc.timestamp,
-      }));
-      await AsyncStorage.setItem(
-        BG_POINTS_KEY,
-        JSON.stringify([...existing, ...newPoints])
-      );
-    } catch {}
-  });
+// Wrappé en try-catch : avec newArchEnabled les modules natifs peuvent ne pas
+// être prêts au chargement du module → protège contre un crash au démarrage.
+try {
+  if (!TaskManager.isTaskDefined(BG_TASK_NAME)) {
+    TaskManager.defineTask(BG_TASK_NAME, async ({ data, error }: any) => {
+      if (error || !data?.locations) return;
+      try {
+        const raw = await AsyncStorage.getItem(BG_POINTS_KEY);
+        const existing: BgPoint[] = raw ? JSON.parse(raw) : [];
+        const newPoints: BgPoint[] = (
+          data.locations as ExpoLocation.LocationObject[]
+        ).map((loc) => ({
+          lat: loc.coords.latitude,
+          lng: loc.coords.longitude,
+          ts: loc.timestamp,
+        }));
+        await AsyncStorage.setItem(
+          BG_POINTS_KEY,
+          JSON.stringify([...existing, ...newPoints])
+        );
+      } catch {}
+    });
+  }
+} catch {
+  // Le module natif TaskManager n'est pas encore prêt (nouvelle architecture)
+  // Le tracking background sera indisponible mais l'app ne crashe pas
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

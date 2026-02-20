@@ -4,13 +4,17 @@ import { Platform } from 'react-native';
 import { supabase } from '../config/supabase';
 import { getCurrentUserFromDB } from '../utils/supabaseHelpers';
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
-});
+try {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+    }),
+  });
+} catch {
+  // Module natif pas encore prêt (nouvelle architecture) — ne pas crasher
+}
 
 export class NotificationService {
   static async registerForPushNotifications(): Promise<string | null> {
@@ -35,7 +39,7 @@ export class NotificationService {
     }
 
     const tokenData = await Notifications.getExpoPushTokenAsync({
-      projectId: '9a338c75-310c-475f-b889-d51119b70bdd',
+      projectId: 'a7e92250-0e8a-4fe5-b783-71bb351185ca',
     });
     const token = tokenData.data;
 

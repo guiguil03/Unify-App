@@ -81,6 +81,16 @@ import { OnboardingChecker } from "./components/OnboardingChecker";
 import { Pressable } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 
+// Capture les erreurs JS fatales AVANT que React ne monte (module-level crashes)
+// Sans ça, ces erreurs donnent un écran blanc sans aucun message
+if (typeof ErrorUtils !== 'undefined') {
+  const prev = ErrorUtils.getGlobalHandler();
+  ErrorUtils.setGlobalHandler((error, isFatal) => {
+    if (__DEV__) console.error('[GlobalError]', error);
+    prev?.(error, isFatal);
+  });
+}
+
 if (__DEV__) console.log("=== DÉMARRAGE DE L'APPLICATION UNIFY ===");
 
 const Stack = createNativeStackNavigator<RootStackParamList>();

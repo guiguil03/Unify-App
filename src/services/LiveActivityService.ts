@@ -53,9 +53,13 @@ export class LiveActivityService {
   }
 }
 
-TaskManager.defineTask(LIVE_ACTIVITY_TASK, async ({ data, error }) => {
-  if (error) {
-    return;
+try {
+  if (!TaskManager.isTaskDefined(LIVE_ACTIVITY_TASK)) {
+    TaskManager.defineTask(LIVE_ACTIVITY_TASK, async ({ data, error }: any) => {
+      if (error) return;
+      // Handle background location updates here
+    });
   }
-  // Handle background location updates here
-});
+} catch {
+  // TaskManager not ready (new architecture) — ne pas crasher
+}
