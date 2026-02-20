@@ -23,7 +23,9 @@
         "NSLocationWhenInUseUsageDescription": "Unify utilise votre position pour afficher les coureurs proches.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "Unify utilise votre position en arrière-plan pour enregistrer votre parcours de course.",
         "NSLocationAlwaysUsageDescription": "Unify utilise votre position en arrière-plan pour enregistrer votre parcours de course.",
-        "UIBackgroundModes": ["location"],
+        "UIBackgroundModes": [
+          "location"
+        ],
         "ITSAppUsesNonExemptEncryption": false
       },
       "usesAppleSignIn": true
@@ -63,7 +65,8 @@
       ],
       "expo-font",
       "expo-apple-authentication",
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-web-browser"
     ],
     "scheme": "com.unify.team",
     "extra": {

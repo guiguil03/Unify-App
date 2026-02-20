@@ -42,7 +42,9 @@
       "Bash(git commit:*)",
       "Bash(git push:*)",
       "Bash(npx eas-cli:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(node --no-warnings --eval:*)",
+      "Bash(python3:*)"
     ]
   }
 }
