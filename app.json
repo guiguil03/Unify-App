@@ -18,7 +18,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.unify.team",
-      "buildNumber": "4",
+      "buildNumber": "5",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Unify utilise votre position pour afficher les coureurs proches.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "Unify utilise votre position en arrière-plan pour enregistrer votre parcours de course.",
