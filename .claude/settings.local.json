@@ -44,7 +44,8 @@
       "Bash(npx eas-cli:*)",
       "Bash(curl:*)",
       "Bash(node --no-warnings --eval:*)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(cd:*)"
     ]
   }
 }

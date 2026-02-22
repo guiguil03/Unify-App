@@ -74,7 +74,7 @@
       "SUPABASE_API_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im11aGV4dW9wem1xZHhvbnVya3RuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI0NTYyMzMsImV4cCI6MjA3ODAzMjIzM30.Q9c9BDzB1NeLOftXq4A9aqDM3bltWwcEL_LNJNxM3JI",
       "STRIPE_PRICE_ID": "",
       "eas": {
-        "projectId": "a7e92250-0e8a-4fe5-b783-71bb351185ca"
+        "projectId": "6407a890-f3fd-4f00-8fe8-8087f05124f2"
       }
     },
     "owner": "unify-run"
