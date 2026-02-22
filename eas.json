@@ -9,7 +9,7 @@
       "node": "22.14.0",
       "ios": {
         "simulator": false,
-        "image": "macos-sonoma-14.5-xcode-16.2"
+        "image": "macos-sequoia-15.3-xcode-16.2"
       },
       "android": {
         "buildType": "apk"
@@ -21,7 +21,7 @@
       "ios": {
         "simulator": false,
         "buildConfiguration": "Release",
-        "image": "macos-sonoma-14.5-xcode-16.2"
+        "image": "macos-sequoia-15.3-xcode-16.2"
       },
       "android": {
         "buildType": "apk"
@@ -30,7 +30,7 @@
     "production": {
       "node": "22.14.0",
       "ios": {
-        "image": "macos-sonoma-14.5-xcode-16.2"
+        "image": "macos-sequoia-15.3-xcode-16.2"
       },
       "android": {
         "buildType": "apk"
