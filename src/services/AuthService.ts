@@ -92,6 +92,15 @@ export class AuthService {
     }
   }
 
+  // Récupère le profil DB depuis un user de session (pas de réseau, juste DB)
+  static async getUserFromSession(sessionUser: { id: string; email?: string | null }): Promise<User | null> {
+    try {
+      return await this.getUserDataFromDB(sessionUser.id, sessionUser.email || '');
+    } catch {
+      return null;
+    }
+  }
+
   /**
    * Récupère les données utilisateur depuis la table users de Supabase
    */
@@ -284,7 +293,7 @@ export class AuthService {
    */
   static async signInWithGoogle(): Promise<User> {
     const redirectTo = AuthSession.makeRedirectUri({
-      scheme: 'com.unify.app',
+      scheme: 'com.unify.team',
       path: 'auth/callback',
     });
 

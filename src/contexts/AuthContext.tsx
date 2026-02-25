@@ -63,41 +63,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [user, updateLastActive]);
 
   useEffect(() => {
-    async function loadUserFromStorage() {
-      try {
-        const storedUser = await AuthService.getCurrentUser();
-        if (storedUser) {
-          setUser(storedUser);
-          updateLastActive();
-        }
-      } catch {
-        // Session invalide ou expirée
-      } finally {
-        setIsLoading(false);
-        setHasCompletedInitialCheck(true);
-      }
-    }
-
     if (!supabase?.auth) {
       setIsLoading(false);
       setHasCompletedInitialCheck(true);
       return;
     }
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        // Email confirmation envoyé mais pas encore validé :
-        // on ne touche pas au user déjà défini par signUp()
-        if (_event === 'SIGNED_UP' && !session) {
-          setIsLoading(false);
-          setHasCompletedInitialCheck(true);
-          return;
+    // Lecture du cache local (AsyncStorage) — aucun appel réseau
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session?.user) {
+        try {
+          const userData = await AuthService.getUserFromSession(session.user);
+          if (userData) {
+            setUser(userData);
+            updateLastActive();
+          }
+        } catch {
+          // Session invalide
         }
+      }
+      setIsLoading(false);
+      setHasCompletedInitialCheck(true);
+    });
 
-        setIsLoading(true);
+    // Écoute des vrais événements auth (SIGNED_IN, SIGNED_OUT, TOKEN_REFRESHED…)
+    // INITIAL_SESSION est déjà géré par getSession() ci-dessus, on l'ignore.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === 'INITIAL_SESSION') return;
+
+        // Email confirmation envoyé mais pas encore validé
+        if (event === 'SIGNED_UP' && !session) return;
+
         if (session?.user) {
           try {
-            const userData = await AuthService.getCurrentUser();
+            const userData = await AuthService.getUserFromSession(session.user);
             if (userData) {
               setUser(userData);
               updateLastActive();
@@ -108,12 +108,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         } else {
           setUser(null);
         }
-        setIsLoading(false);
-        setHasCompletedInitialCheck(true);
       }
     );
-
-    loadUserFromStorage();
 
     return () => {
       subscription.unsubscribe();
@@ -175,8 +171,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       const user = await AuthService.signInWithGoogle();
       setUser(user);
       return true;
-    } catch (error) {
+    } catch (error: any) {
       if (__DEV__) console.error('Google sign in failed:', error);
+      const msg = error?.message || '';
+      // Ne pas afficher de toast si l'utilisateur a juste fermé la fenêtre
+      if (!msg.includes('annulé')) {
+        showErrorToast(msg || 'Connexion Google échouée');
+      }
       return false;
     } finally {
       setAuthenticating(false);
@@ -189,8 +190,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       const user = await AuthService.signInWithApple();
       setUser(user);
       return true;
-    } catch (error) {
+    } catch (error: any) {
       if (__DEV__) console.error('Apple sign in failed:', error);
+      const msg = error?.message || '';
+      // ERR_CANCELED = l'utilisateur a fermé la sheet Apple
+      if (!msg.includes('annulé') && error?.code !== 'ERR_CANCELED') {
+        showErrorToast(msg || 'Connexion Apple échouée');
+      }
       return false;
     } finally {
       setAuthenticating(false);

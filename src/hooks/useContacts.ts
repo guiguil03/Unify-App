@@ -63,16 +63,16 @@ export function useContacts() {
 
   const addContact = async (runnerId: string, _unused?: boolean): Promise<AddContactResult> => {
     try {
+      // Vérifier que l'identité est vérifiée (prioritaire sur le profil)
+      const verification = await IdentityVerificationService.getVerification();
+      if (!verification || verification.status !== 'verified') {
+        return { success: false, reason: 'identity_not_verified' };
+      }
+
       // Vérifier que le profil de l'utilisateur courant est complet
       const ownProfile = await ProfileService.getProfile();
       if (!ProfileService.isProfileComplete(ownProfile)) {
         return { success: false, reason: 'profile_incomplete' };
-      }
-
-      // Vérifier que l'identité est vérifiée
-      const verification = await IdentityVerificationService.getVerification();
-      if (!verification || verification.status !== 'verified') {
-        return { success: false, reason: 'identity_not_verified' };
       }
 
       // Lire le statut premium directement depuis la DB (pas depuis le contexte React)
