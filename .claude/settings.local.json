@@ -45,7 +45,9 @@
       "Bash(curl:*)",
       "Bash(node --no-warnings --eval:*)",
       "Bash(python3:*)",
-      "Bash(cd:*)"
+      "Bash(cd:*)",
+      "Bash(wc:*)",
+      "Bash(git:*)"
     ]
   }
 }
