@@ -85,7 +85,10 @@ export default function LoginScreen({ route, navigation }: Props) {
             `Un email de confirmation a été envoyé à ${normalizedEmail}. Vérifiez votre boîte mail pour activer votre compte.`,
             'Confirmation requise'
           );
-          navigation.navigate("Home" as never);
+          setEmail("");
+          setPassword("");
+          setName("");
+          setIsLoginMode(true);
         }
       }
     } catch {
