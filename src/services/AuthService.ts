@@ -35,7 +35,7 @@ export class AuthService {
     return user;
   }
 
-  static async register(name: string, email: string, password: string): Promise<User> {
+  static async register(name: string, email: string, password: string): Promise<void> {
     const normalizedEmail = normalizeEmail(email);
     const sanitizedName = sanitizeName(name);
 
@@ -45,27 +45,18 @@ export class AuthService {
       throw new Error(formatPasswordErrors(passwordCheck.errors));
     }
 
-    const { data, error } = await supabase.auth.signUp({
-      email: normalizedEmail,
-      password,
-      options: {
-        data: {
-          name: sanitizedName,
-        },
-      },
+    // Passe par l'Edge Function (admin API) pour contourner le rate limit Supabase
+    const { data, error } = await supabase.functions.invoke('register-user', {
+      body: { name: sanitizedName, email: normalizedEmail, password },
     });
 
     if (error) {
-      throw error;
+      throw new Error(error.message || "Échec de l'inscription");
     }
 
-    if (!data.user) {
-      throw new Error('Aucun utilisateur retourné après l\'inscription');
+    if (data?.error) {
+      throw new Error(data.error);
     }
-
-    const user = await this.createUserInDB(data.user.id, normalizedEmail, sanitizedName);
-
-    return user;
   }
 
   static async logout(): Promise<void> {

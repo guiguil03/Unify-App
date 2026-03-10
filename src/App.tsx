@@ -9,6 +9,8 @@ import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { SubscriptionProvider } from "./contexts/SubscriptionContext";
 import Toast, { BaseToast, ErrorToast } from "react-native-toast-message";
 import { NotificationService } from "./services/NotificationService";
+import * as Linking from "expo-linking";
+import { supabase } from "./config/supabase";
 
 // ErrorBoundary — attrape les crashes React en prod et affiche l'erreur
 // au lieu d'un écran blanc (utile pour le debug TestFlight)
@@ -476,6 +478,53 @@ const toastConfig = {
   ),
 };
 
+// Gère les deep links entrants (confirmation email, reset password…)
+function DeepLinkHandler() {
+  useEffect(() => {
+    const handleUrl = async ({ url }: { url: string }) => {
+      if (!url.includes("auth/callback")) return;
+
+      try {
+        const parsed = Linking.parse(url);
+
+        // PKCE flow : Supabase redirige avec ?code=
+        const code = parsed.queryParams?.code as string | undefined;
+        if (code) {
+          await supabase.auth.exchangeCodeForSession(code);
+          return;
+        }
+
+        // Implicit flow : Supabase redirige avec #access_token=&refresh_token=
+        const fragment = url.split("#")[1];
+        if (fragment) {
+          const params = new URLSearchParams(fragment);
+          const accessToken = params.get("access_token");
+          const refreshToken = params.get("refresh_token");
+          if (accessToken && refreshToken) {
+            await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken,
+            });
+          }
+        }
+      } catch (e) {
+        if (__DEV__) console.error("[DeepLink] Erreur traitement URL:", e);
+      }
+    };
+
+    // App ouverte depuis un cold start via deep link
+    Linking.getInitialURL().then((url) => {
+      if (url) handleUrl({ url });
+    });
+
+    // App déjà ouverte et deep link reçu en background
+    const sub = Linking.addEventListener("url", handleUrl);
+    return () => sub.remove();
+  }, []);
+
+  return null;
+}
+
 // Composant qui décide quel stack afficher
 function NavigationSwitcher() {
   const { user, isLoading, hasCompletedInitialCheck, isSkipped } = useAuth();
@@ -509,6 +558,7 @@ export default function App() {
         <SafeAreaProvider>
           <AuthProvider>
             <SubscriptionProvider>
+              <DeepLinkHandler />
               <NavigationSwitcher />
               <Toast config={toastConfig} />
             </SubscriptionProvider>

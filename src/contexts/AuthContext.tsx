@@ -149,12 +149,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   }
 
   async function signUp(name: string, email: string, password: string) {
-    if (!checkRateLimit()) return false;
     setAuthenticating(true);
     try {
-      const user = await AuthService.register(name, email, password);
-      setUser(user);
-      updateLastActive();
+      await AuthService.register(name, email, password);
+      // Ne pas connecter l'utilisateur avant confirmation de l'email
       return true;
     } catch (error: any) {
       if (__DEV__) console.error('Sign up failed:', error);
