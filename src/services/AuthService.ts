@@ -284,7 +284,6 @@ export class AuthService {
    */
   static async signInWithGoogle(): Promise<User> {
     const redirectTo = AuthSession.makeRedirectUri({
-      scheme: 'com.unify.team',
       path: 'auth/callback',
     });
 
@@ -292,20 +291,12 @@ export class AuthService {
       provider: 'google',
       options: {
         redirectTo,
-        queryParams: {
-          access_type: 'offline',
-          prompt: 'consent',
-        },
+        skipBrowserRedirect: true, // Empêche Supabase d'ouvrir le navigateur lui-même, on gère avec WebBrowser
       },
     });
 
-    if (error) {
-      throw error;
-    }
-
-    if (!data.url) {
-      throw new Error('Aucune URL retournée par Supabase');
-    }
+    if (error) throw error;
+    if (!data.url) throw new Error('Aucune URL retournée par Supabase');
 
     const result = await WebBrowser.openAuthSessionAsync(
       data.url,
@@ -313,25 +304,35 @@ export class AuthService {
     );
 
     if (result.type !== 'success') {
-      throw new Error('L\'utilisateur a annulé l\'authentification');
+      throw new Error('L\'utilisateur a annulé l\'authentification ou l\'URL n\'a pas été interceptée correctement.');
     }
 
-    const url = new URL(result.url);
-    const code = url.searchParams.get('code');
-
-    if (!code) {
-      throw new Error('Code d\'authentification non trouvé dans l\'URL');
+    // Extraction robuste de l'URL sans utiliser l'objet global URL (buggy sur RN)
+    const returnUrl = result.url;
+    
+    // Supabase ajoute souvent les paramètres en fragment (hash #) ou en query (?)
+    const urlParamsStr = returnUrl.includes('#') ? returnUrl.split('#')[1] : returnUrl.split('?')[1];
+    if (!urlParamsStr) {
+       throw new Error('Paramètres d\'authentification manquants dans l\'URL de retour.');
     }
 
-    const { data: sessionData, error: sessionError } = await supabase.auth.exchangeCodeForSession(code);
+    // Parser les paramètres
+    const params = new URLSearchParams(urlParamsStr);
+    const access_token = params.get('access_token');
+    const refresh_token = params.get('refresh_token');
 
-    if (sessionError) {
-      throw sessionError;
+    if (!access_token || !refresh_token) {
+       throw new Error('Token d\'authentification non trouvé dans l\'URL. (Redirect URL potentiellement mal configurée)');
     }
 
-    if (!sessionData.user) {
-      throw new Error('Aucun utilisateur retourné après l\'authentification');
-    }
+    // Établir manuellement la session avec Supabase
+    const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+      access_token,
+      refresh_token
+    });
+
+    if (sessionError) throw sessionError;
+    if (!sessionData.user) throw new Error('Aucun utilisateur retourné après l\'authentification');
 
     const userEmail = sessionData.user.email || '';
     const userName = sessionData.user.user_metadata?.full_name ||
