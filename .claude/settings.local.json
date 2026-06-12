@@ -47,7 +47,10 @@
       "Bash(python3:*)",
       "Bash(cd:*)",
       "Bash(wc:*)",
-      "Bash(git:*)"
+      "Bash(git:*)",
+      "Bash(du:*)",
+      "Bash(npm --version)",
+      "Bash(npm audit *)"
     ]
   }
 }

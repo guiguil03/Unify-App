@@ -1,8 +1,42 @@
+# Dependencies — reinstalled by EAS
 node_modules/
+
+# iOS Pods & build — reinstalled by EAS
+ios/Pods/
+ios/build/
+
+# Android build artifacts
+android/build/
+android/app/build/
+android/.gradle/
+
+# Git history
+.git/
+
+# Local dev / misc
 .expo/
+dist/
+perf-testing/
+rendus/
+supabase/
+micro-affil/
+
+# Docs & misc files
+*.pdf
+*.docx
+*.md
+db.sql
+references.d.ts
+postcss.config.js
+tailwind.config.js
+tailwind.css
+project.json
+
+# macOS
+.DS_Store
+Unify.app
+
+# Env & logs
 .env
 *.log
-.DS_Store
-.git/
 .gitignore
-
