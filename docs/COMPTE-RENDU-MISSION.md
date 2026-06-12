@@ -31,7 +31,7 @@
 - **Artefact de build versionné** : un dossier `Unify.app/` (binaire iOS compilé, ~70 fichiers) committé dans le dépôt par erreur.
 - `.env` requis pour lancer le microservice (variables Supabase) — non versionné, à recréer.
 
-<div class="shot">📸 Capture à insérer : le projet qui démarre (terminal <code>expo start</code> + simulateur affichant l'écran d'accueil)</div>
+<div class="fig"><img src="captures/01-expo-start.png" alt="Le projet qui démarre"><div class="cap">Le projet qui démarre : écran d'accueil Unify dans le simulateur iOS + serveur Metro/Expo dans le terminal</div></div>
 
 ## 2. Tableau de bord « avant »
 
@@ -65,7 +65,11 @@ lodash  <=4.17.23                        [ÉLEVÉE]
   multer / express / body-parser / qs    [ÉLEVÉES] — pile HTTP NestJS 10
 ```
 
-<div class="shot">📸 Capture à insérer : sortie complète de <code>npm audit</code> et <code>npm outdated</code> avant intervention (terminal)</div>
+> **Note (12/06)** — Les captures ci-dessous, prises le 12/06 sur l'état pré-mission reconstitué (branche `features/post-profil`), affichent **26** vulnérabilités au lieu des 24 mesurées le 05/06 : **deux advisories ont été publiés entre nos deux sessions** (`shell-quote`, critique, et `@grpc/grpc-js`, élevée). Les deux sont déjà corrigés sur la branche de mission — commit dédié pour `shell-quote`, et `@grpc/grpc-js` éliminé avec la suppression de `firebase`. Illustration directe du constat du §8 : la sécurité des dépendances est un flux, pas un état.
+
+<div class="fig"><img src="captures/06-audit-avant-extrait.png" alt="npm audit avant"><div class="cap"><code>npm audit</code> sur l'état pré-mission — extrait : les deux failles <strong>critiques</strong> (protobufjs, shell-quote) et le décompte final. Sortie complète : <code>docs/captures/audit-avant-complet.txt</code></div></div>
+
+<div class="fig"><img src="captures/07-outdated-avant.png" alt="npm outdated avant"><div class="cap"><code>npm outdated</code> sur l'état pré-mission : ~40 paquets en retard (React Navigation v6→v7, ESLint 8→10, écosystème Expo 55→56…)</div></div>
 
 ## 3. Fiche de cadrage
 
@@ -145,7 +149,7 @@ Tests:       7 passed, 7 total
 
 **Gain quantifié :** 60 → 9 vulnérabilités (−85 %), **0 critique / 0 élevée** ; 2 failles critiques d'exécution de code éliminées ; bundle mobile allégé du SDK Firebase complet (inutilisé).
 
-<div class="shot">📸 Capture à insérer : tests au vert + <code>npm audit</code> après, dans le terminal</div>
+<div class="fig"><img src="captures/02-npm-test-verts.png" alt="Tests au vert"><div class="cap">Le filet de non-régression après toutes les montées de version : 14 tests / 4 suites, tous verts</div></div>
 
 <div class="pagebreak"></div>
 
@@ -194,7 +198,9 @@ $ npm test        →  14/14 verts
 
 La compilation `tsc` (vérification de types complète, vs `--transpile-only` en dev) et le lint font désormais office de **garde-fou permanent** : toute réintroduction du problème casse le build immédiatement.
 
-<div class="shot">📸 Capture à insérer : avant/après dans le terminal (erreur TS5095 → build vert)</div>
+<div class="fig"><img src="captures/03-c2-build-ts5095-avant.png" alt="Build cassé TS5095"><div class="cap"><strong>Avant</strong> — <code>npm run build</code> sur l'état pré-mission : erreur TS5095 pointée sur le <code>compilerOptions</code> du tsconfig</div></div>
+
+<div class="fig"><img src="captures/04-c2-build-vert-apres.png" alt="Build vert"><div class="cap"><strong>Après</strong> — même commande après suppression de l'héritage <code>expo/tsconfig.base</code> : compilation sans erreur</div></div>
 
 ## 6. C3 — Évolutif : deep linking d'authentification
 
@@ -241,7 +247,9 @@ found 0 vulnerabilities
 * | efaad33 Add deep link handling for authentication in App component; ...
 ```
 
-<div class="shot">📸 Captures à insérer : <code>npm audit</code> après (les deux projets) + page de la PR GitHub avec l'historique des commits</div>
+<div class="fig"><img src="captures/05-audit-apres-9-moderees.png" alt="npm audit après"><div class="cap"><code>npm audit</code> après la mission : 9 modérées, toutes dans la chaîne d'outillage <code>uuid → xcode → @expo/*</code>. On y voit la ligne « Will install expo@46.0.21, which is a breaking change » — le downgrade destructeur proposé par npm et refusé (§8)</div></div>
+
+<div class="shot">📸 Capture à insérer : page de la PR GitHub (<a href="https://github.com/guiguil03/Unify-App/pull/11">PR #11</a>) avec l'historique des commits</div>
 
 ## 8. Bilan & rétro legacy
 
