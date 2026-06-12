@@ -6,10 +6,10 @@
 | | |
 |---|---|
 | **Projet** | Unify — plateforme sociale de running (React Native / Expo + microservice NestJS) |
-| **Équipe** | Tim Hrdy — Chantiers 1 & 2, rapport · *[coéquipier — rôle à compléter]* — Chantier 3 |
+| **Équipe** | Tim Hrdy — Chantiers 1 & 2, rapport · Guillaume Lafay — Chantier 3 |
 | **Dépôt** | <https://github.com/guiguil03/Unify-App> |
 | **Branche** | `features/post-profil` |
-| **Pull Request** | 🔗 *[lien PR à insérer — accès lecture @celianlb]* |
+| **Pull Request** | <https://github.com/guiguil03/Unify-App/pull/10> |
 | **Dates d'intervention** | 5–6 juin et 12 juin 2026 |
 
 </div>
@@ -73,9 +73,9 @@ lodash  <=4.17.23                        [ÉLEVÉE]
 |---|---|---|
 | **C1 — Mise à jour** | **NestJS 10 → 11** (majeure, breaking changes Express 5) ; suppression `firebase` (dépendance morte portant la faille critique) ; `lodash` 4.17.23 → 4.18.1 ; `@typescript-eslint` 6 → 8 ; correctifs lockfile (`node-forge`, `xmldom`, `shell-quote`…). **Plan de rollback : §C1.4** | `npm audit` = 0 critique / 0 élevée sur les deux projets ; build + 14 tests verts |
 | **C2 — Correctif** | Build du microservice cassé : `npm run build` → `error TS5095`. Fichiers : `micro-affil/tsconfig.json`, `micro-affil/.eslintrc.js` | `tsc` exit 0 ; lint 0 erreur ; tests verts |
-| **C3 — Évolutif** | *[coéquipier]* — deep linking d'authentification + inscription via Edge Function Supabase. Fichiers : `App.tsx`, `AuthService`, `AuthContext` | Flux d'auth Google fonctionnel via deep link, testé sur device |
+| **C3 — Évolutif** | Guillaume Lafay — deep linking d'authentification + inscription via Edge Function Supabase. Fichiers : `App.tsx`, `AuthService`, `AuthContext` | Flux d'auth Google fonctionnel via deep link, testé sur device |
 
-**Répartition :** Tim Hrdy → C1 + C2 + rapport · *[coéquipier]* → C3.
+**Répartition :** Tim Hrdy → C1 + C2 + rapport · Guillaume Lafay → C3.
 
 <div class="pagebreak"></div>
 
@@ -198,13 +198,13 @@ La compilation `tsc` (vérification de types complète, vs `--transpile-only` en
 
 ## 6. C3 — Évolutif : deep linking d'authentification
 
-> ⚠️ **Section à compléter par son auteur** *(répartition d'équipe — voir fiche de cadrage)*.
+**Auteur : Guillaume Lafay** — commit `efaad33` (auteur vérifiable dans l'historique Git : `glafay`).
 
 **Besoin.** Finaliser le flux d'authentification Google : au retour du navigateur OAuth, l'app doit récupérer la session via **deep link** au lieu de laisser l'utilisateur sur un écran mort ; l'inscription doit passer par une **Edge Function** Supabase pour gérer les limites de débit côté serveur.
 
-**Implémentation.** Gestion des deep links dans `App.tsx` ; refactor de `AuthService.register()` vers l'Edge Function ; gestion d'erreurs renforcée dans `AuthContext` *(commits `efaad33` et PR #9 `fix-google-auth`)*.
+**Implémentation.** Gestion des deep links dans `App.tsx` (écoute de l'URL de retour OAuth, extraction des tokens, établissement de la session Supabase) ; refactor de `AuthService.register()` vers l'Edge Function ; gestion d'erreurs renforcée dans `AuthContext` *(commit `efaad33`, complété par la PR #9 `fix-google-auth`)*.
 
-**Test.** *[à compléter : scénario de test du flux complet — login Google → retour app → session active]*
+**Test.** *[Guillaume : compléter le scénario du flux — login Google → retour app via deep link → session active — avec captures]*
 
 <div class="shot">📸 Captures à insérer : avant (retour OAuth sans session) / après (deep link → utilisateur connecté)</div>
 
