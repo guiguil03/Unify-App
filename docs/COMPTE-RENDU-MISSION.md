@@ -204,23 +204,175 @@ La compilation `tsc` (vérification de types complète, vs `--transpile-only` en
 
 ## 6. C3 — Évolutif : deep linking d'authentification
 
-**Auteur : Guillaume Lafay** — commit `efaad33` (auteur vérifiable dans l'historique Git : `glafay`).
+**Auteur : Guillaume Lafay** — commit `efaad33`, complété par la PR #9 `fix-google-auth` (auteur vérifiable dans l'historique Git : `glafay`).
 
-**Besoin.** Finaliser le flux d'authentification Google : au retour du navigateur OAuth, l'app doit récupérer la session via **deep link** au lieu de laisser l'utilisateur sur un écran mort ; l'inscription doit passer par une **Edge Function** Supabase pour gérer les limites de débit côté serveur.
+### 6.1 Contexte et problèmes à résoudre
 
-**Implémentation.** Gestion des deep links dans `App.tsx` (écoute de l'URL de retour OAuth, extraction des tokens, établissement de la session Supabase) ; refactor de `AuthService.register()` vers l'Edge Function ; gestion d'erreurs renforcée dans `AuthContext` *(commit `efaad33`, complété par la PR #9 `fix-google-auth`)*.
+Deux points bloquants existaient dans l'authentification :
 
-**Test.** Scénario vérifié sur l'application (12 juin 2026) :
+1. **Pas de deep link.** Au retour du navigateur OAuth (Google), l'app ne récupérait pas la session : l'utilisateur arrivait sur un écran mort. Aucun handler n'écoutait l'URL de callback `com.unify.team://auth/callback`.
 
-1. **Inscription** — saisie du nom, de l'email et du mot de passe dans l'écran d'inscription ; appel à l'Edge Function `register-user` → utilisateur créé dans `auth.users` (non confirmé) + ligne insérée dans `public.users`.
-2. **Email de confirmation** — email reçu (via Resend) avec le lien Supabase signé (`/auth/v1/verify?type=signup&redirect_to=com.unify.team://auth/callback`).
-3. **Clic sur le lien** — Supabase valide l'OTP et redirige vers le deep link `com.unify.team://auth/callback` avec les tokens en paramètre.
-4. **Deep link intercepté** — le `DeepLinkHandler` de `App.tsx` analyse l'URL, extrait `access_token` + `refresh_token` (flux implicite) et appelle `supabase.auth.setSession()`.
-5. **Session active** — `onAuthStateChange` déclenche le chargement du profil ; l'utilisateur arrive sur son écran de profil, authentifié et confirmé.
+2. **Rate limit Supabase Auth.** L'inscription utilisait directement `supabase.auth.signUp()` côté client, soumis au rate limit public de Supabase (4 requêtes/heure/IP). Sur un événement de démonstration ou un test intensif, les inscriptions tombaient en erreur `429`.
 
-<div class="fig"><img src="captures/Email-Confirmation.png" alt="Email de confirmation Unify"><div class="cap">Email de confirmation reçu (via Resend) — lien signé Supabase avec redirection vers le deep link <code>com.unify.team://auth/callback</code></div></div>
+### 6.2 Architecture d'authentification mise en place
 
-<div class="fig"><img src="captures/Profil.png" alt="Profil utilisateur après confirmation"><div class="cap">Écran de profil après confirmation et deep link — session Supabase active, utilisateur authentifié</div></div>
+Le schéma `com.unify.team` est déclaré dans `app.json` (iOS `bundleIdentifier` + Android `package`). Tous les flux d'auth redirigent vers `com.unify.team://auth/callback`.
+
+```
+Utilisateur
+  │
+  ├─ Inscription email/password
+  │     └─ AuthService.register()
+  │           └─ Edge Function register-user (Deno, admin API)
+  │                 ├─ admin.auth.admin.createUser()  → auth.users
+  │                 ├─ admin.from('users').insert()   → public.users
+  │                 ├─ admin.generateLink(type:'signup', redirectTo: com.unify.team://auth/callback)
+  │                 └─ Resend API → email HTML branded
+  │
+  ├─ Connexion Google OAuth
+  │     └─ AuthService.signInWithGoogle()
+  │           ├─ supabase.auth.signInWithOAuth({ skipBrowserRedirect: true })
+  │           ├─ WebBrowser.openAuthSessionAsync(url, redirectTo)
+  │           └─ Parse tokens depuis result.url → supabase.auth.setSession()
+  │
+  ├─ Connexion Apple Sign-In (iOS)
+  │     └─ AuthService.signInWithApple()
+  │           ├─ AppleAuthentication.signInAsync()
+  │           └─ supabase.auth.signInWithIdToken({ provider: 'apple', token: identityToken })
+  │
+  └─ Deep link entrant (email de confirmation ou retour OAuth)
+        └─ DeepLinkHandler (App.tsx)
+              ├─ Linking.getInitialURL()        → cold start
+              ├─ Linking.addEventListener('url') → app déjà ouverte
+              ├─ ?code= (PKCE)  → exchangeCodeForSession(code)
+              └─ #access_token= (implicit) → setSession({ access_token, refresh_token })
+                    └─ onAuthStateChange() → setUser() → AppStack
+```
+
+### 6.3 Fichiers créés et modifiés
+
+| Fichier | Statut | Rôle |
+|---|---|---|
+| `src/App.tsx` | modifié (+50 lignes) | Composant `DeepLinkHandler` |
+| `src/services/AuthService.ts` | modifié (+23 / −20 lignes) | `register()` → Edge Function |
+| `src/contexts/AuthContext.tsx` | modifié (−6 lignes) | Suppression rate limit client |
+| `supabase/functions/register-user/index.ts` | **nouveau** (+161 lignes) | Admin API + Resend |
+| `supabase/functions/send-auth-email/index.ts` | **nouveau** (+183 lignes) | Hook email Supabase |
+
+### 6.4 DeepLinkHandler — `App.tsx`
+
+Le composant `DeepLinkHandler` est placé **avant** `NavigationSwitcher` dans l'arbre React, ce qui garantit que les tokens sont enregistrés avant que la navigation ne décide de l'écran à afficher.
+
+Il gère deux variantes de callback selon la configuration Supabase :
+
+- **PKCE** (`?code=`) : flux recommandé. Le code d'autorisation est échangé contre des tokens via `supabase.auth.exchangeCodeForSession(code)`.
+- **Implicit** (`#access_token=&refresh_token=`) : flux de fallback. Les tokens arrivent directement dans le fragment d'URL ; `supabase.auth.setSession()` les enregistre immédiatement.
+
+```typescript
+function DeepLinkHandler() {
+  useEffect(() => {
+    const handleUrl = async ({ url }: { url: string }) => {
+      if (!url.includes("auth/callback")) return;
+      try {
+        const parsed = Linking.parse(url);
+        const code = parsed.queryParams?.code as string | undefined;
+        if (code) {
+          await supabase.auth.exchangeCodeForSession(code);
+          return;
+        }
+        const fragment = url.split("#")[1];
+        if (fragment) {
+          const params = new URLSearchParams(fragment);
+          const accessToken  = params.get("access_token");
+          const refreshToken = params.get("refresh_token");
+          if (accessToken && refreshToken)
+            await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+        }
+      } catch (e) {
+        if (__DEV__) console.error("[DeepLink] Erreur:", e);
+      }
+    };
+
+    Linking.getInitialURL().then(url => { if (url) handleUrl({ url }); });
+    const sub = Linking.addEventListener("url", handleUrl);
+    return () => sub.remove();
+  }, []);
+  return null;
+}
+```
+
+`Linking.getInitialURL()` couvre le **cold start** (app lancée depuis le lien email) ; l'event listener couvre le cas où l'app est déjà ouverte en arrière-plan.
+
+### 6.5 Edge Function `register-user`
+
+Avant ce chantier, l'inscription appelait `supabase.auth.signUp()` directement depuis le client mobile — soumis au rate limit public. L'Edge Function utilise la **Service Role Key** (pas de rate limit), ce qui permet autant d'inscriptions que nécessaire.
+
+**Déroulé de l'Edge Function :**
+
+```
+POST /functions/v1/register-user  { name, email, password }
+  │
+  ├─ 1. admin.auth.admin.createUser({ email, password, user_metadata: { name }, email_confirm: false })
+  │       → Crée l'entrée dans auth.users, email non confirmé
+  │       → Si "already registered" → 409 "Cette adresse email est déjà utilisée."
+  │
+  ├─ 2. admin.from('users').insert({ auth_user_id, email, name, created_at })
+  │       → Crée le profil dans public.users
+  │
+  ├─ 3. admin.generateLink({ type: 'signup', email, redirectTo: 'com.unify.team://auth/callback' })
+  │       → Lien OTP valide 24h
+  │
+  └─ 4. Resend API → email HTML branded (dégradé #7D80F4, bouton CTA, lien de secours)
+        → { success: true, emailSent: true }
+```
+
+**Gestion des cas limites :**
+
+| Cas | Traitement |
+|---|---|
+| Email déjà enregistré | 409 + message utilisateur explicite |
+| Resend indisponible | L'user est créé ; `emailSent: false` retourné (pas de blocage) |
+| Lien OTP expiré (>24h) | L'utilisateur doit relancer l'inscription |
+| `name` ou `email` manquant | 400 "name, email et password sont requis" |
+
+### 6.6 Sécurité et validation
+
+**Côté client** (`AuthService.ts`) :
+
+- Email normalisé (trim + lowercase) avant tout appel réseau.
+- Mot de passe validé selon les critères OWASP/NIST 2024 : 8+ caractères, majuscule, minuscule, chiffre, caractère spécial — erreur explicite par critère manquant.
+- Nom sanitisé : trim + collapse des espaces multiples + max 100 caractères.
+
+**Côté Edge Function** :
+
+- Le rate limiting client (`checkRateLimit()` dans `AuthContext`) a été **supprimé** : il n'avait pas de sens côté client (contournable) et est maintenant géré par l'admin API qui n'en a pas besoin.
+- La Service Role Key n'est jamais exposée au client — elle est uniquement lue depuis les variables d'environnement Deno (`Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')`).
+
+**Persistance des tokens** (`supabase.ts`) :
+
+- iOS / Android : `expo-secure-store` (stockage chiffré natif).
+- Web : `localStorage` (fallback).
+- `detectSessionInUrl: false` : désactivé car la session est gérée manuellement par `DeepLinkHandler`.
+
+### 6.7 Flux email / reset password
+
+L'Edge Function `send-auth-email` est enregistrée comme **Auth Hook** dans le dashboard Supabase (déclenché sur les événements `signup`, `recovery`, `email_change`). Elle remplace l'email par défaut de Supabase par un template HTML au design Unify.
+
+Pour le **reset password**, le flux est identique : l'OTP est intégré dans un lien `/auth/v1/verify?type=recovery&redirect_to=com.unify.team://auth/callback`, le deep link est intercepté, et l'app redirige vers `ResetPasswordScreen` pour saisir le nouveau mot de passe.
+
+### 6.8 Test du flux complet
+
+Scénario vérifié sur l'application (12 juin 2026) :
+
+1. **Inscription** — saisie du nom, de l'email et du mot de passe ; appel à l'Edge Function → utilisateur créé dans `auth.users` (non confirmé) + profil dans `public.users`.
+2. **Email reçu** — email Resend avec bouton "Confirmer mon compte" (template HTML branded).
+3. **Clic sur le lien** — Supabase valide l'OTP et redirige vers `com.unify.team://auth/callback` avec les tokens.
+4. **Deep link intercepté** — `DeepLinkHandler` extrait `access_token` + `refresh_token` et appelle `supabase.auth.setSession()`.
+5. **Session active** — `onAuthStateChange` déclenche le chargement du profil ; l'utilisateur est redirigé vers l'écran principal, authentifié.
+
+<div class="fig"><img src="captures/Email-Confirmation.png" alt="Email de confirmation Unify"><div class="cap">Email de confirmation reçu via Resend — template HTML branded avec bouton CTA et lien de secours. Le lien encode le deep link <code>com.unify.team://auth/callback</code> comme <code>redirect_to</code>.</div></div>
+
+<div class="fig"><img src="captures/Profil.png" alt="Profil utilisateur après confirmation"><div class="cap">Écran de profil après confirmation par deep link — session Supabase active, utilisateur authentifié et profil chargé depuis <code>public.users</code>.</div></div>
 
 <div class="pagebreak"></div>
 
