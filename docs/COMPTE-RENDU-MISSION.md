@@ -210,9 +210,17 @@ La compilation `tsc` (vérification de types complète, vs `--transpile-only` en
 
 **Implémentation.** Gestion des deep links dans `App.tsx` (écoute de l'URL de retour OAuth, extraction des tokens, établissement de la session Supabase) ; refactor de `AuthService.register()` vers l'Edge Function ; gestion d'erreurs renforcée dans `AuthContext` *(commit `efaad33`, complété par la PR #9 `fix-google-auth`)*.
 
-**Test.** *[Guillaume : compléter le scénario du flux — login Google → retour app via deep link → session active — avec captures]*
+**Test.** Scénario vérifié sur l'application (12 juin 2026) :
 
-<div class="shot">📸 Captures à insérer : avant (retour OAuth sans session) / après (deep link → utilisateur connecté)</div>
+1. **Inscription** — saisie du nom, de l'email et du mot de passe dans l'écran d'inscription ; appel à l'Edge Function `register-user` → utilisateur créé dans `auth.users` (non confirmé) + ligne insérée dans `public.users`.
+2. **Email de confirmation** — email reçu (via Resend) avec le lien Supabase signé (`/auth/v1/verify?type=signup&redirect_to=com.unify.team://auth/callback`).
+3. **Clic sur le lien** — Supabase valide l'OTP et redirige vers le deep link `com.unify.team://auth/callback` avec les tokens en paramètre.
+4. **Deep link intercepté** — le `DeepLinkHandler` de `App.tsx` analyse l'URL, extrait `access_token` + `refresh_token` (flux implicite) et appelle `supabase.auth.setSession()`.
+5. **Session active** — `onAuthStateChange` déclenche le chargement du profil ; l'utilisateur arrive sur son écran de profil, authentifié et confirmé.
+
+<div class="fig"><img src="captures/Email-Confirmation.png" alt="Email de confirmation Unify"><div class="cap">Email de confirmation reçu (via Resend) — lien signé Supabase avec redirection vers le deep link <code>com.unify.team://auth/callback</code></div></div>
+
+<div class="fig"><img src="captures/Profil.png" alt="Profil utilisateur après confirmation"><div class="cap">Écran de profil après confirmation et deep link — session Supabase active, utilisateur authentifié</div></div>
 
 <div class="pagebreak"></div>
 

@@ -8,7 +8,22 @@ const ROOT = path.resolve(__dirname, '..');
 const MD = path.join(ROOT, 'docs', 'COMPTE-RENDU-MISSION.md');
 const HTML = path.join(ROOT, 'docs', '_cr.html');
 const PDF = path.join(ROOT, 'docs', 'COMPTE-RENDU-MISSION.pdf');
-const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+function findBrowser() {
+  if (process.platform !== 'win32') {
+    return '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+  }
+  const candidates = [
+    'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+    'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+    'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
+    'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
+  ];
+  for (const p of candidates) {
+    if (fs.existsSync(p)) return p;
+  }
+  throw new Error('Aucun navigateur Chromium trouvé. Installez Chrome ou Edge.');
+}
+const CHROME = findBrowser();
 
 let marked;
 try {
