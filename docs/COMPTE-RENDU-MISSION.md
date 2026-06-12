@@ -8,8 +8,8 @@
 | **Projet** | Unify — plateforme sociale de running (React Native / Expo + microservice NestJS) |
 | **Équipe** | Tim Hrdy — Chantiers 1 & 2, rapport · Guillaume Lafay — Chantier 3 |
 | **Dépôt** | <https://github.com/guiguil03/Unify-App> |
-| **Branche** | `features/post-profil` |
-| **Pull Request** | <https://github.com/guiguil03/Unify-App/pull/10> |
+| **Branche** | `mission/dev-legacy` (branche dédiée — 5 commits atomiques) |
+| **Pull Request** | <https://github.com/guiguil03/Unify-App/pull/11> |
 | **Dates d'intervention** | 5–6 juin et 12 juin 2026 |
 
 </div>
@@ -230,7 +230,7 @@ $ cd micro-affil && npm audit    # microservice, après
 found 0 vulnerabilities
 ```
 
-**Hygiène Git** — branche dédiée `features/post-profil`, commits atomiques (1 commit = 1 intention) :
+**Hygiène Git** — branche dédiée `mission/dev-legacy` ne contenant **que** le périmètre de la mission (5 commits atomiques, 1 commit = 1 intention), en PR vers la branche de travail :
 
 ```text
 * b74f6f7 chore(micro-affil): exclure dist/ et coverage/ du lint
